@@ -329,14 +329,14 @@ def add_config(
     for i, unc in enumerate(btag_uncs):
         cfg.add_shift(name=f"btag_{unc}_up", id=100 + 2 * i, type="shape")
         cfg.add_shift(name=f"btag_{unc}_down", id=101 + 2 * i, type="shape")
-        add_aliases(
-            f"btag_{unc}",
-            {
-                "normalized_btag_weight": f"normalized_btag_weight_{unc}_" + "{direction}",
-                "normalized_njet_btag_weight": f"normalized_njet_btag_weight_{unc}_" + "{direction}",
-            },
-            selection_dependent=False,
-        )
+        # add_aliases(
+        #     f"btag_{unc}",
+        #     {
+        #         "normalized_btag_weight": f"normalized_btag_weight_{unc}_" + "{direction}",
+        #         "normalized_njet_btag_weight": f"normalized_njet_btag_weight_{unc}_" + "{direction}",
+        #     },
+        #     selection_dependent=False,
+        # )
 
     cfg.add_shift(name="mur_up", id=201, type="shape")
     cfg.add_shift(name="mur_down", id=202, type="shape")
@@ -447,23 +447,10 @@ def add_config(
             "btag_weight*",
         } | set(  # Jets
             f"{jet_obj}.{field}"
-            for jet_obj in ["Jet", "Bjet", "Lightjet", "VBFJet"]
+            for jet_obj in ["Jet"]
             # NOTE: if we run into storage troubles, skip Bjet and Lightjet
-            for field in ["pt", "eta", "phi", "mass", "btagDeepFlavB", "hadronFlavour"]
-        ) | set(  # H->bb FatJet
-            f"{jet_type}.{field}"
-            for jet_type in ["FatJet"]
-            for field in [
-                "pt", "eta", "phi", "mass", "msoftdrop", "tau1", "tau2", "tau3",
-                "btagHbb", "deepTagMD_HbbvsQCD", "particleNet_HbbvsQCD",
-            ]
-        ) | set(  # Leptons
-            f"{lep}.{field}"
-            for lep in ["Electron", "Muon"]
-            for field in ["pt", "eta", "phi", "mass", "charge", "pdgId"]
-        ) | {  # Electrons
-            "Electron.deltaEtaSC",  # for SF calculation
-        } | set(  # MET
+            for field in ["pt", "eta", "phi", "mass"]
+        ) | set(  # MET
             f"MET.{field}"
             for field in ["pt", "phi"]
         )
@@ -480,7 +467,7 @@ def add_config(
     #         dataset.x.event_weights = {"top_pt_weight": get_shifts("top_pt")}
 
     # NOTE: which to use, njet_btag_weight or btag_weight?
-    cfg.x.event_weights["normalized_btag_weight"] = get_shifts(*(f"btag_{unc}" for unc in btag_uncs))
+    # cfg.x.event_weights["normalized_btag_weight"] = get_shifts(*(f"btag_{unc}" for unc in btag_uncs))
     # TODO: fix pu_weight; takes way too large values (from 0 to 160)
     # cfg.x.event_weights["normalized_pu_weight"] = get_shifts("minbias_xs")
     for dataset in cfg.datasets:
