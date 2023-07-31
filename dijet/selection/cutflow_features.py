@@ -13,38 +13,26 @@ from columnflow.production.cms.muon import muon_weights
 from columnflow.util import maybe_import
 from columnflow.columnar_util import EMPTY_FLOAT, Route, set_ak_column
 
+import law
+
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
-
-
-@producer(
-    uses={
-        "Jet.pt", "Jet.eta", "Jet.phi", "Jet.mass", "Jet.btagDeepFlavB",
-        "dijets",
-    },
-    produces=set(
-        f"cutflow.dijet_{var}"
-        for var in ["asymmetry", "alpha", "avg"]
-    ),
-)
-def dijet_features(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
-    for var in ["pt", "eta", "phi", "mass"]:
-        events = set_ak_column(events, f"cutflow.dijets_{var}", events.dijets[var])
-
-    return events
-
 
 @producer(
     uses={
         mc_weight, category_ids,
         # nano columns
         "Jet.pt", "Jet.eta", "Jet.phi",
+        "dijets.asymmetry", "dijets.alpha", "dijets.pt_avg",
     },
     produces={
         mc_weight, category_ids,
         # new columns
         "cutflow.jet1_pt", "cutflow.n_jets",
+    } |{
+        f"cutflow.dijets_{var}"
+        for var in ["asymmetry", "alpha", "pt_avg"]
     },
 )
 def cutflow_features(
@@ -65,29 +53,7 @@ def cutflow_features(
     events = set_ak_column(events, "cutflow.jet1_pt", Route("pt[:,0]").apply(selected_jet, EMPTY_FLOAT))
     events = set_ak_column(events, "cutflow.n_jets", ak.num(events.Jet.pt, axis=1))
 
+    for var in ["pt_avg", "asymmetry", "alpha"]:
+        events = set_ak_column(events, f"cutflow.dijets_{var}", events.dijets[var])
+
     return events
-
-
-# @producer(
-#     uses={features, category_ids, normalization_weights, muon_weights},
-#     produces={features, category_ids, normalization_weights, muon_weights},
-# )
-# def example(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
-#     # features
-#     events = self[features](events, **kwargs)
-
-#     # category ids
-#     events = self[category_ids](events, **kwargs)
-
-#     # deterministoc seeds
-#     events = self[category_ids](events, **kwargs)
-
-#     # mc-only weights
-#     if self.dataset_inst.is_mc:
-#         # normalization weights
-#         events = self[normalization_weights](events, **kwargs)
-
-#         # muon weights
-#         events = self[muon_weights](events, **kwargs)
-
-#     return events
