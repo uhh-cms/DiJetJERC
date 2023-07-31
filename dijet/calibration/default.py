@@ -40,7 +40,7 @@ def default_init(self: Calibrator) -> None:
     if self.dataset_inst.is_data:
         calibrators = {jec_nominal}
     else:
-        calibrators = {mc_weight, jec, jer, large_weights_killer}
+        calibrators = {jec, jer}
 
     self.uses |= calibrators
     self.produces |= calibrators
@@ -72,7 +72,7 @@ def skip_jecunc_init(self: Calibrator) -> None:
     if self.dataset_inst.is_data:
         calibrators = {jec_nominal}
     else:
-        calibrators = {mc_weight, jec_nominal, jer, large_weights_killer}
+        calibrators = {jec_nominal, jer}
 
     self.uses |= calibrators
     self.produces |= calibrators
