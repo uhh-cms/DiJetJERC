@@ -17,6 +17,8 @@ import order as od
 from columnflow.util import DotDict
 from columnflow.config_util import get_root_processes_from_campaign
 from dijet.config.categories import add_categories_selection
+from dijet.config.variables import add_variables
+from dijet.config.cutflow_variables import add_cutflow_variables
 from dijet.config.datasets import get_dataset_lfns
 from dijet.config.analysis_dijet import analysis_dijet
 
@@ -478,22 +480,33 @@ def add_config(
             dataset.x.event_weights["normalized_muf_weight"] = get_shifts("muf")
             dataset.x.event_weights["normalized_pdf_weight"] = get_shifts("pdf")
 
-    # versions per task family and optionally also dataset and shift
-    # None can be used as a key to define a default value
+    dev_version = "v0"
+    prod_version = "prod1"
+
+    def reduce_version(cls, inst, params):
+        version = dev_version
+        if params.get("selector") == "default":
+            version = prod_version
+
+        return version
+
+    # Version of required tasks
     cfg.x.versions = {
-        # None: "dev1",
-        # "cf.SelectEvents": "dev1",
+        # "cf.CalibrateEvents": "common1",
+        "cf.SelectEvents": reduce_version,
+        # "cf.MergeSelectionStats": reduce_version,
+        # "cf.MergeSelectionMasks": reduce_version,
+        # "cf.ReduceEvents": reduce_version,
+        # "cf.MergeReductionStats": reduce_version,
+        # "cf.MergeReducedEvents": reduce_version,
     }
 
     # add categories
     add_categories_selection(cfg)
 
-    # NOTE: this is only needed here since adding variable insts in producer inits does not work
-    #       when submitting jobs; remove the following block as soon as this is fixed.
-    #  add_ml_variables(cfg)
-    # cfg.x.add_ml_variables = False
-    # add_feature_variables(cfg)
-    # cfg.x.add_feature_variables = False
+    # add variables
+    add_variables(cfg)
+    add_cutflow_variables(cfg)
 
     # only produce cutflow features when number of dataset_files is limited (used in selection module)
     cfg.x.do_cutflow_features = bool(limit_dataset_files) and limit_dataset_files <= 10
