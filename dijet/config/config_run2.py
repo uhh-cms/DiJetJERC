@@ -98,11 +98,12 @@ def add_config(
     # default calibrator, selector, producer, ml model and inference model
     cfg.x.default_calibrator = "skip_jecunc"
     cfg.x.default_selector = "default"
-    cfg.x.default_producer = "ml_inputs"
+    cfg.x.default_producer = "default"
     # cfg.x.default_ml_model = "default"
-    cfg.x.default_ml_model = None
+    # cfg.x.default_ml_model = None
     cfg.x.default_inference_model = "default"
     cfg.x.default_categories = ["incl"]
+    cfg.x.default_variables = ["jet1_pt"]
 
     # process groups for conveniently looping over certain processs
     # (used in wrapper_factory and during plotting)
@@ -123,29 +124,29 @@ def add_config(
     # category groups for conveniently looping over certain categories
     # (used during plotting)
     cfg.x.category_groups = {
-
+        "default": ["incl"]
     }
 
     # variable groups for conveniently looping over certain variables
     # (used during plotting)
     cfg.x.variable_groups = {
-
+        "default": ["n_jet", "jet1_pt"],
     }
 
     # shift groups for conveniently looping over certain shifts
     # (used during plotting)
     cfg.x.shift_groups = {
-
+        "jer": ["nominal", "jer_up", "jer_down"],
     }
 
     # selector step groups for conveniently looping over certain steps
     # (used in cutflow tasks)
     cfg.x.selector_step_groups = {
-
+        "default": ["dijet"],
     }
 
     cfg.x.selector_step_labels = {
-
+        "dijet": r"dijet",
     }
 
     # plotting settings groups
@@ -153,7 +154,7 @@ def add_config(
         "default_norm": {"shape_norm": True, "yscale": "log"},
     }
     cfg.x.process_settings_groups = {
-
+        "Jet": r"$N_{jets}^{AK4} \geq 3$",
     }
     # when drawing DY as a line, use a different type of yellow
 

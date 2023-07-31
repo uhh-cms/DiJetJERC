@@ -51,8 +51,7 @@ if not law.util.flag_to_bool(os.getenv("DIJET_BUNDLE_CMSSW", "1")):
 
 # config groups for conveniently looping over certain configs
 # (used in wrapper_factory)
-ana.x.config_groups = {}
-
+analysis_dijet.set_aux("config_groups", {})
 
 #
 # setup configs
@@ -85,7 +84,7 @@ config_2017_limited = add_config(
     campaign_run2_2017_JMEnano_v9.copy(),
     config_name="config_2017_limited",
     config_id=12,
-    limit_dataset_files=2,
+    limit_dataset_files=1,
 )
 
 
