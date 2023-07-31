@@ -30,57 +30,19 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
     return indices[mask[indices]]
 
 @selector(
-    uses={"Jet.pt", "Jet.eta", "Jet.phi", "Jet.mass", "Jet.btagDeepFlavB", "Jet.jetId"},
-    produces={"cutflow.n_jet", "cutflow.n_deepjet_med"},
-    exposed=True,
-)
-def jet_selection(
-    self: Selector,
-    events: ak.Array,
-    lepton_results: SelectionResult,
-    stats: defaultdict,
-    **kwargs,
-) -> Tuple[ak.Array, SelectionResult]:
-    # dijet jet selection
-    # - Write down  requirment
-
-    # assign local index to all Jets
-    dummy = 0
-
-
-@selector(
-    uses={
-        "Electron.pt", "Electron.eta", "Electron.phi", "Electron.mass",
-        "Electron.cutBased", "Electron.mvaFall17V2Iso_WP80",
-        "Muon.pt", "Muon.eta", "Muon.phi", "Muon.mass",
-        "Muon.tightId", "Muon.looseId", "Muon.pfRelIso04_all",
-        "Tau.pt", "Tau.eta", "Tau.idDeepTau2017v2p1VSe",
-        "Tau.idDeepTau2017v2p1VSmu", "Tau.idDeepTau2017v2p1VSjet",
-    },
-    e_pt=None, mu_pt=None, e_trigger=None, mu_trigger=None,
-)
-def lepton_selection(
-        self: Selector,
-        events: ak.Array,
-        stats: defaultdict,
-        **kwargs,
-) -> Tuple[ak.Array, SelectionResult]:
-    # dijet lepton selection
-    # - require exactly 0 leptons
-    dummy = 0
-
-
-
-@selector(
     uses={
         category_ids, process_ids, attach_coffea_behavior,
-        "mc_weight",  # not opened per default but always required in Cutflow tasks
+        mc_weight, large_weights_killer,  # not opened per default but always required in Cutflow tasks
+        jet_selection, dijet_balance, cutflow_features, dijet_increment_stats,
     },
     produces={
         category_ids, process_ids, attach_coffea_behavior,
-        "mc_weight",  # not opened per default but always required in Cutflow tasks
+        mc_weight, large_weights_killer,
+        jet_selection, dijet_balance, cutflow_features, dijet_increment_stats,
     },
     exposed=True,
+    check_used_columns=False,
+    check_produced_columns=False,
 )
 def default(
     self: Selector,
@@ -88,6 +50,11 @@ def default(
     stats: defaultdict,
     **kwargs,
 ) -> Tuple[ak.Array, SelectionResult]:
+
+    if self.dataset_inst.is_mc:
+        events = self[mc_weight](events, **kwargs)
+        events = self[large_weights_killer](events, **kwargs)
+
     # ensure coffea behavior
     events = self[attach_coffea_behavior](events, **kwargs)
 

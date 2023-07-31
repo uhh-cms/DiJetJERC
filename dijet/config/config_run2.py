@@ -57,6 +57,7 @@ def add_config(
 
     # add processes we are interested in
     cfg.add_process(procs.n.data)
+    cfg.add_process(procs.n.qcd)
     # cfg.add_process(procs.n.qcd)
 
     # set color of some processes
@@ -69,7 +70,17 @@ def add_config(
         "data_jetht_c",
         "data_jetht_d",
         "data_jetht_e",
-        "data_jetht_f"
+        "data_jetht_f",
+        # QCD
+        "qcd_ht50to100_madgraph",
+        "qcd_ht100to200_madgraph",
+        "qcd_ht200to300_madgraph",
+        "qcd_ht300to500_madgraph",
+        "qcd_ht500to700_madgraph",
+        "qcd_ht700to1000_madgraph",
+        "qcd_ht1000to1500_madgraph",
+        "qcd_ht1500to2000_madgraph",
+        "qcd_ht2000_madgraph"
     ]
     for dataset_name in dataset_names:
         dataset = cfg.add_dataset(campaign.get_dataset(dataset_name))
