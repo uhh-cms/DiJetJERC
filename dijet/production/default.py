@@ -43,9 +43,6 @@ def default(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
         # events = self[normalization_weights](events, **kwargs)
         events = self[event_weights](events, **kwargs)
 
-        # muon weights
-        # events = self[muon_weights](events, **kwargs)
-
     # dijet properties: alpha, asymmetry, pt_avg
     # Include MPF production here
     events = self[dijet_balance](events, **kwargs)
