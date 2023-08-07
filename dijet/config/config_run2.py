@@ -16,7 +16,7 @@ import order as od
 
 from columnflow.util import DotDict
 from columnflow.config_util import get_root_processes_from_campaign
-from dijet.config.categories import add_categories_selection
+from dijet.config.categories import add_categories
 from dijet.config.variables import add_variables
 from dijet.config.cutflow_variables import add_cutflow_variables
 from dijet.config.datasets import get_dataset_lfns
@@ -501,7 +501,7 @@ def add_config(
     }
 
     # add categories
-    add_categories_selection(cfg)
+    add_categories(cfg)
 
     # add variables
     add_variables(cfg)

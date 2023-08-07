@@ -67,9 +67,6 @@ def default(
     # prepare the selection results that are updated at every step
     results = SelectionResult()
 
-    # build categories
-    events = self[category_ids](events, results=results, **kwargs)
-
     # create process ids
     events = self[process_ids](events, **kwargs)
 
@@ -85,6 +82,9 @@ def default(
     # dijet balance for cutflow variables
     # TODO: Remove later
     events = self[dijet_balance](events, **kwargs)
+
+    # build categories
+    events = self[category_ids](events, results=results, **kwargs)
 
     # produce relevant columns
     events = self[cutflow_features](events, results.objects, **kwargs)
