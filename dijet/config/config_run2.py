@@ -124,7 +124,8 @@ def add_config(
     # category groups for conveniently looping over certain categories
     # (used during plotting)
     cfg.x.category_groups = {
-        "default": ["incl"]
+        "default": ["incl"],
+        "binning": ["eta_0p5_1p0__pt_100_500__alpha_smaller_0p1","eta_0p5_1p0__pt_100_500__alpha_smaller_0p3"]
     }
 
     # variable groups for conveniently looping over certain variables

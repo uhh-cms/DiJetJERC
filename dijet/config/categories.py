@@ -85,10 +85,6 @@ def skip_fn(categories: dict[str, od.Category]):
     if all(group in categories for group in ["alpha", "alpha_incl"]):
         return True
 
-    # For now, only consider alpha_incl category
-    if all("alpha" in categories and not "alpha_incl" categories):
-        return True
-
     return False  # don't skip
 
 
@@ -120,7 +116,7 @@ def add_categories(config: od.Config) -> None:
     ):
         eta_min_repr = f"{eta_min}".replace(".","p")
         eta_max_repr = f"{eta_max}".replace(".","p")
-        cat_label = rf"{eta_min} $\leq$ $p_{{T}}^{{avg}}$ < {eta_max} GeV"
+        cat_label = rf"{eta_min} $\leq$ $\left|\eta\right|$ < {eta_max}"
 
         cat_name = f"eta_{eta_min_repr}_{eta_max_repr}"
         sel_name = f"sel_{cat_name}"
