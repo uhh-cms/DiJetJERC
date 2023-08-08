@@ -316,8 +316,6 @@ def add_categories(config: od.Config) -> None:
                 # go through cross product of *root categories* (one per group)
                 for root_cats in itertools.product(*root_cats):
                     root_cats = dict(zip(group_names, root_cats))
-                    # name = name_fn(root_cats)
-                    # cat = config.get_category(name)
                     # go through non-compound inclusive alpha
                     # categories and their children
                     for alpha_incl_cat in alpha_incl_categories:
