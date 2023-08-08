@@ -1,21 +1,14 @@
-7# coding: utf-8
+# coding: utf-8
 
 """
 Configuration of the DiJet analysis.
 """
 
 import os
-import functools
-
 import law
 import order as od
-from scinum import Number
 
-from columnflow.util import DotDict, maybe_import
-from columnflow.columnar_util import EMPTY_FLOAT
-from columnflow.config_util import (
-    get_root_processes_from_campaign, add_shift_aliases, get_shifts_from_sources, add_category,
-)
+from columnflow.util import maybe_import
 
 ak = maybe_import("awkward")
 
@@ -86,5 +79,3 @@ config_2017_limited = add_config(
     config_id=12,
     limit_dataset_files=1,
 )
-
-

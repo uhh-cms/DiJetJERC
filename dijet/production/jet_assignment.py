@@ -9,8 +9,7 @@ Selectors to set ak columns for dijet properties
 #       - is FE or SM Method
 
 from columnflow.util import maybe_import
-from columnflow.columnar_util import set_ak_column, EMPTY_FLOAT  # , Route
-from columnflow.selection import SelectionResult
+from columnflow.columnar_util import set_ak_column
 from columnflow.production import Producer, producer
 from columnflow.calibration.util import ak_random
 
@@ -24,15 +23,16 @@ Creates column probe and reference jets, used in dijet analysis.
 Only store pt, eta and phi field for now and remove mass and pdgId
 """
 
+
 @producer(
     uses={
         "Jet.pt", "Jet.eta",
-        },
+    },
     produces={
         "use_sm", "use_fe", "n_jet",
         "probe_jet.pt", "probe_jet.eta", "probe_jet.phi",
         "reference_jet.pt", "reference_jet.eta", "reference_jet.phi",
-        }
+    },
 )
 def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
@@ -61,7 +61,7 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     # TODO: not implemented yet!
     leading_is_central = np.abs(jets.eta[:, 0]) < 1.305
     subleading_is_central = np.abs(jets.eta[:, 1]) < 1.305
-    use_fe = leading_is_central ^ subleading_is_central # exclusive or
+    use_fe = leading_is_central ^ subleading_is_central  # exclusive or
     events = set_ak_column(events, "use_fe", use_fe)
 
     # index of the central jet
@@ -76,10 +76,10 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     reference_jet = ak.firsts(jets[ak.singletons(ref_index)])
 
     # Only produce pt and eta fields
-    probe_jet = ak.zip({ "pt": probe_jet.pt,  "eta": probe_jet.eta,  "phi": probe_jet.phi })
+    probe_jet = ak.zip({"pt": probe_jet.pt, "eta": probe_jet.eta, "phi": probe_jet.phi})
     events = set_ak_column(events, "probe_jet", reference_jet)
 
-    reference_jet = ak.zip({ "pt": reference_jet.pt,  "eta": reference_jet.eta,  "phi": reference_jet.phi })
+    reference_jet = ak.zip({"pt": reference_jet.pt, "eta": reference_jet.eta, "phi": reference_jet.phi})
     events = set_ak_column(events, "reference_jet", reference_jet)
 
     return events

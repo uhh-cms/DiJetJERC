@@ -10,16 +10,14 @@ from collections import defaultdict
 from typing import Tuple
 
 from columnflow.util import maybe_import
-from columnflow.columnar_util import set_ak_column
 from columnflow.production.util import attach_coffea_behavior
 
 from columnflow.selection import Selector, SelectionResult, selector
-from columnflow.selection.stats import increment_event_stats
 from columnflow.production.cms.mc_weight import mc_weight
 from columnflow.production.categories import category_ids
 from columnflow.production.processes import process_ids
 
-from dijet.production.weights import event_weights_to_normalize, large_weights_killer
+from dijet.production.weights import large_weights_killer
 from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
 from dijet.selection.jet_selection import jet_selection
@@ -29,12 +27,14 @@ from dijet.selection.stats import dijet_increment_stats
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
+
 def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = False) -> ak.Array:
     """
     Helper function to obtain the correct indices of an object mask
     """
     indices = ak.argsort(sort_var, axis=-1, ascending=ascending)
     return indices[mask[indices]]
+
 
 @selector(
     uses={
@@ -95,7 +95,7 @@ def default(
     # Make sure all nans are present, otherwise next tasks fail
     results.main["event"] = reduce(and_, results.steps.values())
     results.main["event"] = ak.fill_none(results.main["event"], False)
-    
+
     self[dijet_increment_stats](events, results, stats, **kwargs)
 
     return events, results

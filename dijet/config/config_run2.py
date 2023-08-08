@@ -44,7 +44,7 @@ def add_config(
     corr_postfix = f"{campaign.x.vfp}VFP" if year == 2016 else ""
 
     if year != 2017:
-        raise NotImplementedError("For now, only 2017 campaign is fully implemented, since those samples a locally available")
+        raise NotImplementedError("[ERROR] Only 2017 campaign is fully implemented, since they are stored locally")
 
     # get all root processes
     procs = get_root_processes_from_campaign(campaign)
@@ -80,7 +80,7 @@ def add_config(
         "qcd_ht700to1000_madgraph",
         "qcd_ht1000to1500_madgraph",
         "qcd_ht1500to2000_madgraph",
-        "qcd_ht2000_madgraph"
+        "qcd_ht2000_madgraph",
     ]
     for dataset_name in dataset_names:
         dataset = cfg.add_dataset(campaign.get_dataset(dataset_name))
@@ -125,7 +125,7 @@ def add_config(
     # (used during plotting)
     cfg.x.category_groups = {
         "default": ["incl"],
-        "binning": ["eta_0p5_1p0__pt_100_500__alpha_smaller_0p1","eta_0p5_1p0__pt_100_500__alpha_smaller_0p3"]
+        "binning": ["eta_0p5_1p0__pt_100_500__alpha_smaller_0p1", "eta_0p5_1p0__pt_100_500__alpha_smaller_0p3"],
     }
 
     # variable groups for conveniently looping over certain variables
@@ -406,7 +406,7 @@ def add_config(
 
     # external files with more complex year dependence
     # TODO: generalize to different years
-    if year != 2017: # TODO wrong lumis
+    if year != 2017:  # TODO wrong lumis
         raise NotImplementedError("TODO: generalize external files to different years than 2017")
 
     cfg.x.external_files.update(DotDict.wrap({

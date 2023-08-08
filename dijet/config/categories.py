@@ -42,9 +42,6 @@ ID of the combined category.
 """
 
 import itertools
-
-from collections import OrderedDict
-
 import law
 
 from columnflow.util import maybe_import
@@ -105,8 +102,8 @@ def add_categories(config: od.Config) -> None:
     # group 1: probe jet eta bins
     #
 
-    cat_idx_lsd = 0 # 10-power of least significant digit
-    cat_idx_ndigits = 2 # number of digits to use for category group
+    cat_idx_lsd = 0  # 10-power of least significant digit
+    cat_idx_ndigits = 2  # number of digits to use for category group
 
     # get pt bins from config
     # TODO: Add binning in config ?
@@ -116,8 +113,8 @@ def add_categories(config: od.Config) -> None:
     for cat_idx, (eta_min, eta_max) in enumerate(
         zip(eta_bins[:-1], eta_bins[1:]),
     ):
-        eta_min_repr = f"{eta_min}".replace(".","p")
-        eta_max_repr = f"{eta_max}".replace(".","p")
+        eta_min_repr = f"{eta_min}".replace(".", "p")
+        eta_max_repr = f"{eta_max}".replace(".", "p")
         cat_label = rf"{eta_min} $\leq$ $\left|\eta\right|$ < {eta_max}"
 
         cat_name = f"eta_{eta_min_repr}_{eta_max_repr}"
@@ -140,7 +137,7 @@ def add_categories(config: od.Config) -> None:
             events = self[jet_assignment](events, **kwargs)
             return ak.fill_none(
                 (events.probe_jet.eta >= eta_range[0]) &
-                (events.probe_jet.eta <  eta_range[1]),
+                (events.probe_jet.eta < eta_range[1]),
                 False,
             )
 
@@ -191,7 +188,7 @@ def add_categories(config: od.Config) -> None:
             events = self[dijet_balance](events, **kwargs)
             return ak.fill_none(
                 (events.dijets.pt_avg >= pt_range[0]) &
-                (events.dijets.pt_avg <  pt_range[1]),
+                (events.dijets.pt_avg < pt_range[1]),
                 False,
             )
         assert cat_idx < 10**cat_idx_ndigits - 1, "no space for category, ID reassignement necessary"
@@ -204,23 +201,22 @@ def add_categories(config: od.Config) -> None:
 
         pt_categories.append(cat)
 
-
     #
     # group 3: alpha bins
     #
 
-    cat_idx_lsd += cat_idx_ndigits # 10-power of least significant digit
-    cat_idx_ndigits = 1 # number of digits to use for category group
+    cat_idx_lsd += cat_idx_ndigits  # 10-power of least significant digit
+    cat_idx_ndigits = 1  # number of digits to use for category group
 
     # get pt bins from config
-    alpha_bins = alpha # TODO: Add binning in config ?
+    alpha_bins = alpha  # TODO: Add binning in config ?
     alpha_categories = []
 
     for cat_idx, (alpha_min, alpha_max) in enumerate(
         zip(alpha_bins[:-1], alpha_bins[1:]),
     ):
-        alpha_min_repr = f"{alpha_min}".replace(".","p")
-        alpha_max_repr = f"{alpha_max}".replace(".","p")
+        alpha_min_repr = f"{alpha_min}".replace(".", "p")
+        alpha_max_repr = f"{alpha_max}".replace(".", "p")
         cat_label = rf"{alpha_min} $\leq$ $\alpha$ < {alpha_max}"
 
         cat_name = f"alpha_{alpha_min_repr}_{alpha_max_repr}"
@@ -243,7 +239,7 @@ def add_categories(config: od.Config) -> None:
             events = self[dijet_balance](events, **kwargs)
             return ak.fill_none(
                 (events.dijets.alpha >= alpha_range[0]) &
-                (events.dijets.alpha <  alpha_range[1]),
+                (events.dijets.alpha < alpha_range[1]),
                 False,
             )
 
@@ -273,7 +269,7 @@ def add_categories(config: od.Config) -> None:
         # create category and add individual alpha intervals as child categories
         cat = config.add_category(
             name=cat_name,
-            id=int(10**cat_idx_lsd * ((cat_idx) + 10**cat_idx_lsd+1)),
+            id=int(10**cat_idx_lsd * ((cat_idx) + 10**cat_idx_lsd + 1)),
             selection=None,
             label=cat_label,
         )
@@ -282,7 +278,6 @@ def add_categories(config: od.Config) -> None:
             cat.add_category(child_cat)
 
         alpha_incl_categories.append(cat)
-
 
     # -- combined categories
 
@@ -319,8 +314,8 @@ def add_categories(config: od.Config) -> None:
                 # go through cross product of *root categories* (one per group)
                 for root_cats in itertools.product(*root_cats):
                     root_cats = dict(zip(group_names, root_cats))
-                    name = name_fn(root_cats)
-                    cat = config.get_category(name)
+                    # name = name_fn(root_cats)
+                    # cat = config.get_category(name)
                     # go through non-compound inclusive alpha
                     # categories and their children
                     for alpha_incl_cat in alpha_incl_categories:
@@ -341,4 +336,3 @@ def add_categories(config: od.Config) -> None:
         config.has_combined_categories = True
 
     add_combined_categories(config)
-

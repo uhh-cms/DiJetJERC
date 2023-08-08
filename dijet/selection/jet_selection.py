@@ -1,4 +1,5 @@
-from collections import defaultdict
+# coding: utf-8
+
 from typing import Tuple
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column
@@ -6,12 +7,14 @@ from columnflow.selection import Selector, SelectionResult, selector
 
 ak = maybe_import("awkward")
 
+
 def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = False) -> ak.Array:
     """
     Helper function to obtain the correct indices of an object mask
     """
     indices = ak.argsort(sort_var, axis=-1, ascending=ascending)
     return indices[mask[indices]]
+
 
 @selector(
     uses={"Jet.pt", "Jet.eta", "Jet.phi", "Jet.jetId"},
@@ -43,7 +46,7 @@ def jet_selection(
     # build and return selection results plus new columns
     return events, SelectionResult(
         steps={
-            "Jet": jet_sel
+            "Jet": jet_sel,
         },
         objects={
             "Jet": {
