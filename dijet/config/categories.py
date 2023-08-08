@@ -12,24 +12,26 @@ scheme, with digits/groups of digits indicating the different category groups:
     | I | A | P | P | E | E |
     +---+---+---+---+---+---+
 
-+=======+===============+======================+================================+
-| Digit | Description   | Values               | Category name                  |
-+=======+===============+======================+================================+
-| E     | eta bins      | 1 to e               | eta_{eta_min}_{eta_max}        |
-|    10 |               |                      |                                |
-+-------+---------------+----------------------+--------------------------------+
-| P     | pt avg bin    | 1 to p               | pt_{pt_min}_{pt_max}           |
-|  1000 |               |                      |                                |
-+-------+---------------+----------------------+--------------------------------+
-| A     | alpha binning | 1 to a               | alpha_{min}_{max}              |
-| x 1e4 |               |                      |                                |
-+-------+---------------+----------------------+--------------------------------+
-| I     | Inclusive     |                      |                                |
-|       |               |                      | Alpha bins are inclusive       |
-|       | alpha         | 0: exclusive         | Next higher limit bin          |
-|       |               | 1: inclusive         | Events from lower bins         |
-| x 1e5 |               |                      |                                |
-+-------+---------------+----------------------+--------------------------------+
++=======+===============+======================+=================================+
+| Digit | Description   | Values               | Category name                   |
++=======+===============+======================+=================================+
+| E     | eta bins      | 1 to e               | eta_{eta_min}_{eta_max}         |
+|    10 |               |                      |                                 |
++-------+---------------+----------------------+---------------------------------+
+| P     | pt avg bin    | 1 to p               | pt_{pt_min}_{pt_max}            |
+|  1000 |               |                      |                                 |
++-------+---------------+----------------------+---------------------------------+
+| A     | alpha binning | 1 to a               | alpha_{min}_{max}               |
+| x 1e4 |               |                      |                                 |
++-------+---------------+----------------------+---------------------------------+
+| I     | Inclusive     |                      |                                 |
+|       | alpha         |                      | In combination with alpha bins  |
+|       |               | 0: exclusive         | Excl: alpha in one bin          |
+|       |               | 1: inclusive         | Incl: All alpha below the upper |
+|       |               |                      |       bin value                 |
+|       |               |                      | e.g.  bin IA=06 -> 0.25<a<0.3   |
+| x 1e5 |               |                      |       bin IA=16 ->      a<0.3   |
++-------+---------------+----------------------+---------------------------------+
 
 A digit group consisting entirely of zeroes ('0') represents the inclusive
 category for the corresponding category group, i.e. no selection from that
