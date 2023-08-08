@@ -52,6 +52,7 @@ from columnflow.config_util import create_category_combinations
 from columnflow.selection import Selector, selector
 
 from dijet.production.dijet_balance import dijet_balance
+from dijet.production.jet_assignment import jet_assignment
 from dijet.constants import pt, eta, alpha
 
 import order as od
@@ -122,7 +123,7 @@ def add_categories(config: od.Config) -> None:
         sel_name = f"sel_{cat_name}"
 
         @selector(
-            uses={dijet_balance},
+            uses={jet_assignment},
             cls_name=sel_name,
         )
         def sel_eta(
@@ -135,7 +136,7 @@ def add_categories(config: od.Config) -> None:
             f"""
             Select events with probe jet eta the range [{eta_min_repr}, {eta_max_repr})
             """
-            events = self[dijet_balance](events, **kwargs)
+            events = self[jet_assignment](events, **kwargs)
             return ak.fill_none(
                 (events.probe_jet.eta >= eta_range[0]) &
                 (events.probe_jet.eta <  eta_range[1]),
