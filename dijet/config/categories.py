@@ -52,7 +52,7 @@ from columnflow.config_util import create_category_combinations
 from columnflow.selection import Selector, selector
 
 from dijet.production.dijet_balance import dijet_balance
-from dijet.constants import pt,eta,alpha
+from dijet.constants import pt, eta, alpha
 
 import order as od
 
@@ -167,7 +167,7 @@ def add_categories(config: od.Config) -> None:
     ):
         pt_min_repr = f"{int(pt_min)}"
         pt_max_repr = f"{int(pt_max)}"
-        cat_label = rf"{pt_min} $\leq$ $p_{{T}}$ < {pt_max} GeV"
+        cat_label = rf"{pt_min} $\leq$ $p_{{T,avg}}$ < {pt_max} GeV"
 
         cat_name = f"pt_{pt_min_repr}_{pt_max_repr}"
         sel_name = f"sel_{cat_name}"
@@ -255,28 +255,28 @@ def add_categories(config: od.Config) -> None:
 
         alpha_categories.append(cat)
 
-    # pass/fail categories from union of alpha bins
+    # inclusive alpha categories from union of (exclusive) alpha bins
     cat_idx_ndigits = 2
     alpha_incl_bins = [
-        f"smaller_{str(a).replace('.','p')}" for a in alpha if a!=0
+        f"lt_{str(a).replace('.', 'p')}" for a in alpha[1:]
     ]
     assert len(alpha_incl_bins) + 1 == len(alpha)
     alpha_incl_categories = []
     for cat_idx, (alpha_bin, alpha_val) in enumerate(zip(alpha_incl_bins, alpha_bins[1:])):
         cat_slice = slice(None, cat_idx + 1)
-        cat_label = rf"$\alpha <$ {alpha_val}"
+        cat_label = rf"$\alpha$ < {alpha_val}"
 
         cat_name = f"alpha_{alpha_bin}"
         sel_name = f"sel_{cat_name}"
 
-        # create category and add individual alpah intervals as child categories
+        # create category and add individual alpha intervals as child categories
         cat = config.add_category(
             name=cat_name,
             id=int(10**cat_idx_lsd * ((cat_idx) + 10**cat_idx_lsd+1)),
             selection=None,
             label=cat_label,
         )
-        child_cats = alpha_categories[cat_slice]
+        child_cats = alpha_categories[:cat_idx + 1]
         for child_cat in child_cats:
             cat.add_category(child_cat)
 
@@ -305,18 +305,23 @@ def add_categories(config: od.Config) -> None:
             skip_existing=False,
         )
 
-        # conenct intermediary `tau32_wp` and `tau32` categories
+        # connect intermediary `alpha_incl` and `alpha` categories
         category_groups_no_alpha = {
             "eta": eta_categories,
             "pt": pt_categories,
         }
+        # go through all possible combinations of category *groups*
         for n in range(1, len(category_groups_no_alpha) + 1):
             for group_names in itertools.combinations(category_groups_no_alpha, n):
+                # get root categories for each group
                 root_cats = [category_groups_no_alpha[gn] for gn in group_names]
+                # go through cross product of *root categories* (one per group)
                 for root_cats in itertools.product(*root_cats):
                     root_cats = dict(zip(group_names, root_cats))
                     name = name_fn(root_cats)
                     cat = config.get_category(name)
+                    # go through non-compound inclusive alpha
+                    # categories and their children
                     for alpha_incl_cat in alpha_incl_categories:
                         root_cats_1 = dict(root_cats, **{"alpha_incl": alpha_incl_cat})
                         name_1 = name_fn(root_cats_1)
@@ -328,6 +333,8 @@ def add_categories(config: od.Config) -> None:
                             root_cats_2 = dict(root_cats, **{"alpha": alpha_cat})
                             name_2 = name_fn(root_cats_2)
                             cat_2 = config.get_category(name_2)
+                            # add parent-child relationship between compound
+                            # alpha inclusive and exclusive categories
                             cat_1.add_category(cat_2)
 
         config.has_combined_categories = True
