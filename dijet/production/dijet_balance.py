@@ -19,6 +19,11 @@ from dijet.constants import eta
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
+"""
+Creates column 'Dijet', which includes the most relevant properties of the JetMET dijet analysis.
+ - Namely: asymmetry, pt avg of both leading jets and alpha
+"""
+
 @producer(
     uses={
         "Jet.pt",
@@ -29,12 +34,6 @@ ak = maybe_import("awkward")
         }
 )
 def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
-
-    """
-    Creates column 'Dijet', which includes the most relevant properties of the JetMET dijet analysis.
-    All sub-fields correspond to single objects with fields pt, eta, phi, mass and pdgId
-    or the asymmetry and alpha
-    """
 
     # TODO: for now, this only works for reco level
     jets = events.Jet

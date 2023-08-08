@@ -101,15 +101,16 @@ def add_categories(config: od.Config) -> None:
         label="inclusive",
     )
 
-    # #
-    # # group 1: probe jet eta bins
-    # #
+    #
+    # group 1: probe jet eta bins
+    #
 
     cat_idx_lsd = 0 # 10-power of least significant digit
     cat_idx_ndigits = 2 # number of digits to use for category group
 
-    # # get pt bins from config
-    eta_bins = eta # TODO: Add binning in config ?
+    # get pt bins from config
+    # TODO: Add binning in config ?
+    eta_bins = eta
     eta_categories = []
 
     for cat_idx, (eta_min, eta_max) in enumerate(
@@ -264,7 +265,6 @@ def add_categories(config: od.Config) -> None:
     assert len(alpha_incl_bins) + 1 == len(alpha)
     alpha_incl_categories = []
     for cat_idx, (alpha_bin, alpha_val) in enumerate(zip(alpha_incl_bins, alpha_bins[1:])):
-        cat_slice = slice(None, cat_idx + 1)
         cat_label = rf"$\alpha$ < {alpha_val}"
 
         cat_name = f"alpha_{alpha_bin}"

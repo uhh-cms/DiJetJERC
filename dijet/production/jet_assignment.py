@@ -19,6 +19,11 @@ from dijet.constants import eta
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
+"""
+Creates column probe and reference jets, used in dijet analysis.
+Only store pt, eta and phi field for now and remove mass and pdgId
+"""
+
 @producer(
     uses={
         "Jet.pt", "Jet.eta",
@@ -31,20 +36,14 @@ ak = maybe_import("awkward")
 )
 def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
-    """
-    Creates column probe and reference jets, used in dijet analysis
-        - Probe and referenze jet in same producer as dijet properties
-          due to SM and FE method
-    """
-
     # TODO: for now, this only works for reco level
     jets = events.Jet
     events = set_ak_column(events, "n_jet", ak.num(jets.pt, axis=1), value_type=np.int32)
     jets = ak.pad_none(jets, 2)
 
     # Check for Standard Method
-    eta_index_jet1 = np.digitize(ak.to_numpy(jets.eta[:,0]), eta) - 1
-    eta_index_jet2 = np.digitize(ak.to_numpy(jets.eta[:,1]), eta) - 1
+    eta_index_jet1 = np.digitize(ak.to_numpy(jets.eta[:, 0]), eta) - 1
+    eta_index_jet2 = np.digitize(ak.to_numpy(jets.eta[:, 1]), eta) - 1
     use_sm = eta_index_jet1 == eta_index_jet2
     events = set_ak_column(events, "use_sm", use_sm)
 
@@ -54,14 +53,14 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     rand_ind = ak_random(
         ak.zeros_like(events.event),
         2 * ak.ones_like(events.event),
-        rand_func=rand_gen.integers
+        rand_func=rand_gen.integers,
     )
 
     # Check for Forward extension
     # We also use FE as a check when both jets are central
     # TODO: not implemented yet!
-    leading_is_central = np.abs(jets.eta[:,0]) < 1.305
-    subleading_is_central = np.abs(jets.eta[:,1]) < 1.305
+    leading_is_central = np.abs(jets.eta[:, 0]) < 1.305
+    subleading_is_central = np.abs(jets.eta[:, 1]) < 1.305
     use_fe = leading_is_central ^ subleading_is_central # exclusive or
     events = set_ak_column(events, "use_fe", use_fe)
 
