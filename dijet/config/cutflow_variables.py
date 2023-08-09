@@ -33,10 +33,11 @@ def add_cutflow_variables(config: od.Config) -> None:
         "pt_avg": (200, 0, 1000),
         "alpha": (100, 0, 1),
     }
-    # var_unit = {
-    #     "pt": "GeV",
-    #     "pt_avg": "GeV",
-    # }
+    # default units per variable
+    var_unit = {
+        "pt": "GeV",
+        "pt_avg": "GeV",
+    }
 
     # name = "cf_{obj}{i}_{var}"
     # expr = "cutflow.{obj}.{var}[:, {i}]"
