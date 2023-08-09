@@ -39,7 +39,7 @@ def dijet_increment_stats(
         weight_map["sum_mc_weight"] = events.mc_weight  # weights of all events
         weight_map["sum_mc_weight_selected"] = (events.mc_weight, event_mask)  # weights of selected events
 
-    # baut alles auf weight_map zu weight_map_per_process
+    # Build weight_map to weight_map_per_process
     group_map = {
         "process": {
             "values": events.process_id,
