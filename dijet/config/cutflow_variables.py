@@ -6,8 +6,6 @@ Definition of variables that can be plotted via `PlotCutflowVariables` tasks.
 
 import order as od
 
-from columnflow.columnar_util import EMPTY_FLOAT
-
 
 # cutflow variables
 def add_cutflow_variables(config: od.Config) -> None:
@@ -35,6 +33,7 @@ def add_cutflow_variables(config: od.Config) -> None:
         "pt_avg": (200, 0, 1000),
         "alpha": (100, 0, 1),
     }
+    # default units per variable
     var_unit = {
         "pt": "GeV",
         "pt_avg": "GeV",
@@ -54,7 +53,7 @@ def add_cutflow_variables(config: od.Config) -> None:
     #         binning=var_binning[var],
     #         unit=var_unit.get(var, "1"),
     #         x_title=x_title_base.format(obj=obj, i=i + 1) + var_title_format.get(var, var),
-        # )
+    #      )
 
     # number of objects
     # for obj in (
@@ -66,11 +65,12 @@ def add_cutflow_variables(config: od.Config) -> None:
     #         binning=(11, -0.5, 10.5),
     #         x_title=f"Number of {obj}s",
     #     )
-    
+
     for prop in ("asymmetry", "alpha", "pt_avg"):
         config.add_variable(
             name=f"cf_dijets_{prop}",
             expression=f"cutflow.dijets_{prop}",
             binning=var_binning[prop],
-            x_title=var_title_format[prop]
+            x_title=var_title_format[prop],
+            unit=var_unit.get(prop),
         )

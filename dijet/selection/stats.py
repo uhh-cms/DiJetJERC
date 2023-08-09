@@ -4,8 +4,6 @@
 Stat-related methods.
 """
 
-from collections import defaultdict, OrderedDict
-
 from columnflow.selection import Selector, SelectionResult, selector
 from columnflow.selection.stats import increment_stats
 from columnflow.production.cms.btag import btag_weights
@@ -38,10 +36,10 @@ def dijet_increment_stats(
     }
 
     if self.dataset_inst.is_mc:
-        weight_map["sum_mc_weight"] = events.mc_weight # weights of all events
-        weight_map["sum_mc_weight_selected"] = (events.mc_weight, event_mask) # weights of selected events
-        
-    # baut alles auf weight_map zu weight_map_per_process    
+        weight_map["sum_mc_weight"] = events.mc_weight  # weights of all events
+        weight_map["sum_mc_weight_selected"] = (events.mc_weight, event_mask)  # weights of selected events
+
+    # Build weight_map to weight_map_per_process
     group_map = {
         "process": {
             "values": events.process_id,

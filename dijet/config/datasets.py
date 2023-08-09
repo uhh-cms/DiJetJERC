@@ -1,10 +1,9 @@
 # coding: utf-8
 
-import law
 import order as od
 
-import cmsdb.processes as procs
 from columnflow.tasks.external import GetDatasetLFNs
+
 
 def get_dataset_lfns(
     dataset_inst: od.Dataset,

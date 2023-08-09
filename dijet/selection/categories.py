@@ -5,7 +5,7 @@ Selection methods defining categories based on selection step results.
 """
 
 from columnflow.util import maybe_import
-from columnflow.selection import Selector, SelectionResult, selector
+from columnflow.selection import Selector, selector
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
