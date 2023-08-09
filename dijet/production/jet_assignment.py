@@ -30,8 +30,8 @@ Only store pt, eta and phi field for now and remove mass and pdgId
     },
     produces={
         "use_sm", "use_fe", "n_jet",
-        "probe_jet.pt", "probe_jet.eta", "probe_jet.phi",
-        "reference_jet.pt", "reference_jet.eta", "reference_jet.phi",
+        "probe_jet.pt", "probe_jet.eta", "probe_jet.phi", "probe_jet.mass",
+        "reference_jet.pt", "reference_jet.eta", "reference_jet.phi", "reference_jet.mass",
     },
 )
 def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
@@ -75,11 +75,12 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     probe_jet = ak.firsts(jets[ak.singletons(pro_index)])
     reference_jet = ak.firsts(jets[ak.singletons(ref_index)])
 
-    # Only produce pt and eta fields
-    probe_jet = ak.zip({"pt": probe_jet.pt, "eta": probe_jet.eta, "phi": probe_jet.phi})
-    events = set_ak_column(events, "probe_jet", reference_jet)
+    # write out probe and reference jet fields
+    fields = ("pt", "eta", "phi", "mass")
+    probe_jet = ak.zip({f: getattr(probe_jet, f) for f in fields})
+    events = set_ak_column(events, "probe_jet", probe_jet)
 
-    reference_jet = ak.zip({"pt": reference_jet.pt, "eta": reference_jet.eta, "phi": reference_jet.phi})
+    reference_jet = ak.zip({f: getattr(reference_jet, f) for f in fields})
     events = set_ak_column(events, "reference_jet", reference_jet)
 
     return events

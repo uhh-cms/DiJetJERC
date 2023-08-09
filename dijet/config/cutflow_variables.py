@@ -72,4 +72,5 @@ def add_cutflow_variables(config: od.Config) -> None:
             expression=f"cutflow.dijets_{prop}",
             binning=var_binning[prop],
             x_title=var_title_format[prop],
+            unit=var_unit.get(prop),
         )

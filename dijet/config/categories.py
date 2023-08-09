@@ -21,11 +21,11 @@ scheme, with digits/groups of digits indicating the different category groups:
 | P     | pt avg bin    | 1 to p               | pt_{pt_min}_{pt_max}            |
 |  1000 |               |                      |                                 |
 +-------+---------------+----------------------+---------------------------------+
-| A     | alpha binning | 1 to a               | alpha_{min}_{max}               |
-| x 1e4 |               |                      |                                 |
-+-------+---------------+----------------------+---------------------------------+
+| A     | alpha binning | 1 to a               | alpha_{min}_{max} (exclusive)   |
+| x 1e4 |               |                      | or                              |
++-------+---------------+----------------------+ alpha_lt_{max} (inclusive)      |
 | I     | Inclusive     |                      |                                 |
-|       | alpha         |                      | In combination with alpha bins  |
+|       | alpha flag    |                      | In combination with alpha bins  |
 |       |               | 0: exclusive         | Excl: alpha in one bin          |
 |       |               | 1: inclusive         | Incl: All alpha below the upper |
 |       |               |                      |       bin value                 |
