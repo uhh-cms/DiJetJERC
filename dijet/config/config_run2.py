@@ -480,6 +480,65 @@ def add_config(
             dataset.x.event_weights["normalized_muf_weight"] = get_shifts("muf")
             dataset.x.event_weights["normalized_pdf_weight"] = get_shifts("pdf")
 
+    # Trigger selection
+    # TODO: SingleJet triggers for AK8 and some special cases in UL16 & UL17
+    cfg.x.triggers = DotDict.wrap({
+        "dijet": {
+            "central": [
+                "HLT_DiPFJetAve40",
+                "HLT_DiPFJetAve60",
+                "HLT_DiPFJetAve80",
+                "HLT_DiPFJetAve140",
+                "HLT_DiPFJetAve200",
+                "HLT_DiPFJetAve260",
+                "HLT_DiPFJetAve320",
+                "HLT_DiPFJetAve400",
+                "HLT_DiPFJetAve500",
+            ],
+            "forward": [
+                "HLT_DiPFJetAve60_HFJEC",
+                "HLT_DiPFJetAve80_HFJEC",
+                "HLT_DiPFJetAve100_HFJEC",
+                "HLT_DiPFJetAve160_HFJEC",
+                "HLT_DiPFJetAve220_HFJEC",
+                "HLT_DiPFJetAve300_HFJEC",
+            ],
+        },
+        # TODO: single jet only for AK4 so far
+        #       Needed for UL17
+        "singlejet": {
+            "central": [
+                "HLT_PFJet40",
+                "HLT_PFJet60",
+                "HLT_PFJet80",
+                "HLT_PFJet140",
+                "HLT_PFJet200",
+                "HLT_PFJet260",
+                "HLT_PFJet320",
+                "HLT_PFJet400",
+                "HLT_PFJet450",
+                "HLT_PFJet500",
+                "HLT_PFJet550",
+            ],
+        },
+    })
+
+    cfg.x.trigger_thresholds = DotDict.wrap({
+        "dijet": {
+            "central": {
+                "UL17": [70, 87, 111, 180, 247, 310, 373, 457, 562],
+            },
+            "forward": {
+                "UL17": [73, 93, 113, 176, 239, 318],
+            },
+        },
+        "singlejet": {
+            "central": {
+                "UL17": [70, 87, 111, 180, 247, 310, 373, 457, 562],
+            },
+        },
+    })
+
     dev_version = "v0"
     prod_version = "prod1"
 

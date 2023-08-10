@@ -21,6 +21,7 @@ from dijet.production.weights import large_weights_killer
 from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
 from dijet.selection.jet_selection import jet_selection
+from dijet.selection.trigger import trigger_selection
 from dijet.selection.cutflow_features import cutflow_features
 from dijet.selection.stats import dijet_increment_stats
 
@@ -40,12 +41,12 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
     uses={
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,  # not opened per default but always required in Cutflow tasks
-        jet_selection, dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
+        jet_selection, dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats, trigger_selection,
     },
     produces={
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,
-        jet_selection, dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
+        jet_selection, dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats, trigger_selection,
     },
     exposed=True,
     check_used_columns=False,
@@ -84,6 +85,10 @@ def default(
     # TODO: Remove later
     events = self[jet_assignment](events, **kwargs)
     events = self[dijet_balance](events, **kwargs)
+
+    # trigger selection
+    # Uses pt_avg and the probe jet
+    events = self[trigger_selection](events, **kwargs)
 
     # build categories
     events = self[category_ids](events, results=results, **kwargs)
