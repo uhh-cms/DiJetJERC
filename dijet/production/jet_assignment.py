@@ -26,7 +26,7 @@ Only store pt, eta and phi field for now and remove mass and pdgId
 
 @producer(
     uses={
-        "Jet.pt", "Jet.eta",
+        "Jet.pt", "Jet.eta", "Jet.phi", "Jet.mass",
     },
     produces={
         "use_sm", "use_fe", "n_jet",
