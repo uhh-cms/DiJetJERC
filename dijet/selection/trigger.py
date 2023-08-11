@@ -16,7 +16,8 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
     indices = ak.argsort(sort_var, axis=-1, ascending=ascending)
     return indices[mask[indices]]
 
-# TODO: Use self in uses. Follow: 
+
+# TODO: Use self in uses. Follow:
 #       https://github.com/uhh-cms/topsf/blob/11126442981a25663c60767e56c5406afc9d4f7b/topsf/production/probe_jet.py#L163-L192
 @selector(
     uses={
@@ -33,26 +34,26 @@ def trigger_selection(
     # TODO: Work at:
     #       - central vs. forward
     #       - different years
-    #       - SingleJet 
+    #       - SingleJet
     #       - Jet collections (AK4 vs. AK8)
 
     # per-event trigger index (based on thresholds)
     thrs = self.config_inst.x.trigger_thresholds.dijet.central.UL17
-    sel_trigger_index = np.digitize(ak.to_numpy(events.dijets.pt_avg), thrs) -1  # can be -1
+    sel_trigger_index = np.digitize(ak.to_numpy(events.dijets.pt_avg), thrs) - 1  # can be -1
 
     # mask -1 values to avoid picking wrong trigger. Does not cut events but marks them as unvalid!
     sel_trigger_index = ak.mask(sel_trigger_index, sel_trigger_index < 0, valid_when=False)
-    
+
     # put trigger decisions into 2D array
     pass_triggers = []
     for trigger_name in self.config_inst.x.triggers.dijet.central:
         pass_trigger = getattr(events.HLT, trigger_name)
         pass_triggers.append(
-            ak.singletons(pass_trigger)
+            ak.singletons(pass_trigger),
         )
     pass_triggers = ak.concatenate(pass_triggers, axis=1)
 
-    # index; contains none! 
+    # index; contains none!
     pass_sel_trigger = ak.firsts(pass_triggers[ak.singletons(sel_trigger_index)])
 
     return events, SelectionResult(
@@ -76,4 +77,3 @@ def trigger_selection_init(self: Producer) -> None:
     self.uses |= {
         f"HLT.{var}" for var in self.central
     }
-
