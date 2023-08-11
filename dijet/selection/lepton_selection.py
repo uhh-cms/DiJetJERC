@@ -16,8 +16,7 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
 
 @selector(
 
-    uses={"Jet.pt", "Jet.eta", "Jet.phi", "Jet.jetId", "Electron.pt", "Electron.eta", "Electron.phi",
-     "Muon.pt", "Muon.eta", "Muon.phi"},
+    uses={"Electron.pt", "Electron.eta", "Muon.pt", "Muon.eta"},
     produces={"cutflow.n_ele", "cutflow.n_muo"},
     exposed=True,
 )
@@ -30,25 +29,33 @@ def lepton_selection(
 
     # mask for muons
     muo_mask = (
-        (events.Muon.pt > 25) & (abs(events.Muon.eta) < 5.0)
+        (events.Muon.pt > 20) & (abs(events.Muon.eta) < 2.4)
     )
     # mask for electrons
     ele_mask = (
-        (events.Electron.pt > 20) & (abs(events.Electron.eta) < 2.1)
+        (events.Electron.pt > 20) & (abs(events.Electron.eta) < 2.4)
     )
+
     events = set_ak_column(events, "cutflow.n_ele", ak.sum(ele_mask, axis=1))
     events = set_ak_column(events, "cutflow.n_muo", ak.sum(muo_mask, axis=1))
     ele_sel = events.cutflow.n_ele == 0
     muo_sel = events.cutflow.n_muo == 0
+
     # select only events with no leptons
+
     lep_sel = (events.cutflow.n_ele == 0) & (events.cutflow.n_muo == 0)
+
     ele_indices = masked_sorted_indices(ele_mask, events.Electron.pt)
     muo_indices = masked_sorted_indices(muo_mask, events.Muon.pt)
+
     ele_sel = ak.fill_none(ele_sel, False)
     ele_mask = ak.fill_none(ele_mask, False)
+
     muo_sel = ak.fill_none(muo_sel, False)
-    lep_sel = ak.fill_none(lep_sel, False)
     muo_mask = ak.fill_none(muo_mask, False)
+
+    lep_sel = ak.fill_none(lep_sel, False)
+
     # build and return selection results plus new columns
     return events, SelectionResult(
         steps={
