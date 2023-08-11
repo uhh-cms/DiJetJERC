@@ -39,7 +39,6 @@ def lepton_selection(
     events = set_ak_column(events, "cutflow.n_muo", ak.sum(muo_mask, axis=1))
 
     # select only events with no leptons
-
     lep_sel = (events.cutflow.n_ele == 0) & (events.cutflow.n_muo == 0)
 
     ele_indices = masked_sorted_indices(ele_mask, events.Electron.pt)
