@@ -25,7 +25,6 @@ def lepton_selection(
     events: ak.Array,
     **kwargs,
 ) -> Tuple[ak.Array, SelectionResult]:
-    events = set_ak_column(events, "local_index", ak.local_index(events.Jet))
 
     # mask for muons
     muo_mask = (
@@ -38,8 +37,6 @@ def lepton_selection(
 
     events = set_ak_column(events, "cutflow.n_ele", ak.sum(ele_mask, axis=1))
     events = set_ak_column(events, "cutflow.n_muo", ak.sum(muo_mask, axis=1))
-    ele_sel = events.cutflow.n_ele == 0
-    muo_sel = events.cutflow.n_muo == 0
 
     # select only events with no leptons
 
@@ -48,10 +45,7 @@ def lepton_selection(
     ele_indices = masked_sorted_indices(ele_mask, events.Electron.pt)
     muo_indices = masked_sorted_indices(muo_mask, events.Muon.pt)
 
-    ele_sel = ak.fill_none(ele_sel, False)
     ele_mask = ak.fill_none(ele_mask, False)
-
-    muo_sel = ak.fill_none(muo_sel, False)
     muo_mask = ak.fill_none(muo_mask, False)
 
     lep_sel = ak.fill_none(lep_sel, False)
