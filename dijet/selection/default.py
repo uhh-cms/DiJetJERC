@@ -88,7 +88,8 @@ def default(
 
     # trigger selection
     # Uses pt_avg and the probe jet
-    events = self[trigger_selection](events, **kwargs)
+    events, results_trigger = self[trigger_selection](events, **kwargs)
+    results += results_trigger
 
     # build categories
     events = self[category_ids](events, results=results, **kwargs)
