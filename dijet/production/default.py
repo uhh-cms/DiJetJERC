@@ -30,12 +30,6 @@ ak = maybe_import("awkward")
 )
 def default(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
-    # category ids
-    events = self[category_ids](events, **kwargs)
-
-    # deterministoc seeds
-    events = self[category_ids](events, **kwargs)
-
     # mc-only weights
     if self.dataset_inst.is_mc:
         # normalization weights
@@ -46,5 +40,11 @@ def default(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     # Include MPF production here
     events = self[jet_assignment](events, **kwargs)
     events = self[dijet_balance](events, **kwargs)
+
+    # category ids
+    events = self[category_ids](events, **kwargs)
+
+    # deterministoc seeds
+    events = self[category_ids](events, **kwargs)
 
     return events
