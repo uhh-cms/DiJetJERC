@@ -20,7 +20,7 @@ from columnflow.production.processes import process_ids
 from dijet.production.weights import large_weights_killer
 from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
-from dijet.selection.jet_selection import jet_selection
+from dijet.selection.jet import jet_selection
 from dijet.selection.cutflow_features import cutflow_features
 from dijet.selection.stats import dijet_increment_stats
 
