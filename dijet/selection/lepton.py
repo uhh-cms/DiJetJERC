@@ -20,7 +20,7 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
     produces={"cutflow.n_ele", "cutflow.n_muo"},
     exposed=True,
 )
-def lepton(
+def lepton_selection(
     self: Selector,
     events: ak.Array,
     **kwargs,
@@ -40,9 +40,6 @@ def lepton(
 
     # select only events with no leptons
     lep_sel = (events.cutflow.n_ele == 0) & (events.cutflow.n_muo == 0)
-
-    ele_mask = ak.fill_none(ele_mask, False)
-    muo_mask = ak.fill_none(muo_mask, False)
 
     lep_sel = ak.fill_none(lep_sel, False)
 

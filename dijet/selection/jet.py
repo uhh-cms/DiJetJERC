@@ -21,7 +21,7 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
     produces={"cutflow.n_jet"},
     exposed=True,
 )
-def jet(
+def jet_selection(
     self: Selector,
     events: ak.Array,
     **kwargs,
@@ -31,7 +31,7 @@ def jet(
 
     # assign local index to all Jets - stored after masks for matching
     # TODO: Drop for dijet ?
-    events = set_ak_column(events, "local_index", ak.local_index(events.Jet))
+    events = set_ak_column(events, "Jet.local_index", ak.local_index(events.Jet))
 
     # jets
     # TODO: Correct jets
