@@ -17,8 +17,6 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
     return indices[mask[indices]]
 
 
-# TODO: Use self in uses. Follow:
-#       https://github.com/uhh-cms/topsf/blob/11126442981a25663c60767e56c5406afc9d4f7b/topsf/production/probe_jet.py#L163-L192
 @selector(
     uses={
         "dijets.pt_avg", "probe_jet.eta",
@@ -38,11 +36,15 @@ def trigger_selection(
     #       - Jet collections (AK4 vs. AK8)
 
     # per-event trigger index (based on thresholds)
-    thrs = self.config_inst.x.trigger_thresholds.dijet.central.UL17
+    thrs = self.config_inst.x.trigger_thresholds.dijet.central
     sel_trigger_index = np.digitize(ak.to_numpy(events.dijets.pt_avg), thrs) - 1  # can be -1
 
     # mask -1 values to avoid picking wrong trigger. Does not cut events but marks them as unvalid!
     sel_trigger_index = ak.mask(sel_trigger_index, sel_trigger_index < 0, valid_when=False)
+
+    # sanity check: number of thresholds matches the triggers
+    trigger_names = self.config_inst.x.triggers.dijet.central
+    assert len(trigger_names) == len(thrs)
 
     # put trigger decisions into 2D array
     pass_triggers = []
@@ -58,7 +60,7 @@ def trigger_selection(
 
     return events, SelectionResult(
         steps={
-            "trigger": pass_sel_trigger,
+            "trigger": ak.fill_none(pass_sel_trigger, False),
         },
     )
 
