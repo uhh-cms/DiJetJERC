@@ -68,9 +68,6 @@ def default(
     # prepare the selection results that are updated at every step
     results = SelectionResult()
 
-    # create process ids
-    events = self[process_ids](events, **kwargs)
-
     # # TODO Implement selection
     # # lepton selection
     # events, lepton_results = self[lepton_selection](events, stats, **kwargs)
@@ -84,6 +81,9 @@ def default(
     # TODO: Remove later
     events = self[jet_assignment](events, **kwargs)
     events = self[dijet_balance](events, **kwargs)
+
+    # create process ids
+    events = self[process_ids](events, **kwargs)
 
     # build categories
     events = self[category_ids](events, results=results, **kwargs)
