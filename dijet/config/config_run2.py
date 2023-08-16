@@ -505,7 +505,7 @@ def add_config(
             ],
         },
         # TODO: single jet only for AK4 so far
-        #       Needed for UL17
+        #       Needed for AK8
         "singlejet": {
             "central": [
                 "PFJet40",
