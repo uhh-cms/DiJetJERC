@@ -20,7 +20,7 @@ from columnflow.production.processes import process_ids
 from dijet.production.weights import large_weights_killer
 from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
-from dijet.selection.jet_selection import jet_selection
+from dijet.selection.jet import jet_selection
 from dijet.selection.trigger import trigger_selection
 from dijet.selection.cutflow_features import cutflow_features
 from dijet.selection.stats import dijet_increment_stats
@@ -69,9 +69,6 @@ def default(
     # prepare the selection results that are updated at every step
     results = SelectionResult()
 
-    # create process ids
-    events = self[process_ids](events, **kwargs)
-
     # # TODO Implement selection
     # # lepton selection
     # events, lepton_results = self[lepton_selection](events, stats, **kwargs)
@@ -90,6 +87,9 @@ def default(
     # Uses pt_avg and the probe jet
     events, results_trigger = self[trigger_selection](events, **kwargs)
     results += results_trigger
+
+    # create process ids
+    events = self[process_ids](events, **kwargs)
 
     # build categories
     events = self[category_ids](events, results=results, **kwargs)
