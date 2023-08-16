@@ -525,17 +525,35 @@ def add_config(
 
     cfg.x.trigger_thresholds = DotDict.wrap({
         "dijet": {
-            "central": {
-                "UL17": [70, 87, 111, 180, 247, 310, 373, 457, 562],
-            },
-            "forward": {
-                "UL17": [73, 93, 113, 176, 239, 318],
-            },
+            "central": (
+                [59, 85, 104, 170, 236, 302, 370, 460, 575]
+                if campaign.x.year == 2016
+                else
+                [70, 87, 111, 180, 247, 310, 373, 457, 562]
+                if campaign.x.year == 2017
+                else
+                [66, 93, 118, 189, 257, 325, 391, 478, 585]
+                if campaign.x.year == 2018
+                else None
+            ),
+            "forward": (
+                [86, 110, 132, 204, 279, 373]
+                if campaign.x.year == 2016
+                else
+                [73, 93, 113, 176, 239, 318]
+                if campaign.x.year == 2017
+                else
+                [93, 116, 142, 210, 279, 379]
+                if campaign.x.year == 2018
+                else None
+            ),
         },
         "singlejet": {
-            "central": {
-                "UL17": [70, 87, 111, 180, 247, 310, 373, 457, 562],
-            },
+            "central": (
+                [70, 87, 111, 180, 247, 310, 373, 457, 562]
+                if campaign.x.year == 2017
+                else None
+            ),
         },
     })
 

@@ -38,7 +38,7 @@ def trigger_selection(
     #       - Jet collections (AK4 vs. AK8)
 
     # per-event trigger index (based on thresholds)
-    thrs = self.config_inst.x.trigger_thresholds.dijet.central.UL17
+    thrs = self.config_inst.x.trigger_thresholds.dijet.central
     sel_trigger_index = np.digitize(ak.to_numpy(events.dijets.pt_avg), thrs) - 1  # can be -1
 
     # mask -1 values to avoid picking wrong trigger. Does not cut events but marks them as unvalid!
