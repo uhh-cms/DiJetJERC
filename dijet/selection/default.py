@@ -81,9 +81,6 @@ def default(
     if self.dataset_inst.is_data:
         results.steps.JSON = self[json_filter](events, **kwargs)
 
-    # create process ids
-    events = self[process_ids](events, **kwargs)
-
     # # TODO Implement selection
     # # lepton selection
     # events, lepton_results = self[lepton_selection](events, stats, **kwargs)
