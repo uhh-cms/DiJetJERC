@@ -183,6 +183,21 @@ def add_config(
             "lumi_13TeV_correlated": 0.02j,
         })
 
+    # MET filters
+    # TODO: Different Met filters for different years
+    # https://twiki.cern.ch/twiki/bin/view/CMS/MissingETOptionalFiltersRun2?rev=158#2018_2017_data_and_MC_UL
+    cfg.x.met_filters = {
+        "Flag.goodVertices",
+        "Flag.globalSuperTightHalo2016Filter",
+        "Flag.HBHENoiseFilter",
+        "Flag.HBHENoiseIsoFilter",
+        "Flag.EcalDeadCellTriggerPrimitiveFilter",
+        "Flag.BadPFMuonFilter",
+        "Flag.BadPFMuonDzFilter",
+        "Flag.eeBadScFilter",
+        "Flag.ecalBadCalibFilter",
+    }
+
     # minimum bias cross section in mb (milli) for creating PU weights, values from
     # https://twiki.cern.ch/twiki/bin/view/CMS/PileupJSONFileforData?rev=45#Recommended_cross_section
     cfg.x.minbias_xs = Number(69.2, 0.046j)

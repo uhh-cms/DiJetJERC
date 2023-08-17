@@ -10,9 +10,12 @@ from collections import defaultdict
 from typing import Tuple
 
 from columnflow.util import maybe_import
-from columnflow.production.util import attach_coffea_behavior
 
 from columnflow.selection import Selector, SelectionResult, selector
+from columnflow.selection.cms.met_filters import met_filters
+from columnflow.selection.cms.json_filter import json_filter
+
+from columnflow.production.util import attach_coffea_behavior
 from columnflow.production.cms.mc_weight import mc_weight
 from columnflow.production.categories import category_ids
 from columnflow.production.processes import process_ids
@@ -39,11 +42,13 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
 
 @selector(
     uses={
+        met_filters, json_filter,
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,  # not opened per default but always required in Cutflow tasks
         jet_selection, dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats, trigger_selection,
     },
     produces={
+        met_filters, json_filter,
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,
         jet_selection, dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats, trigger_selection,
@@ -68,6 +73,13 @@ def default(
 
     # prepare the selection results that are updated at every step
     results = SelectionResult()
+
+    # MET filters
+    results.steps.METFilters = self[met_filters](events, **kwargs)
+
+    # JSON filter (data-only)
+    if self.dataset_inst.is_data:
+        results.steps.JSON = self[json_filter](events, **kwargs)
 
     # # TODO Implement selection
     # # lepton selection
