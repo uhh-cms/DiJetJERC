@@ -46,13 +46,15 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
         met_filters, json_filter,
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,  # not opened per default but always required in Cutflow tasks
-        jet_selection, lepton_selection, trigger_selection, dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
+        jet_selection, lepton_selection, trigger_selection,
+        dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
     },
     produces={
         met_filters, json_filter,
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,
-        jet_selection, lepton_selection, trigger_selection, dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
+        jet_selection, lepton_selection, trigger_selection,
+        dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
     },
     exposed=True,
     check_used_columns=False,
