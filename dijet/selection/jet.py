@@ -31,7 +31,7 @@ def jet_selection(
 
     # assign local index to all Jets - stored after masks for matching
     # TODO: Drop for dijet ?
-    events = set_ak_column(events, "local_index", ak.local_index(events.Jet))
+    events = set_ak_column(events, "Jet.local_index", ak.local_index(events.Jet))
 
     # jets
     # TODO: Correct jets
