@@ -183,6 +183,21 @@ def add_config(
             "lumi_13TeV_correlated": 0.02j,
         })
 
+    # MET filters
+    # TODO: Different Met filters for different years
+    # https://twiki.cern.ch/twiki/bin/view/CMS/MissingETOptionalFiltersRun2?rev=158#2018_2017_data_and_MC_UL
+    cfg.x.met_filters = {
+        "Flag.goodVertices",
+        "Flag.globalSuperTightHalo2016Filter",
+        "Flag.HBHENoiseFilter",
+        "Flag.HBHENoiseIsoFilter",
+        "Flag.EcalDeadCellTriggerPrimitiveFilter",
+        "Flag.BadPFMuonFilter",
+        "Flag.BadPFMuonDzFilter",
+        "Flag.eeBadScFilter",
+        "Flag.ecalBadCalibFilter",
+    }
+
     # minimum bias cross section in mb (milli) for creating PU weights, values from
     # https://twiki.cern.ch/twiki/bin/view/CMS/PileupJSONFileforData?rev=45#Recommended_cross_section
     cfg.x.minbias_xs = Number(69.2, 0.046j)
@@ -479,6 +494,83 @@ def add_config(
             dataset.x.event_weights["normalized_mur_weight"] = get_shifts("mur")
             dataset.x.event_weights["normalized_muf_weight"] = get_shifts("muf")
             dataset.x.event_weights["normalized_pdf_weight"] = get_shifts("pdf")
+
+    # Trigger selection
+    # TODO: SingleJet triggers for AK8 and some special cases in UL16 & UL17
+    cfg.x.triggers = DotDict.wrap({
+        "dijet": {
+            "central": [
+                "DiPFJetAve40",
+                "DiPFJetAve60",
+                "DiPFJetAve80",
+                "DiPFJetAve140",
+                "DiPFJetAve200",
+                "DiPFJetAve260",
+                "DiPFJetAve320",
+                "DiPFJetAve400",
+                "DiPFJetAve500",
+            ],
+            "forward": [
+                "DiPFJetAve60_HFJEC",
+                "DiPFJetAve80_HFJEC",
+                "DiPFJetAve100_HFJEC",
+                "DiPFJetAve160_HFJEC",
+                "DiPFJetAve220_HFJEC",
+                "DiPFJetAve300_HFJEC",
+            ],
+        },
+        # TODO: single jet only for AK4 so far
+        #       Needed for AK8
+        "singlejet": {
+            "central": [
+                "PFJet40",
+                "PFJet60",
+                "PFJet80",
+                "PFJet140",
+                "PFJet200",
+                "PFJet260",
+                "PFJet320",
+                "PFJet400",
+                "PFJet450",
+                "PFJet500",
+                "PFJet550",
+            ],
+        },
+    })
+
+    cfg.x.trigger_thresholds = DotDict.wrap({
+        "dijet": {
+            "central": (
+                [59, 85, 104, 170, 236, 302, 370, 460, 575]
+                if campaign.x.year == 2016
+                else
+                [70, 87, 111, 180, 247, 310, 373, 457, 562]
+                if campaign.x.year == 2017
+                else
+                [66, 93, 118, 189, 257, 325, 391, 478, 585]
+                if campaign.x.year == 2018
+                else None
+            ),
+            "forward": (
+                [86, 110, 132, 204, 279, 373]
+                if campaign.x.year == 2016
+                else
+                [73, 93, 113, 176, 239, 318]
+                if campaign.x.year == 2017
+                else
+                [93, 116, 142, 210, 279, 379]
+                if campaign.x.year == 2018
+                else None
+            ),
+        },
+        "singlejet": {
+            "central": (
+                [70, 87, 111, 180, 247, 310, 373, 457, 562]
+                if campaign.x.year == 2017
+                else None
+            ),
+        },
+    })
 
     dev_version = "v0"
     prod_version = "prod1"
