@@ -48,7 +48,7 @@ import law
 
 from columnflow.util import maybe_import
 from columnflow.config_util import create_category_combinations
-from columnflow.selection import Selector, selector
+from columnflow.categorization import Categorizer, categorizer
 
 from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
@@ -122,12 +122,12 @@ def add_categories(config: od.Config) -> None:
         cat_name = f"eta_{eta_min_repr}_{eta_max_repr}"
         sel_name = f"sel_{cat_name}"
 
-        @selector(
+        @categorizer(
             uses={jet_assignment},
             cls_name=sel_name,
         )
         def sel_eta(
-            self: Selector, events: ak.Array,
+            self: Categorizer, events: ak.Array,
             eta_range: tuple = (eta_min, eta_max),
             eta_min_repr=eta_min_repr,
             eta_max_repr=eta_max_repr,
@@ -137,7 +137,7 @@ def add_categories(config: od.Config) -> None:
             Select events with probe jet eta the range [{eta_min_repr}, {eta_max_repr})
             """
             events = self[jet_assignment](events, **kwargs)
-            return ak.fill_none(
+            return events, ak.fill_none(
                 (events.probe_jet.eta >= eta_range[0]) &
                 (events.probe_jet.eta < eta_range[1]),
                 False,
@@ -173,12 +173,12 @@ def add_categories(config: od.Config) -> None:
         cat_name = f"pt_{pt_min_repr}_{pt_max_repr}"
         sel_name = f"sel_{cat_name}"
 
-        @selector(
+        @categorizer(
             uses={dijet_balance},
             cls_name=sel_name,
         )
         def sel_pt(
-            self: Selector, events: ak.Array,
+            self: Categorizer, events: ak.Array,
             pt_range: tuple = (pt_min, pt_max),
             pt_min_repr=pt_min_repr,
             pt_max_repr=pt_max_repr,
@@ -188,7 +188,7 @@ def add_categories(config: od.Config) -> None:
             Select events with probe jet pt the range [{pt_min_repr}, {pt_max_repr})
             """
             events = self[dijet_balance](events, **kwargs)
-            return ak.fill_none(
+            return events, ak.fill_none(
                 (events.dijets.pt_avg >= pt_range[0]) &
                 (events.dijets.pt_avg < pt_range[1]),
                 False,
@@ -224,12 +224,12 @@ def add_categories(config: od.Config) -> None:
         cat_name = f"alpha_{alpha_min_repr}_{alpha_max_repr}"
         sel_name = f"sel_{cat_name}"
 
-        @selector(
+        @categorizer(
             uses={dijet_balance},
             cls_name=sel_name,
         )
         def sel_alpha(
-            self: Selector, events: ak.Array,
+            self: Categorizer, events: ak.Array,
             alpha_range: tuple = (alpha_min, alpha_max),
             alpha_min_repr=alpha_min_repr,
             alpha_max_repr=alpha_max_repr,
@@ -239,7 +239,7 @@ def add_categories(config: od.Config) -> None:
             Select events with probe jet alpha the range [{alpha_min_repr}, {alpha_max_repr})
             """
             events = self[dijet_balance](events, **kwargs)
-            return ak.fill_none(
+            return events, ak.fill_none(
                 (events.dijets.alpha >= alpha_range[0]) &
                 (events.dijets.alpha < alpha_range[1]),
                 False,

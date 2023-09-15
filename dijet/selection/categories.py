@@ -5,12 +5,12 @@ Selection methods defining categories based on selection step results.
 """
 
 from columnflow.util import maybe_import
-from columnflow.selection import Selector, selector
+from columnflow.categorization import Categorizer, categorizer
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
 
-@selector(uses={"event"})
-def catid_selection_incl(self: Selector, events: ak.Array, **kwargs) -> ak.Array:
-    return ak.ones_like(events.event) > 0
+@categorizer(uses={"event"})
+def sel_incl(self: Categorizer, events: ak.Array, **kwargs) -> ak.Array:
+    return events, ak.ones_like(events.event) > 0
