@@ -12,11 +12,11 @@ from columnflow.production.cms.pileup import pu_weight
 from columnflow.production.normalization import normalization_weights
 from columnflow.production.cms.electron import electron_weights
 from columnflow.production.cms.muon import muon_weights
-from columnflow.production.cms.btag import btag_weights
+# from columnflow.production.cms.btag import btag_weights
 from columnflow.production.cms.scale import murmuf_weights, murmuf_envelope_weights
 from columnflow.production.cms.pdf import pdf_weights
 from dijet.production.normalized_weights import normalized_weight_factory
-from dijet.production.normalized_btag import normalized_btag_weights
+# from dijet.production.normalized_btag import normalized_btag_weights
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
@@ -58,7 +58,8 @@ def event_weight_init(self: Producer) -> None:
 
 
 @producer(
-    uses={pu_weight, btag_weights},
+    # uses={pu_weight, btag_weights},
+    uses={pu_weight},
     # don't save btag_weights to save storage space, since we can reproduce them in ProduceColumns
     produces={pu_weight},
     mc_only=True,
@@ -73,7 +74,7 @@ def event_weights_to_normalize(self: Producer, events: ak.Array, results: Select
     events = self[pu_weight](events, **kwargs)
 
     # compute btag SF weights (for renormalization tasks)
-    events = self[btag_weights](events, jet_mask=results.aux["jet_mask"], **kwargs)
+    # events = self[btag_weights](events, jet_mask=results.aux["jet_mask"], **kwargs)
 
     # skip scale/pdf weights for some datasets (missing columns)
     if not self.dataset_inst.x("skip_scale", False):
@@ -116,14 +117,22 @@ normalized_pdf_weights = normalized_weight_factory(
 
 
 @producer(
+    # uses={
+    #     normalization_weights, electron_weights, muon_weights, btag_weights,
+    #     normalized_btag_weights, event_weight,
+    # },
     uses={
-        normalization_weights, electron_weights, muon_weights, btag_weights,
-        normalized_btag_weights, event_weight,
+        normalization_weights, electron_weights, muon_weights, event_weight,
     },
+    # produces={
+    #     "mc_weight",  # might be needed for ML
+    #     normalization_weights, electron_weights, muon_weights,
+    #     normalized_btag_weights, event_weight,
+    # },
     produces={
         "mc_weight",  # might be needed for ML
         normalization_weights, electron_weights, muon_weights,
-        normalized_btag_weights, event_weight,
+        event_weight,
     },
     mc_only=True,
 )
@@ -136,20 +145,20 @@ def event_weights(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     events = self[normalization_weights](events, **kwargs)
 
     # compute btag SF weights
-    events = self[btag_weights](events, **kwargs)
+    # events = self[btag_weights](events, **kwargs)
 
     # compute electron and muon SF weights
     # events = self[electron_weights](events, **kwargs)
     # events = self[muon_weights](events, **kwargs)
 
     # normalize event weights using stats
-    events = self[normalized_btag_weights](events, **kwargs)
+    # events = self[normalized_btag_weights](events, **kwargs)
 
-    if not self.dataset_inst.x("skip_scale", False):
-        events = self[normalized_scale_weights](events, **kwargs)
+    # if not self.dataset_inst.x("skip_scale", False):
+    #     events = self[normalized_scale_weights](events, **kwargs)
 
-    if not self.dataset_inst.x("skip_pdf", False):
-        events = self[normalized_pdf_weights](events, **kwargs)
+    # if not self.dataset_inst.x("skip_pdf", False):
+    #     events = self[normalized_pdf_weights](events, **kwargs)
 
     # calculate the full event weight for plotting purposes
     events = self[event_weight](events, **kwargs)
@@ -162,13 +171,13 @@ def event_weights_init(self: Producer) -> None:
     if not getattr(self, "dataset_inst", None):
         return
 
-    if not self.dataset_inst.x("skip_scale", False):
-        self.uses |= {normalized_scale_weights}
-        self.produces |= {normalized_scale_weights}
+    # if not self.dataset_inst.x("skip_scale", False):
+    #     self.uses |= {normalized_scale_weights}
+    #     self.produces |= {normalized_scale_weights}
 
-    if not self.dataset_inst.x("skip_pdf", False):
-        self.uses |= {normalized_pdf_weights}
-        self.produces |= {normalized_pdf_weights}
+    # if not self.dataset_inst.x("skip_pdf", False):
+    #     self.uses |= {normalized_pdf_weights}
+    #     self.produces |= {normalized_pdf_weights}
 
 
 @producer(
