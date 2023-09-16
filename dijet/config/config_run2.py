@@ -72,7 +72,7 @@ def add_config(
         "data_jetht_e",
         "data_jetht_f",
         # QCD
-        "qcd_ht50to100_madgraph",
+        # "qcd_ht50to100_madgraph",  # no meaningful contribution
         "qcd_ht100to200_madgraph",
         "qcd_ht200to300_madgraph",
         "qcd_ht300to500_madgraph",
