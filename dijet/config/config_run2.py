@@ -572,20 +572,20 @@ def add_config(
         },
     })
 
-    dev_version = "v0"
-    prod_version = "prod1"
+    # dev_version = "v0"
+    # prod_version = "prod1"
 
-    def reduce_version(cls, inst, params):
-        version = dev_version
-        if params.get("selector") == "default":
-            version = prod_version
+    # def reduce_version(cls, inst, params):
+    #     version = dev_version
+    #     if params.get("selector") == "default":
+    #         version = prod_version
 
-        return version
+    #     return version
 
     # Version of required tasks
     cfg.x.versions = {
         # "cf.CalibrateEvents": "common1",
-        "cf.SelectEvents": reduce_version,
+        # "cf.SelectEvents": reduce_version,
         # "cf.MergeSelectionStats": reduce_version,
         # "cf.MergeSelectionMasks": reduce_version,
         # "cf.ReduceEvents": reduce_version,
