@@ -58,7 +58,6 @@ def add_config(
     # add processes we are interested in
     cfg.add_process(procs.n.data)
     cfg.add_process(procs.n.qcd)
-    # cfg.add_process(procs.n.qcd)
 
     # set color of some processes
     # stylize_processes(cfg)
@@ -94,6 +93,10 @@ def add_config(
         # add aux info to datasets
         if dataset.name.startswith("qcd"):
             dataset.x.is_qcd = True
+
+        # mark datasets with missing dijet trigger info
+        if dataset.name in ("data_jetht_b", "data_jetht_c"):
+            dataset.add_tag("missing_dijet_triggers")
 
     # default calibrator, selector, producer, ml model and inference model
     cfg.x.default_calibrator = "skip_jecunc"
@@ -531,9 +534,7 @@ def add_config(
                 "PFJet260",
                 "PFJet320",
                 "PFJet400",
-                "PFJet450",
                 "PFJet500",
-                "PFJet550",
             ],
         },
     })
