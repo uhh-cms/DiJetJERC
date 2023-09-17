@@ -150,7 +150,9 @@ def add_config(
     }
 
     cfg.x.selector_step_labels = {
-        "dijet": r"dijet",
+        "json": r"JSON",
+        "trigger": r"Trigger",
+        "met_filter": r"MET filters",
     }
 
     # plotting settings groups
