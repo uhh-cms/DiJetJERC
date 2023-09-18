@@ -20,6 +20,30 @@ version = args.version
 task = args.task
 category = args.category
 
+cat_list = [0]
+cat_list += [
+    int(f"1{a:01d}{pp:02d}{nn:02d}")
+    for a in range(1,6)
+    for pp in range(1,34)
+    for nn in range(1,14)
+]
+# print(cat_list)
+
+cat_dict = {
+    "incl": [cat_list[0]],
+}
+
+var_dict = {
+    'jet1_pt': r'$pT_{jet 1} [GeV]$',
+    "dijet_asymmetry": r"A",
+}
+
+SM_ttbar_dict = {
+    'sl': ('tt_sl_powheg', 1100),
+    'dl': ('tt_dl_powheg', 1200),
+    'fl': ('tt_fh_powheg', 1300),
+}
+
 
 def create_empty_histogram_like(existing_hist):
     # Create an empty histogram with the same shape
@@ -46,7 +70,7 @@ def cf_get_data():
     data_h = histograms[{
         "category": [hist.loc(0)],
     }]
-    print(data_h.values())
+    # print(data_h.values())
     return data_h
 
 
