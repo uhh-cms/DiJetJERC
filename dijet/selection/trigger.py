@@ -4,6 +4,7 @@ from typing import Tuple
 from columnflow.util import maybe_import
 from columnflow.selection import Selector, SelectionResult, selector
 from columnflow.production import Producer
+from collections import defaultdict
 
 ak = maybe_import("awkward")
 np = maybe_import("numpy")
@@ -34,6 +35,7 @@ def trigger_selection(
     #       - different years
     #       - SingleJet
     #       - Jet collections (AK4 vs. AK8)
+
 
     # per-event trigger index (based on thresholds)
     thrs = self.config_inst.x.trigger_thresholds.dijet.central
@@ -66,7 +68,7 @@ def trigger_selection(
 
 
 @trigger_selection.init
-def trigger_selection_init(self: Producer) -> None:
+def trigger_selection_init(self: Selector) -> None:
     # return immediately if config not yet loaded
     config_inst = getattr(self, "config_inst", None)
     if not config_inst:
