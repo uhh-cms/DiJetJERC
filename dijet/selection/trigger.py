@@ -72,8 +72,25 @@ def trigger_selection_init(self: Producer) -> None:
     if not config_inst:
         return
 
+    dataset_inst = getattr(self, "dataset_inst", None)
+    if not dataset_inst:
+        return
+
+    switch_trigger_UL17 = self.config_inst.campaign.x.year == 2017 and self.dataset_inst.x.era in ["B", "C"]
+
     # set config dict
-    self.central = self.config_inst.x.triggers.dijet.central
+    self.central = (
+        self.config_inst.x.triggers.singlejet.central
+        if switch_trigger_UL17
+        else
+        self.config_inst.x.triggers.dijet.central
+    )
+    self.forward = (
+        self.config_inst.x.triggers.singlejet.central
+        if switch_trigger_UL17
+        else
+        self.config_inst.x.triggers.dijet.forward
+    )
 
     # set input columns
     self.uses |= {

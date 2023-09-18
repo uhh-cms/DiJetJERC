@@ -495,8 +495,6 @@ def add_config(
             dataset.x.event_weights["normalized_muf_weight"] = get_shifts("muf")
             dataset.x.event_weights["normalized_pdf_weight"] = get_shifts("pdf")
 
-    # Trigger selection
-    # TODO: SingleJet triggers for AK8 and some special cases in UL16 & UL17
     cfg.x.triggers = DotDict.wrap({
         "dijet": {
             "central": [
