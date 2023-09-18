@@ -97,4 +97,6 @@ def trigger_selection_init(self: Selector) -> None:
     # set input columns
     self.uses |= {
         f"HLT.{var}" for var in self.central
+    } | {
+        f"HLT.{var}" for var in self.forward
     }
