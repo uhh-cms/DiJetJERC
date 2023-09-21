@@ -7,7 +7,7 @@ Collection of patches of underlying columnflow tasks.
 import os
 
 import law
-from columnflow.util import maybe_import, memoize
+from columnflow.util import memoize
 
 
 logger = law.logger.get_logger(__name__)
