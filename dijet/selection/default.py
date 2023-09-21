@@ -17,9 +17,9 @@ from columnflow.selection.cms.json_filter import json_filter
 
 from columnflow.production.util import attach_coffea_behavior
 from columnflow.production.cms.mc_weight import mc_weight
-from columnflow.production.categories import category_ids
 from columnflow.production.processes import process_ids
 
+from dijet.production.categories import category_ids
 from dijet.production.weights import large_weights_killer
 from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment

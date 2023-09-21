@@ -6,13 +6,13 @@ Column production methods related to higher-level features.
 
 
 from columnflow.production import Producer, producer
-from columnflow.production.categories import category_ids
 from columnflow.production.normalization import normalization_weights
 from columnflow.util import maybe_import
 
 from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
 from dijet.production.weights import event_weights
+from dijet.production.categories import category_ids
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
