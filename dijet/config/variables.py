@@ -123,28 +123,28 @@ def add_variables(config: od.Config) -> None:
             x_title=r"Jet %i mass" % (i + 1),
         )
 
-    var_title = {
-        "asymmetry": r"A",
-        "pt_avg": r"p_{T}^{avg}",
-        "alpha": r"$\alpha$",
-    }
-    var_binning = {
-        "asymmetry": (160, -0.8, 0.8),
-        "pt_avg": (200, 0, 1000),
-        "alpha": (100, 0, 1),
-    }
-    # default units per variable
-    var_unit = {
-        "asymmetry": "",
-        "pt_avg": "GeV",
-        "alpha": "",
-    }
+    #
+    # dijet-related variables
+    #
 
-    for prop in ("asymmetry", "alpha", "pt_avg"):
-        config.add_variable(
-            name=f"dijets_{prop}",
-            expression=f"dijets.{prop}",
-            binning=var_binning[prop],
-            x_title=var_title[prop],
-            unit=var_unit[prop],
-        )
+    config.add_variable(
+        name=f"dijets_asymmetry",
+        expression=f"dijets.asymmetry",
+        binning=(160, -0.8, 0.8),
+        x_title=r"A",
+    )
+
+    config.add_variable(
+        name=f"dijets_pt_avg",
+        expression=f"dijets.pt_avg",
+        binning=(200, 0, 1000),
+        x_title=r"$p_{T}^{avg}$",
+        unit="GeV",
+    )
+
+    config.add_variable(
+        name=f"dijets_alpha",
+        expression=f"dijets.alpha",
+        binning=(100, 0, 1),
+        x_title=r"$\alpha$",
+    )
