@@ -122,3 +122,29 @@ def add_variables(config: od.Config) -> None:
             unit="GeV",
             x_title=r"Jet %i mass" % (i + 1),
         )
+
+    #
+    # dijet-related variables
+    #
+
+    config.add_variable(
+        name=f"dijets_asymmetry",
+        expression=f"dijets.asymmetry",
+        binning=(160, -0.8, 0.8),
+        x_title=r"A",
+    )
+
+    config.add_variable(
+        name=f"dijets_pt_avg",
+        expression=f"dijets.pt_avg",
+        binning=(200, 0, 1000),
+        x_title=r"$p_{T}^{avg}$",
+        unit="GeV",
+    )
+
+    config.add_variable(
+        name=f"dijets_alpha",
+        expression=f"dijets.alpha",
+        binning=(100, 0, 1),
+        x_title=r"$\alpha$",
+    )
