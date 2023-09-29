@@ -35,7 +35,7 @@ def category_ids(
     """
     Assigns each event an array of category ids.
     """
-    category_ids = []
+    category_ids = None
 
     for cat_inst in self.config_inst.get_leaf_categories():
         # start with a true mask
@@ -47,8 +47,6 @@ def category_ids(
             cat_mask = cat_mask & mask
 
         # categorizer did not select any events -> skip
-        # to avoid problems on concatenating empty arrays,
-        # which is still buggy in AwkwardArray
         if not ak.any(cat_mask):
             continue
 
@@ -59,21 +57,17 @@ def category_ids(
             valid_when=True,
         )
 
-        # apply ak.singletons and pack to avoid errors on concatenate
-        category_ids.append(ak.to_packed(ak.singletons(ids)))
-
-    # combine (loop to  work wround undefined behavior bug in AwkwardArray)
-    n_tries = 0
-    while True:
-        n_tries += 1
-        try:
-            category_ids = ak.concatenate(category_ids, axis=1)
-        except:
-            if n_tries > 20:
-                print(f"Failed after {n_tries} tries!")
-                raise
+        # merge category ids one by one
+        # NOTE: ak.concatentate(<all>) does not work reliably due to
+        #       bug in AwkwardArray
+        if category_ids is None:
+            category_ids = ak.singletons(ids)
         else:
-            break
+            category_ids = ak.concatenate([category_ids, ak.singletons(ids)], axis=1)
+
+    # check that at least one category matched
+    if category_ids is None:
+        raise ValueError("no single category matched for chunk; this is not supported")
 
     # save, optionally on a target events array
     if target_events is None:
