@@ -148,3 +148,17 @@ def add_variables(config: od.Config) -> None:
         binning=(100, 0, 1),
         x_title=r"$\alpha$",
     )
+
+    config.add_variable(
+        name=f"dijets_mpf",
+        expression=f"dijets.mpf",
+        binning=(100, -1, 1),
+        x_title=r"MPF",
+    )
+
+    config.add_variable(
+        name=f"dijets_mpfx",
+        expression=f"dijets.mpfx",
+        binning=(100, -1, 1),
+        x_title=r"MPFx",
+    )
