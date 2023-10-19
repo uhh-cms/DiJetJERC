@@ -24,7 +24,7 @@ Creates column 'Dijet', which includes the most relevant properties of the JetME
 @producer(
     uses={
         "Jet.pt",
-        "probe_jet.pt", "reference_jet.pt", "reference_jet.phi",
+        "probe_jet.pt", "reference_jet.pt", "probe_jet.phi",
         "MET.pt", "MET.phi",
     },
     produces={
