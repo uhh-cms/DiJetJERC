@@ -113,6 +113,7 @@ def add_config(
     cfg.x.process_groups = {
         "all": ["*"],
         "data": ["data_*"],
+        "mc": ["qcd_*"],
     }
     # cfg.x.process_groups["dmuch"] = ["data_mu"] + cfg.x.process_groups["much"]
     # cfg.x.process_groups["dech"] = ["data_e"] + cfg.x.process_groups["ech"]
@@ -122,6 +123,7 @@ def add_config(
     cfg.x.dataset_groups = {
         "all": ["*"],
         "data": ["data_*"],
+        "mc": ["qcd_*"],
     }
 
     # category groups for conveniently looping over certain categories
