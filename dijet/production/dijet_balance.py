@@ -40,8 +40,9 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     pt_avg = (events.probe_jet.pt + events.reference_jet.pt) / 2
     asym = (events.probe_jet.pt - events.reference_jet.pt) / (2 * pt_avg)
     alpha = jets.pt[:, 2] / pt_avg
-    mpf = events.MET.pt * np.cos(events.probe_jet.phi - events.MET.phi) / (2 * pt_avg)
-    mpfx = events.MET.pt * np.sin(events.probe_jet.phi - events.MET.phi) / (2 * pt_avg)
+    delta_phi = events.probe_jet.phi - events.MET.phi
+    mpf = events.MET.pt * np.cos(delta_phi) / (2 * pt_avg)
+    mpfx = events.MET.pt * np.sin(delta_phi) / (2 * pt_avg)
 
     dijets = ak.zip({
         "pt_avg": pt_avg,
