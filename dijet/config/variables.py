@@ -139,7 +139,7 @@ def add_variables(config: od.Config) -> None:
     config.add_variable(
         name="dijets_pt_avg",
         expression="dijets.pt_avg",
-        binning= pt,
+        binning=pt,
         x_title=r"$p_{T}^{avg}$",
         unit="GeV",
     )
@@ -149,8 +149,8 @@ def add_variables(config: od.Config) -> None:
     # FE: Probejet in eta bin
     config.add_variable(
         name="probejet_eta",
-        expression="probejet.eta",
-        binning= eta,
+        expression="probe_jet.eta",
+        binning=eta,
         x_title=r"$\eta$",
         unit="",
     )
