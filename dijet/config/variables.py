@@ -128,23 +128,37 @@ def add_variables(config: od.Config) -> None:
     #
 
     config.add_variable(
-        name=f"dijets_asymmetry",
-        expression=f"dijets.asymmetry",
+        name="dijets_asymmetry",
+        expression="dijets.asymmetry",
         binning=(160, -0.8, 0.8),
         x_title=r"A",
     )
 
     config.add_variable(
-        name=f"dijets_pt_avg",
-        expression=f"dijets.pt_avg",
+        name="dijets_pt_avg",
+        expression="dijets.pt_avg",
         binning=(200, 0, 1000),
         x_title=r"$p_{T}^{avg}$",
         unit="GeV",
     )
 
     config.add_variable(
-        name=f"dijets_alpha",
-        expression=f"dijets.alpha",
+        name="dijets_alpha",
+        expression="dijets.alpha",
         binning=(100, 0, 1),
         x_title=r"$\alpha$",
+    )
+
+    config.add_variable(
+        name="dijets_mpf",
+        expression="dijets.mpf",
+        binning=(100, -1, 1),
+        x_title=r"MPF",
+    )
+
+    config.add_variable(
+        name="dijets_mpfx",
+        expression="dijets.mpfx",
+        binning=(100, -1, 1),
+        x_title=r"MPFx",
     )

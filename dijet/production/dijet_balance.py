@@ -24,10 +24,11 @@ Creates column 'Dijet', which includes the most relevant properties of the JetME
 @producer(
     uses={
         "Jet.pt",
-        "probe_jet.pt", "reference_jet.pt",
+        "probe_jet.pt", "reference_jet.pt", "probe_jet.phi",
+        "MET.pt", "MET.phi",
     },
     produces={
-        "dijets.pt_avg", "dijets.asymmetry", "dijets.alpha",
+        "dijets.pt_avg", "dijets.asymmetry", "dijets.alpha", "dijets.mpf", "dijets.mpfx",
     },
 )
 def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
@@ -39,11 +40,16 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     pt_avg = (events.probe_jet.pt + events.reference_jet.pt) / 2
     asym = (events.probe_jet.pt - events.reference_jet.pt) / (2 * pt_avg)
     alpha = jets.pt[:, 2] / pt_avg
+    delta_phi = events.probe_jet.phi - events.MET.phi
+    mpf = events.MET.pt * np.cos(delta_phi) / (2 * pt_avg)
+    mpfx = events.MET.pt * np.sin(delta_phi) / (2 * pt_avg)
 
     dijets = ak.zip({
         "pt_avg": pt_avg,
         "asymmetry": asym,
         "alpha": alpha,
+        "mpf": mpf,
+        "mpfx": mpfx,
     })
     events = set_ak_column(events, "dijets", dijets)
 
