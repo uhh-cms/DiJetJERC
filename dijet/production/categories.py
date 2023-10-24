@@ -83,7 +83,11 @@ def category_ids_init(self: Producer) -> None:
     self.categorizer_map = defaultdict(list)
 
     # add all categorizers obtained from leaf category selection expressions to the used columns
-    for cat_inst in self.config_inst.get_leaf_categories():
+    if not hasattr(self.config_inst, "cached_leaf_categories"):
+        self.config_inst.cached_leaf_categories = self.config_inst.get_leaf_categories()
+
+    # add all selectors obtained from leaf category selection expressions to the used columns
+    for cat_inst in self.config_inst.cached_leaf_categories:
         # treat all selections as lists of categorizers
         for sel in law.util.make_list(cat_inst.selection):
             if Categorizer.derived_by(sel):
