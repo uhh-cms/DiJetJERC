@@ -148,11 +148,13 @@ def add_variables(config: od.Config) -> None:
     # SM: Both jets in eta bin
     # FE: Probejet in eta bin
     config.add_variable(
-        name="probejet_eta",
-        expression="probe_jet.eta",
+        name="probejet_abseta",
+        expression=lambda events: abs(events.probe_jet.eta),
         binning=eta,
-        x_title=r"$\eta$",
-        unit="",
+        x_title=r"$|\eta|$",
+        aux={
+            "inputs": {"probe_jet.eta"},
+        },
     )
 
     config.add_variable(
