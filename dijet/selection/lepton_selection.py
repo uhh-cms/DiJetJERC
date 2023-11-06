@@ -16,7 +16,10 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
 
 @selector(
 
-    uses={"Electron.pt", "Electron.eta", "Muon.pt", "Muon.eta"},
+    uses={
+        "Electron.pt", "Electron.eta", "Electron.mvaFall17V2noIso_WPL",
+        "Muon.pt", "Muon.eta", "Muon.tightId",
+    },
     produces={"cutflow.n_ele", "cutflow.n_muo"},
     exposed=True,
 )
@@ -25,14 +28,20 @@ def lepton_selection(
     events: ak.Array,
     **kwargs,
 ) -> Tuple[ak.Array, SelectionResult]:
-
+    # lepton selection based on old UHH2 framework
+    # https://github.com/UHH2/DiJetJERC/blob/ff98eebbd44931beb016c36327ab174fdf11a83f/src/AnalysisModule_DiJetTrg.cxx#L703
+    # IDs in JME Nano https://cms-nanoaod-integration.web.cern.ch/integration/master-106X/mc102X_doc.html
     # mask for muons
     muo_mask = (
-        (events.Muon.pt > 20) & (abs(events.Muon.eta) < 2.4)
+        (events.Muon.pt > 15) &
+        (abs(events.Muon.eta) < 2.4) &
+        (events.Muon.tightId)
     )
     # mask for electrons
     ele_mask = (
-        (events.Electron.pt > 20) & (abs(events.Electron.eta) < 2.4)
+        (events.Electron.pt > 15) &
+        (abs(events.Electron.eta) < 2.4) &
+        (events.Electron.mvaFall17V2noIso_WPL)
     )
 
     events = set_ak_column(events, "cutflow.n_ele", ak.sum(ele_mask, axis=1))
