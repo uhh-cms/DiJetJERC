@@ -80,7 +80,7 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     pro_index = ak.where(
         use_fe & ~both_central,
         central_ind,
-        rand_ind
+        rand_ind,
     )
     ref_index = 1 - pro_index  # the opposite
 

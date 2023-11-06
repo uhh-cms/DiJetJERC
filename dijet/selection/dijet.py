@@ -2,7 +2,6 @@
 
 from typing import Tuple
 from columnflow.util import maybe_import
-from columnflow.columnar_util import set_ak_column
 from columnflow.selection import Selector, SelectionResult, selector
 
 ak = maybe_import("awkward")
@@ -41,13 +40,13 @@ def dijet_selection(
     pi = 3.1415625  # TODO from python package
     delta_phi = events.reference_jet.phi - events.probe_jet.phi
     delta_phi_pi = ak.where(
-        delta_phi>=pi,  # condition
-        delta_phi-2*pi,  # if yes
-        ak.where(  #else
-            delta_phi<((-1)*pi), 
-            delta_phi+2*pi,
-            delta_phi
-        )  
+        delta_phi >= pi,  # condition
+        delta_phi - 2 * pi,  # if yes
+        ak.where(  # else
+            delta_phi < ((-1) * pi),
+            delta_phi + 2 * pi,
+            delta_phi,
+        ),
     )
 
     dijet_sel = (
