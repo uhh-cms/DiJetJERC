@@ -7,11 +7,13 @@ Definition of variables.
 import order as od
 
 from columnflow.util import maybe_import
+from columnflow.columnar_util import EMPTY_FLOAT
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
-from columnflow.columnar_util import EMPTY_FLOAT
+
+from dijet.constants import pt, eta
 
 
 def add_feature_variables(config: od.Config) -> None:
@@ -137,9 +139,22 @@ def add_variables(config: od.Config) -> None:
     config.add_variable(
         name="dijets_pt_avg",
         expression="dijets.pt_avg",
-        binning=(200, 0, 1000),
+        binning=pt,
         x_title=r"$p_{T}^{avg}$",
         unit="GeV",
+    )
+
+    # eta bin is always defined by probe jet
+    # SM: Both jets in eta bin
+    # FE: Probejet in eta bin
+    config.add_variable(
+        name="probejet_abseta",
+        expression=lambda events: abs(events.probe_jet.eta),
+        binning=eta,
+        x_title=r"$|\eta|$",
+        aux={
+            "inputs": {"probe_jet.eta"},
+        },
     )
 
     config.add_variable(
