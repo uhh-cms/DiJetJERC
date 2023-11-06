@@ -59,17 +59,30 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     # Check for Forward extension
     # We also use FE as a check when both jets are central
     # TODO: not implemented yet!
-    leading_is_central = np.abs(jets.eta[:, 0]) < 1.305
-    subleading_is_central = np.abs(jets.eta[:, 1]) < 1.305
-    use_fe = leading_is_central ^ subleading_is_central  # exclusive or
+    leading_is_central = np.abs(jets.eta[:, 0]) < 1.131
+    subleading_is_central = np.abs(jets.eta[:, 1]) < 1.131
+    both_central = leading_is_central & subleading_is_central
+    use_fe = (
+        (
+            leading_is_central |  # at least one in barrel
+            subleading_is_central
+        ) &
+        ~use_sm  # not in the same eta bin
+    )
     events = set_ak_column(events, "use_fe", use_fe)
 
     # index of the central jet
-    central_ind = ak.values_astype(leading_is_central, np.uint8)
+    # Use subleading since true = 1 (subleading) and false = 0 (leading)
+    central_ind = ak.values_astype(subleading_is_central, np.uint8)
 
-    # if FE, choose the central jet as the probe, otherwise random
-    pro_index = ak.where(use_fe, central_ind, rand_ind)
-    ref_index = ak.where(use_fe, 1 - central_ind, 1 - rand_ind)
+    # if FE, choose the central jet as the reference jet, otherwise random
+    # if not SM and both central, also random
+    pro_index = ak.where(
+        use_fe & ~both_central,
+        central_ind,
+        rand_ind
+    )
+    ref_index = 1 - pro_index  # the opposite
 
     # Assign jets to probe and reference
     probe_jet = ak.firsts(jets[ak.singletons(pro_index)])
