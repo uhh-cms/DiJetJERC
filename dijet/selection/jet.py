@@ -17,7 +17,7 @@ def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = 
 
 
 @selector(
-    uses={"Jet.pt", "Jet.eta", "Jet.phi", "Jet.jetId"},
+    uses={"Jet.pt", "Jet.eta", "Jet.phi", "Jet.jetId", "Jet.puId"},
     produces={"cutflow.n_jet"},
     exposed=True,
 )
@@ -35,11 +35,21 @@ def jet_selection(
 
     # jets
     # TODO: Correct jets
+    # Selection by UHH2 framework
+    # https://github.com/UHH2/DiJetJERC/blob/ff98eebbd44931beb016c36327ab174fdf11a83f/src/AnalysisModule_DiJetTrg.cxx#L692
+    # IDs in NanoAOD https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD
+    #  & JME NanoAOD https://cms-nanoaod-integration.web.cern.ch/integration/master-106X/mc102X_doc.html
     jet_mask = (
-        (events.Jet.pt > 25) & (abs(events.Jet.eta) < 5.0) & (events.Jet.jetId == 6)
+        (events.Jet.pt > 10) &
+        (abs(events.Jet.eta) < 5.2) &
+        # IDs in NanoAOD https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD
+        (events.Jet.jetId == 6) &  # 2: fail tight LepVeto and 6: pass tightLepVeto
+        (events.Jet.puId == 7)  # pass all IDs (l, m and t)
     )
+
     events = set_ak_column(events, "cutflow.n_jet", ak.sum(jet_mask, axis=1))
-    jet_sel = events.cutflow.n_jet >= 3
+    jet_sel = events.cutflow.n_jet >= 2
+
     jet_indices = masked_sorted_indices(jet_mask, events.Jet.pt)
     jet_sel = ak.fill_none(jet_sel, False)
     jet_mask = ak.fill_none(jet_mask, False)
