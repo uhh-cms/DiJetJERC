@@ -113,6 +113,7 @@ def add_config(
     cfg.x.process_groups = {
         "all": ["*"],
         "data": ["data_*"],
+        "mc": ["qcd_*"],
     }
     # cfg.x.process_groups["dmuch"] = ["data_mu"] + cfg.x.process_groups["much"]
     # cfg.x.process_groups["dech"] = ["data_e"] + cfg.x.process_groups["ech"]
@@ -122,13 +123,15 @@ def add_config(
     cfg.x.dataset_groups = {
         "all": ["*"],
         "data": ["data_*"],
+        "mc": ["qcd_*"],
     }
 
     # category groups for conveniently looping over certain categories
     # (used during plotting)
     cfg.x.category_groups = {
         "default": ["incl"],
-        "binning": ["eta_0p5_1p0__pt_100_500__alpha_lt_0p1", "eta_0p5_1p0__pt_100_500__alpha_lt_0p3"],
+        "sm": [f"sm__alpha_lt_0p{a}" for a in ["05", "1", "15", "2", "25", "3"]],
+        "fe": [f"fe__alpha_lt_0p{a}" for a in ["05", "1", "15", "2", "25", "3"]],
     }
 
     # variable groups for conveniently looping over certain variables
