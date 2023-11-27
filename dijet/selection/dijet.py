@@ -37,7 +37,8 @@ def dijet_selection(
 
     # two back-to-back leading jets (delta_phi(j1,j2) = min(|phi1 - phi2|, 2PI - |phi2 - phi1|) > 2.7)
     # copied from https://root.cern.ch/doc/master/TVector2_8cxx_source.html#l00103
-    pi = 3.1415625  # TODO from python package
+    # TODO: LorentzVector behavior delta_phi from coffea
+    pi = np.pi
     delta_phi = events.reference_jet.phi - events.probe_jet.phi
     delta_phi_pi = ak.where(
         delta_phi >= pi,  # condition

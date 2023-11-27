@@ -17,13 +17,17 @@ scheme, with digits/groups of digits indicating the different category groups:
 +=======+===============+======================+=================================+
 | M     | Method        |                      | Choose Method                   |
 |       |               | 1: SM                |  - Standard Method              |
-|       |               |                      |    Probe and Ref same eta bin   |
+|       |               |                      |    jet1 and jet2 same eta bin   |
 |       |               | 2: FE                |  - Forward Extension            |
-|       |               |                      |    ref < 1.131 or               |
-|       |               |                      |    probe < 1.131                |
-|       |               |                      |    If both true,                |
-|       |               |                      |    then not in the same eta bin |
-| x 1   |               |                      |    (JER dependent on SM)        |
+|       |               |                      |    jet1 < 1.131 or              |
+|       |               |                      |    jet2 < 1.131                 |
+|       |               |                      |    jet in barrel: reference jet |
+|       |               |                      |    jet not in barrel: probe jet |
+|       |               |                      |    If both in barrel, they need |
+|       |               |                      |    to be in different eta bins  |
+|       |               |                      |    (SM flag must be false)      |
+|       |               |                      |    JER measured from probe jet  |
+| x 1   |               |                      |    JER from FE dependent on SM  |
 +-------+---------------+----------------------+---------------------------------+
 | A     | alpha binning | 1 to a               | alpha_{min}_{max} (exclusive)   |
 | x 100 |               |                      | or                              |
@@ -126,12 +130,6 @@ def add_categories(config: od.Config) -> None:
         events = self[jet_assignment](events, **kwargs)
         return events, ak.fill_none(events.use_sm, False)
 
-    # cat = config.add_category(
-    #     name="sm",
-    #     id=int(10**cat_idx_lsd),
-    #     selection="sel_sm",
-    #     label="sm",
-    # )
     method_categories.append(
         config.add_category(
             name="sm",
@@ -237,7 +235,6 @@ def add_categories(config: od.Config) -> None:
         # create category and add individual alpha intervals as child categories
         cat = config.add_category(
             name=cat_name,
-            # id=int(10**cat_idx_lsd * ((cat_idx) + 10**cat_idx_lsd + 1)),
             id=int(10**cat_idx_ndigits * (cat_idx + 1) + 10**cat_idx_lsd),
             selection=None,
             label=cat_label,

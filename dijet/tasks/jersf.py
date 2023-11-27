@@ -9,13 +9,12 @@ import law
 
 from columnflow.tasks.framework.base import Requirements, BaseTask, ShiftTask
 from columnflow.tasks.framework.mixins import (
-    CalibratorsMixin, SelectorStepsMixin, ProducersMixin, MLModelsMixin,
+    CalibratorsMixin, SelectorStepsMixin, ProducersMixin,
     VariablesMixin, DatasetsProcessesMixin, CategoriesMixin,
 )
 # from columnflow.tasks.framework.remote import RemoteWorkflow
 from columnflow.tasks.reduction import MergeReducedEventsUser, MergeReducedEvents
 from columnflow.tasks.production import ProduceColumns
-from columnflow.tasks.ml import MLEvaluation
 from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import dev_sandbox, maybe_import
 
@@ -28,14 +27,13 @@ plt = maybe_import("matplotlib.pyplot")
 mplhep = maybe_import("mplhep")
 
 
-class HBWTask(BaseTask):
+class DiJetTask(BaseTask):
 
     task_namespace = "dijet"
 
 
 class ColumnsBaseTask(
-    HBWTask,
-    MLModelsMixin,
+    DiJetTask,
     ProducersMixin,
     SelectorStepsMixin,
     CalibratorsMixin,
@@ -43,7 +41,7 @@ class ColumnsBaseTask(
     law.LocalWorkflow,
 ):
     """
-    Bask task to handle columns after Reduction, Production and MLEvaluation.
+    Base task to handle columns after Reduction and Production.
     An exemplary implementation of how to handle the inputs in a run method can be
     found in columnflow/tasks/union.py
     """
@@ -55,10 +53,8 @@ class ColumnsBaseTask(
         MergeReducedEventsUser.reqs,
         MergeReducedEvents=MergeReducedEvents,
         ProduceColumns=ProduceColumns,
-        MLEvaluation=MLEvaluation,
     )
 
-    # sandbox = dev_sandbox("bash::$HBW_BASE/sandboxes/venv_ml_plotting.sh")
     sandbox = dev_sandbox(law.config.get("analysis", "default_columnar_sandbox"))
 
     def workflow_requires(self):
@@ -74,11 +70,6 @@ class ColumnsBaseTask(
                     for producer_inst in self.producer_insts
                     if producer_inst.produced_columns
                 ]
-            if self.ml_models:
-                reqs["ml"] = [
-                    self.reqs.MLEvaluation.req(self, ml_model=m)
-                    for m in self.ml_models
-                ]
 
         return reqs
 
@@ -93,40 +84,26 @@ class ColumnsBaseTask(
                 for producer_inst in self.producer_insts
                 if producer_inst.produced_columns
             ]
-        if self.ml_models:
-            reqs["ml"] = [
-                self.reqs.MLEvaluation.req(self, ml_model=m)
-                for m in self.ml_models
-            ]
 
         return reqs
 
 
 class HistogramsBaseTask(
-    HBWTask,
+    DiJetTask,
     DatasetsProcessesMixin,
     CategoriesMixin,
     VariablesMixin,
-    MLModelsMixin,
     ProducersMixin,
     SelectorStepsMixin,
     CalibratorsMixin,
     ShiftTask,
-    # law.LocalWorkflow,
-    # RemoteWorkflow,
 ):
     sandbox = dev_sandbox(law.config.get("analysis", "default_columnar_sandbox"))
 
     # upstream requirements
     reqs = Requirements(
-        # RemoteWorkflow.reqs,
         MergeHistograms=MergeHistograms,
     )
-
-    # output_collection_cls = law.SiblingFileCollection
-
-    # def create_branch_map(self):
-    #     return {0: None}
 
     def store_parts(self):
         parts = super().store_parts()
@@ -155,7 +132,6 @@ class HistogramsBaseTask(
         histogram = self.input()[dataset]["collection"][0]["hists"].targets[variable].load(formatter="pickle")
         return histogram
 
-    # def reduce_histogram(self, histogram, processes, categories, shifts):
     def reduce_histogram(self, histogram, processes, shifts):
         import hist
 
@@ -164,15 +140,7 @@ class HistogramsBaseTask(
 
         # transform into lists if necessary
         processes = law.util.make_list(processes)
-        # categories = law.util.make_list(categories)
         shifts = law.util.make_list(shifts)
-
-        # get all leaf categories
-        # category_insts = list(map(self.config_inst.get_category, categories))
-        # leaf_category_insts = set(flatten_nested_list([
-        #     category_inst.get_leaf_categories() or [category_inst]
-        #     for category_inst in category_insts
-        # ]))
 
         # get all sub processes
         process_insts = list(map(self.config_inst.get_process, processes))
@@ -207,7 +175,7 @@ class HistogramsBaseTask(
         return h
 
 
-class alpha(HistogramsBaseTask):
+class AlphaExtrapolation(HistogramsBaseTask):
     def output(self) -> dict[law.FileSystemTarget]:
         output = {
             "dummy": self.target("dummy.pickle"),

@@ -48,7 +48,7 @@ def jet_selection(
     )
 
     events = set_ak_column(events, "cutflow.n_jet", ak.sum(jet_mask, axis=1))
-    jet_sel = events.cutflow.n_jet >= 2
+    jet_sel = ak.sum(events.Jet[jet_mask]) >= 2
 
     jet_indices = masked_sorted_indices(jet_mask, events.Jet.pt)
     jet_sel = ak.fill_none(jet_sel, False)
