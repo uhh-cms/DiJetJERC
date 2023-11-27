@@ -201,17 +201,14 @@ class AlphaExtrapolation(HistogramsBaseTask):
                     h_data_all.append(h_in)
 
         h_data = sum(h_data_all)
-        h_mc = sum(h_mc_all)
+        h_mc = sum(h_mc_all)  # Not used yet, but keep as reminder
 
         alpha_bins = [1, 2, 3, 4, 5, 6]
-        eta_bins = h_data.axes["probejet_abseta"].edges
-        pt_bins = h_data.axes["dijets_pt_avg"].edges
         pt_centers = h_data.axes["dijets_pt_avg"].centers
         asym_centers = h_data.axes["dijets_asymmetry"].centers
 
         n_eta = len(h_data.axes["probejet_abseta"].centers)
         n_pt = len(h_data.axes["dijets_pt_avg"].centers)
-        n_asym = len(h_data.axes["dijets_asymmetry"].centers)
 
         print("Number \u03B7 bins:", len(h_data.axes["probejet_abseta"].centers))
         print("Number pT bins:", len(h_data.axes["dijets_pt_avg"].centers))
@@ -233,11 +230,10 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
                 integral = values_inclusive.sum(axis=1, keepdims=True)
                 normalized = values_inclusive / integral
-                bin_centers = asym_centers
                 asym_centers = asym_centers.reshape(1, 160)
                 means = np.nansum(asym_centers * normalized, axis=1, keepdims=True)  # Ratio not needed since it is 0/1
                 stds = np.sqrt(np.average(((asym_centers - means)**2), weights=normalized, axis=1))
-                stds_err = stds / np.sqrt(integral.flatten())
+                stds_err = stds / np.sqrt(integral.flatten())  # Not used yet, but keep as reminder
 
                 amax = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3])
                 slope, intercept = np.polyfit(amax[~np.isnan(stds)], stds[~np.isnan(stds)], 1, w=None)
