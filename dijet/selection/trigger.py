@@ -12,14 +12,6 @@ ak = maybe_import("awkward")
 np = maybe_import("numpy")
 
 
-def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = False) -> ak.Array:
-    """
-    Helper function to obtain the correct indices of an object mask
-    """
-    indices = ak.argsort(sort_var, axis=-1, ascending=ascending)
-    return indices[mask[indices]]
-
-
 @selector(
     uses={
         "dijets.pt_avg", "probe_jet.eta",

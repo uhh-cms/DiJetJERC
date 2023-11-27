@@ -4,16 +4,9 @@ from typing import Tuple
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column
 from columnflow.selection import Selector, SelectionResult, selector
+from util import masked_sorted_indices
 
 ak = maybe_import("awkward")
-
-
-def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = False) -> ak.Array:
-    """
-    Helper function to obtain the correct indices of an object mask
-    """
-    indices = ak.argsort(sort_var, axis=-1, ascending=ascending)
-    return indices[mask[indices]]
 
 
 @selector(
