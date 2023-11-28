@@ -25,7 +25,7 @@ def default(self: Calibrator, events: ak.Array, **kwargs) -> ak.Array:
         events = self[jec_nominal](events, **kwargs)
     else:
         events = self[jec](events, **kwargs)
-        events = self[jer](events, **kwargs)
+        #events = self[jer](events, **kwargs)
 
     return events
 
@@ -38,7 +38,7 @@ def default_init(self: Calibrator) -> None:
     if self.dataset_inst.is_data:
         calibrators = {jec_nominal}
     else:
-        calibrators = {jec, jer}
+        calibrators = {jec}
 
     self.uses |= calibrators
     self.produces |= calibrators
@@ -57,7 +57,7 @@ def skip_jecunc(self: Calibrator, events: ak.Array, **kwargs) -> ak.Array:
         events = self[jec_nominal](events, **kwargs)
     else:
         events = self[jec_nominal](events, **kwargs)
-        events = self[jer](events, **kwargs)
+        #events = self[jer](events, **kwargs)
 
     return events
 
@@ -70,7 +70,7 @@ def skip_jecunc_init(self: Calibrator) -> None:
     if self.dataset_inst.is_data:
         calibrators = {jec_nominal}
     else:
-        calibrators = {jec_nominal, jer}
+        calibrators = {jec_nominal}
 
     self.uses |= calibrators
     self.produces |= calibrators
