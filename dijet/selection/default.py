@@ -100,15 +100,15 @@ def default(
     events = self[process_ids](events, **kwargs)
 
     # build categories
-    events = self[category_ids](events, results=results, **kwargs)
+    # events = self[category_ids](events, results=results, **kwargs)
 
     # produce relevant columns
     events = self[cutflow_features](events, results.objects, **kwargs)
 
-    # results.main.event contains full selection mask. Sum over all steps.
+    # results.event contains full selection mask. Sum over all steps.
     # Make sure all nans are present, otherwise next tasks fail
-    results.main["event"] = reduce(and_, results.steps.values())
-    results.main["event"] = ak.fill_none(results.main["event"], False)
+    results.event = reduce(and_, results.steps.values())
+    results.event = ak.fill_none(results.event, False)
 
     self[dijet_increment_stats](events, results, stats, **kwargs)
 
