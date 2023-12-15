@@ -2,7 +2,7 @@ from typing import Tuple
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column
 from columnflow.selection import Selector, SelectionResult, selector
-from util import masked_sorted_indices
+from dijet.util import masked_sorted_indices
 
 ak = maybe_import("awkward")
 

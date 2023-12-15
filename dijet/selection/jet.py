@@ -4,14 +4,13 @@ from typing import Tuple
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column
 from columnflow.selection import Selector, SelectionResult, selector
-from util import masked_sorted_indices
+from dijet.util import masked_sorted_indices
 
 ak = maybe_import("awkward")
 
 
 @selector(
     uses={"Jet.pt", "Jet.eta", "Jet.phi", "Jet.jetId", "Jet.puId"},
-    produces={"cutflow.n_jet"},
     exposed=True,
 )
 def jet_selection(
@@ -39,9 +38,7 @@ def jet_selection(
         (events.Jet.jetId == 6) &  # 2: fail tight LepVeto and 6: pass tightLepVeto
         (events.Jet.puId == 7)  # pass all IDs (l, m and t)
     )
-
-    events = set_ak_column(events, "cutflow.n_jet", ak.sum(jet_mask, axis=1))
-    jet_sel = ak.sum(events.Jet[jet_mask]) >= 2
+    jet_sel = ak.num(events.Jet[jet_mask]) >= 2
 
     jet_indices = masked_sorted_indices(jet_mask, events.Jet.pt)
     jet_sel = ak.fill_none(jet_sel, False)
