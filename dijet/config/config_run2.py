@@ -457,7 +457,7 @@ def add_config(
     cfg.x.keep_columns = DotDict.wrap({
         "cf.SelectEvents": {"mc_weight"},
         "cf.MergeSelectionMasks": {
-            "mc_weight", "normalization_weight", "process_id", "category_ids", "cutflow.*",
+            "mc_weight", "normalization_weight", "process_id", "category_ids",
         },
     })
 
