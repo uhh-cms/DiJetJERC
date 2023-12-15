@@ -471,6 +471,8 @@ def add_config(
             "pu_weight*", "pdf_weight*",
             "murf_envelope_weight*", "mur_weight*", "muf_weight*",
             "btag_weight*",
+            # Properties for dijet
+            "alpha"
         } | set(  # Jets
             f"{jet_obj}.{field}"
             for jet_obj in ["Jet"]

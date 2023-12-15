@@ -50,7 +50,7 @@ def cutflow_features(
     events = set_ak_column(events, "cutflow.jet1_pt", Route("pt[:,0]").apply(selected_jet, EMPTY_FLOAT))
     events = set_ak_column(events, "cutflow.n_jets", ak.num(events.Jet.pt, axis=1))
 
-    for var in ["pt_avg", "asymmetry", "alpha"]:
+    for var in ["pt_avg", "asymmetry"]:
         events = set_ak_column(events, f"cutflow.dijets_{var}", events.dijets[var])
 
     return events
