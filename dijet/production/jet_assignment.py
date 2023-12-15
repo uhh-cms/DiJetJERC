@@ -41,9 +41,11 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     events = set_ak_column(events, "n_jet", ak.num(jets.pt, axis=1), value_type=np.int32)
     jets = ak.pad_none(jets, 2)
 
+    eta_jet1 = np.abs(jets.eta[:, 0])
+    eta_jet2 = np.abs(jets.eta[:, 1])
     # Check for Standard Method
-    eta_index_jet1 = np.digitize(ak.to_numpy(jets.eta[:, 0]), eta) - 1
-    eta_index_jet2 = np.digitize(ak.to_numpy(jets.eta[:, 1]), eta) - 1
+    eta_index_jet1 = np.digitize(ak.to_numpy(eta_jet1), eta) - 1
+    eta_index_jet2 = np.digitize(ak.to_numpy(eta_jet2), eta) - 1
     use_sm = eta_index_jet1 == eta_index_jet2
     events = set_ak_column(events, "use_sm", use_sm)
 
