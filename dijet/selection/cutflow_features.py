@@ -11,6 +11,7 @@ from columnflow.util import maybe_import
 from columnflow.columnar_util import EMPTY_FLOAT, Route, set_ak_column
 
 from dijet.production.categories import category_ids
+from dijet.production.dijet_balance import dijet_balance
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
@@ -21,7 +22,7 @@ ak = maybe_import("awkward")
         mc_weight, category_ids,
         # nano columns
         "Jet.pt", "Jet.eta", "Jet.phi",
-        "dijets.asymmetry", "dijets.alpha", "dijets.pt_avg",
+        dijet_balance,
     },
     produces={
         mc_weight, category_ids,
@@ -29,7 +30,7 @@ ak = maybe_import("awkward")
         "cutflow.jet1_pt", "cutflow.n_jets",
     } | {
         f"cutflow.dijets_{var}"
-        for var in ["asymmetry", "alpha", "pt_avg"]
+        for var in ["asymmetry", "pt_avg"]
     },
 )
 def cutflow_features(
@@ -42,6 +43,7 @@ def cutflow_features(
         events = self[mc_weight](events, **kwargs)
 
     events = self[category_ids](events, **kwargs)
+    events = self[dijet_balance](events, **kwargs)
 
     # apply some per-object selections
     # (here shown for default jets as done in selection.example.jet_selection)

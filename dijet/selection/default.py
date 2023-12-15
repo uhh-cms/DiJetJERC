@@ -88,11 +88,6 @@ def default(
     events, results_jet = self[jet_selection](events, **kwargs)
     results += results_jet
 
-    # dijet balance for cutflow variables
-    # TODO: Remove later
-    events = self[jet_assignment](events, **kwargs)
-    events = self[dijet_balance](events, **kwargs)
-
     # trigger selection
     # Uses pt_avg and the probe jet
     events, results_trigger = self[trigger_selection](events, **kwargs)
