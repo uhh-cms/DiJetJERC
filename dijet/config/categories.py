@@ -7,24 +7,27 @@ Categories are assigned a unique integer ID according to a fixed numbering
 scheme, with digits/groups of digits indicating the different category groups:
 
     lowest digit
-              |
-    +---+---+---+
-    | I | A | A |
-    +---+---+---+
+      |
+    +---+
+    | M |
+    +---+
 
 +=======+===============+======================+=================================+
 | Digit | Description   | Values               | Category name                   |
 +=======+===============+======================+=================================+
-| A     | alpha binning | 1 to a               | alpha_{min}_{max} (exclusive)   |
-|  x 10 |               |                      | or                              |
-+-------+---------------+----------------------+ alpha_lt_{max} (inclusive)      |
-| I     | Inclusive     |                      |                                 |
-|       | alpha flag    |                      | In combination with alpha bins  |
-|       |               | 0: exclusive         | Excl: alpha in one bin          |
-|       |               | 1: inclusive         | Incl: All alpha below the upper |
-|       |               |                      |       bin value                 |
-|       |               |                      | e.g.  bin IA=06 -> 0.25<a<0.3   |
-| x 100 |               |                      |       bin IA=16 ->      a<0.3   |
+| M     | Method        |                      | Choose Method                   |
+|       |               | 1: SM                |  - Standard Method              |
+|       |               |                      |    jet1 and jet2 same eta bin   |
+|       |               | 2: FE                |  - Forward Extension            |
+|       |               |                      |    jet1 < 1.131 or              |
+|       |               |                      |    jet2 < 1.131                 |
+|       |               |                      |    jet in barrel: reference jet |
+|       |               |                      |    jet not in barrel: probe jet |
+|       |               |                      |    If both in barrel, they need |
+|       |               |                      |    to be in different eta bins  |
+|       |               |                      |    (SM flag must be false)      |
+|       |               |                      |    JER measured from probe jet  |
+| x 1   |               |                      |    JER from FE dependent on SM  |
 +-------+---------------+----------------------+---------------------------------+
 
 A digit group consisting entirely of zeroes ('0') represents the inclusive
@@ -41,9 +44,7 @@ import law
 
 from columnflow.util import maybe_import
 from columnflow.categorization import Categorizer, categorizer
-
-from dijet.production.dijet_balance import dijet_balance
-from dijet.constants import alpha
+from dijet.production.jet_assignment import jet_assignment
 
 import order as od
 
@@ -71,11 +72,6 @@ def kwargs_fn(categories: dict[str, od.Category]):
 
 def skip_fn(categories: dict[str, od.Category]):
     """Custom function for skipping certain category combinations."""
-    # skip if combination involves both `alpha` and `alpha_incl` groups,
-    # since these are not disjoint
-    if all(group in categories for group in ["alpha", "alpha_incl"]):
-        return True
-
     return False  # don't skip
 
 
@@ -92,82 +88,56 @@ def add_categories(config: od.Config) -> None:
     )
 
     #
-    # group 1: alpha bins
+    # group 1: Standard Method or forward extension
     #
 
-    cat_idx_lsd = 0  # 10-power of least significant digit
-    cat_idx_ndigits = 2  # number of digits to use for category group
+    cat_idx_lsd = 0
+    method_categories = []
 
-    # get alpha bins from config
-    alpha_bins = alpha  # TODO: Add binning in config ?
-    alpha_categories = []
+    @categorizer(
+        uses={jet_assignment},
+        cls_name="sel_sm",
+    )
+    def sel_sm(
+        self: Categorizer, events: ak.Array,
+        **kwargs,
+    ) -> ak.Array:
+        """
+        Select events with probe jet and reference jet in same eta bin (standard method)
+        """
+        events = self[jet_assignment](events, **kwargs)
+        return events, ak.fill_none(events.use_sm, False)
 
-    for cat_idx, (alpha_min, alpha_max) in enumerate(
-        zip(alpha_bins[:-1], alpha_bins[1:]),
-    ):
-        alpha_min_repr = f"{alpha_min}".replace(".", "p")
-        alpha_max_repr = f"{alpha_max}".replace(".", "p")
-        cat_label = rf"{alpha_min} $\leq$ $\alpha$ < {alpha_max}"
+    method_categories.append(
+        config.add_category(
+            name="sm",
+            id=int(10**cat_idx_lsd),
+            selection="sel_sm",
+            label="sm",
+        ),
+    )
 
-        cat_name = f"alpha_{alpha_min_repr}_{alpha_max_repr}"
-        sel_name = f"sel_{cat_name}"
+    @categorizer(
+        uses={jet_assignment},
+        cls_name="sel_fe",
+    )
+    def sel_fe(
+        self: Categorizer, events: ak.Array,
+        **kwargs,
+    ) -> ak.Array:
+        """
+        Select events with
+        probe jet eta > 1.131 and
+        reference jet eta < 1.131
+        (forward extension)
+        """
+        events = self[jet_assignment](events, **kwargs)
+        return events, ak.fill_none(events.use_fe, False)
 
-        @categorizer(
-            uses={dijet_balance},
-            cls_name=sel_name,
-        )
-        def sel_alpha(
-            self: Categorizer, events: ak.Array,
-            alpha_range: tuple = (alpha_min, alpha_max),
-            alpha_min_repr=alpha_min_repr,
-            alpha_max_repr=alpha_max_repr,
-            **kwargs,
-        ) -> ak.Array:
-            f"""
-            Select events with probe jet alpha the range [{alpha_min_repr}, {alpha_max_repr})
-            """
-            events = self[dijet_balance](events, **kwargs)
-            return events, ak.fill_none(
-                (events.dijets.alpha >= alpha_range[0]) &
-                (events.dijets.alpha < alpha_range[1]),
-                False,
-            )
-
-        assert cat_idx < 10**cat_idx_ndigits - 1, "no space for category, ID reassignement necessary"
-        cat = config.add_category(
-            name=cat_name,
-            id=int(10**cat_idx_lsd * (cat_idx + 1)),
-            selection=sel_name,
-            label=cat_label,
-        )
-        alpha_categories.append(cat)
-
-    #
-    # group 2: inclusive alpha categories from union of (exclusive) alpha bins
-    #
-
-    cat_idx_lsd += cat_idx_ndigits
-    cat_idx_ndigits = 1
-    alpha_incl_bins = [
-        f"lt_{str(a).replace('.', 'p')}" for a in alpha[1:]
-    ]
-    assert len(alpha_incl_bins) + 1 == len(alpha)
-    alpha_incl_categories = []
-    for cat_idx, (alpha_bin, alpha_val) in enumerate(zip(alpha_incl_bins, alpha_bins[1:])):
-        cat_label = rf"$\alpha$ < {alpha_val}"
-
-        cat_name = f"alpha_{alpha_bin}"
-        sel_name = f"sel_{cat_name}"
-
-        # create category and add individual alpha intervals as child categories
-        cat = config.add_category(
-            name=cat_name,
-            id=int(10**cat_idx_lsd * ((cat_idx) + 10**cat_idx_lsd + 1)),
-            selection=None,
-            label=cat_label,
-        )
-        child_cats = alpha_categories[:cat_idx + 1]
-        for child_cat in child_cats:
-            cat.add_category(child_cat)
-
-        alpha_incl_categories.append(cat)
+    cat = config.add_category(
+        name="sel_fe",
+        id=int(10**cat_idx_lsd * 2),
+        selection="sel_fe",
+        label="fe",
+    )
+    method_categories.append(cat)

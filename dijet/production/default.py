@@ -10,6 +10,7 @@ from columnflow.production.normalization import normalization_weights
 from columnflow.util import maybe_import
 
 from dijet.production.dijet_balance import dijet_balance
+from dijet.production.alpha import alpha
 from dijet.production.jet_assignment import jet_assignment
 from dijet.production.weights import event_weights
 from dijet.production.categories import category_ids
@@ -21,11 +22,13 @@ ak = maybe_import("awkward")
 @producer(
     uses={
         category_ids, normalization_weights,
-        dijet_balance, jet_assignment, event_weights,
+        event_weights,
+        dijet_balance, jet_assignment, alpha,
     },
     produces={
         category_ids, normalization_weights,
-        dijet_balance, jet_assignment, event_weights,
+        event_weights,
+        dijet_balance, jet_assignment, alpha,
     },
 )
 def default(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
@@ -40,6 +43,8 @@ def default(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     # Include MPF production here
     events = self[jet_assignment](events, **kwargs)
     events = self[dijet_balance](events, **kwargs)
+    events = self[alpha](events, **kwargs)
+    # TODO: Producer for 3rd jet take alpha from dijet_balance
 
     # category ids
     events = self[category_ids](events, **kwargs)

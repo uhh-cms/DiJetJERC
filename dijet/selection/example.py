@@ -119,7 +119,7 @@ def increment_stats(
     *stats* in-place based on all input *events* and the final selection *mask*.
     """
     # get the event mask
-    event_mask = results.main.event
+    event_mask = results.event
 
     # increment plain counts
     stats["n_events"] += len(events)

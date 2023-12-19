@@ -24,7 +24,8 @@ from dijet.production.weights import large_weights_killer
 from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
 from dijet.selection.jet import jet_selection
-from dijet.selection.lepton import lepton_selection
+from dijet.selection.dijet import dijet_selection
+from dijet.selection.lepton_selection import lepton_selection
 from dijet.selection.trigger import trigger_selection
 from dijet.selection.cutflow_features import cutflow_features
 from dijet.selection.stats import dijet_increment_stats
@@ -33,27 +34,19 @@ np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
 
-def masked_sorted_indices(mask: ak.Array, sort_var: ak.Array, ascending: bool = False) -> ak.Array:
-    """
-    Helper function to obtain the correct indices of an object mask
-    """
-    indices = ak.argsort(sort_var, axis=-1, ascending=ascending)
-    return indices[mask[indices]]
-
-
 @selector(
     uses={
         met_filters, json_filter,
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,  # not opened per default but always required in Cutflow tasks
-        jet_selection, lepton_selection, trigger_selection,
+        jet_selection, lepton_selection, trigger_selection, dijet_selection,
         dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
     },
     produces={
         met_filters, json_filter,
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,
-        jet_selection, lepton_selection, trigger_selection,
+        jet_selection, lepton_selection, trigger_selection, dijet_selection,
         dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
     },
     exposed=True,
@@ -95,15 +88,13 @@ def default(
     events, results_jet = self[jet_selection](events, **kwargs)
     results += results_jet
 
-    # dijet balance for cutflow variables
-    # TODO: Remove later
-    events = self[jet_assignment](events, **kwargs)
-    events = self[dijet_balance](events, **kwargs)
-
     # trigger selection
     # Uses pt_avg and the probe jet
     events, results_trigger = self[trigger_selection](events, **kwargs)
     results += results_trigger
+
+    events, results_dijet = self[dijet_selection](events, **kwargs)
+    results += results_dijet
 
     # create process ids
     events = self[process_ids](events, **kwargs)
@@ -114,10 +105,10 @@ def default(
     # produce relevant columns
     events = self[cutflow_features](events, results.objects, **kwargs)
 
-    # results.main.event contains full selection mask. Sum over all steps.
+    # results.event contains full selection mask. Sum over all steps.
     # Make sure all nans are present, otherwise next tasks fail
-    results.main["event"] = reduce(and_, results.steps.values())
-    results.main["event"] = ak.fill_none(results.main["event"], False)
+    results.event = reduce(and_, results.steps.values())
+    results.event = ak.fill_none(results.event, False)
 
     self[dijet_increment_stats](events, results, stats, **kwargs)
 
