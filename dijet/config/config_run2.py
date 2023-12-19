@@ -130,8 +130,6 @@ def add_config(
     # (used during plotting)
     cfg.x.category_groups = {
         "default": ["incl"],
-        # "sm": [f"sm__alpha_lt_0p{a}" for a in ["05", "1", "15", "2", "25", "3"]],
-        # "fe": [f"fe__alpha_lt_0p{a}" for a in ["05", "1", "15", "2", "25", "3"]],
         "sm": ["sm"],
         "fe": ["fe"],
     }

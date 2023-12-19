@@ -12,7 +12,6 @@ from columnflow.tasks.framework.mixins import (
     CalibratorsMixin, SelectorStepsMixin, ProducersMixin,
     VariablesMixin, DatasetsProcessesMixin, CategoriesMixin,
 )
-# from columnflow.tasks.framework.remote import RemoteWorkflow
 from columnflow.tasks.reduction import MergeReducedEventsUser, MergeReducedEvents
 from columnflow.tasks.production import ProduceColumns
 from columnflow.tasks.histograms import MergeHistograms
@@ -98,6 +97,11 @@ class HistogramsBaseTask(
     CalibratorsMixin,
     ShiftTask,
 ):
+    """
+    Base task to load histogram and reduce them to used information.
+    An exemplary implementation of how to handle the inputs in a run method can be
+    found in columnflow/tasks/histograms.py
+    """
     sandbox = dev_sandbox(law.config.get("analysis", "default_columnar_sandbox"))
 
     # upstream requirements
@@ -176,6 +180,11 @@ class HistogramsBaseTask(
 
 
 class AlphaExtrapolation(HistogramsBaseTask):
+    """
+    Task to perform alpha extrapolation.
+    Read in and plot asymmetry histograms.
+    Cut of non-gaussian tails and extrapolate sigma_A( alpha->0 ).
+    """
     def output(self) -> dict[law.FileSystemTarget]:
         output = {
             "dummy": self.target("dummy.pickle"),

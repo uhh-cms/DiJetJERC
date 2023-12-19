@@ -100,7 +100,7 @@ def default(
     events = self[process_ids](events, **kwargs)
 
     # build categories
-    # events = self[category_ids](events, results=results, **kwargs)
+    events = self[category_ids](events, results=results, **kwargs)
 
     # produce relevant columns
     events = self[cutflow_features](events, results.objects, **kwargs)
