@@ -2,24 +2,21 @@
 
 from typing import Tuple
 
-from columnflow.columnar_util import Route
-
 from columnflow.util import maybe_import
 from columnflow.selection import Selector, SelectionResult, selector
 from columnflow.production import Producer
 from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
 
-from columnflow.selection.empty import empty
-
 ak = maybe_import("awkward")
 np = maybe_import("numpy")
 
+
 @selector(
     uses={
-       dijet_balance, jet_assignment,
-       "event", "run", "luminosityBlock",
-       "HLT.DiPFJetAve*", "HLT.PFJet*",
+        dijet_balance, jet_assignment,
+        "event", "run", "luminosityBlock",
+        "HLT.DiPFJetAve*", "HLT.PFJet*",
     },
     exposed=True,
 )
@@ -86,10 +83,10 @@ def trigger_selection(
     # index; contains none!
     pass_sel_trigger = ak.firsts(
         ak.where(
-            abs(events.probe_jet.eta)<2.853,  # TODO: define 2.853 in config
+            abs(events.probe_jet.eta) < 2.853,  # TODO: define 2.853 in config
             pass_triggers_central[ak.singletons(sel_trigger_index_central)],
             pass_triggers_forward[ak.singletons(sel_trigger_index_forward)],
-        )
+        ),
     )
 
     return events, SelectionResult(

@@ -35,10 +35,10 @@ def alpha(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     jets = ak.pad_none(jets, 3)
 
     alpha = ak.where(
-        jets.pt[:, 2]>15,
+        jets.pt[:, 2] > 15,
         jets.pt[:, 2] / events.dijets.pt_avg,
         ak.where(
-            ak.num(events.Jet)<3,
+            ak.num(events.Jet) < 3,
             0,
             1,
         ),

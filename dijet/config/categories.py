@@ -40,14 +40,10 @@ to a set of categories from different groups, the sum of the category IDs is the
 ID of the combined category.
 """
 
-import itertools
 import law
 
 from columnflow.util import maybe_import
-from columnflow.config_util import create_category_combinations
 from columnflow.categorization import Categorizer, categorizer
-
-from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
 
 import order as od
@@ -99,7 +95,6 @@ def add_categories(config: od.Config) -> None:
     #
 
     cat_idx_lsd = 0
-    cat_idx_ndigits = 1
     method_categories = []
 
     @categorizer(
