@@ -72,9 +72,6 @@ def kwargs_fn(categories: dict[str, od.Category]):
 
 def skip_fn(categories: dict[str, od.Category]):
     """Custom function for skipping certain category combinations."""
-    # skip if combination involves both `alpha` and `alpha_incl` groups,
-    # since these are not disjoint
-
     return False  # don't skip
 
 
