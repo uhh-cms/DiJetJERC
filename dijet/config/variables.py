@@ -177,3 +177,38 @@ def add_variables(config: od.Config) -> None:
         binning=(100, -1, 1),
         x_title=r"MPFx",
     )
+
+    config.add_variable(
+        name="dijets_response_probe",
+        expression="dijets.response_probe",
+        binning=(100, 0, 2),
+        x_title=r"response probe jet",
+    )
+    config.add_variable(
+        name="dijets_response_reference",
+        expression="dijets.response_reference",
+        binning=(100, 0, 2),
+        x_title=r"response reference jet",
+    )
+
+    config.add_variable(
+        name="dijets_mpf_gen",
+        expression="dijets.mpf_gen",
+        binning=(100, -1, 1),
+        x_title=r"MPF gen",
+    )
+
+    config.add_variable(
+        name="dijets_mpfx_gen",
+        expression="dijets.mpfx_gen",
+        binning=(100, -1, 1),
+        x_title=r"MPFx gen",
+    )
+
+    config.add_variable(
+        name="dijets_pt_avg_gen",
+        expression="dijets.pt_avg_gen",
+        binning=pt,
+        x_title=r"$p_{T}^{avg, gen}$",
+        unit="GeV",
+    )
