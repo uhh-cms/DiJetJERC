@@ -5,7 +5,7 @@ Calibration methods.
 """
 
 from columnflow.calibration import Calibrator, calibrator
-from columnflow.calibration.cms.jets import jec, jer
+from columnflow.calibration.cms.jets import jec  # , jer
 from columnflow.production.cms.seeds import deterministic_seeds
 from columnflow.util import maybe_import
 
@@ -25,7 +25,7 @@ def default(self: Calibrator, events: ak.Array, **kwargs) -> ak.Array:
         events = self[jec_nominal](events, **kwargs)
     else:
         events = self[jec](events, **kwargs)
-        #events = self[jer](events, **kwargs)
+        # events = self[jer](events, **kwargs)
 
     return events
 
@@ -57,7 +57,7 @@ def skip_jecunc(self: Calibrator, events: ak.Array, **kwargs) -> ak.Array:
         events = self[jec_nominal](events, **kwargs)
     else:
         events = self[jec_nominal](events, **kwargs)
-        #events = self[jer](events, **kwargs)
+        # events = self[jer](events, **kwargs)
 
     return events
 

@@ -85,8 +85,9 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
     return events
 
+
 @jet_assignment.init
 def jet_assignment_init(self: Producer) -> None:
-     if self.dataset_inst.is_mc:
+    if self.dataset_inst.is_mc:
         self.uses |= {"Jet.genJetIdx"}
-        self.produces |= { "reference_jet.genJetIdx", "probe_jet.genJetIdx"}
+        self.produces |= {"reference_jet.genJetIdx", "probe_jet.genJetIdx"}
