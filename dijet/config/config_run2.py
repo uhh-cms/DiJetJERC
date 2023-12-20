@@ -479,7 +479,7 @@ def add_config(
         ) | set(  # MET
             f"GenMET.{field}"
             for field in ["pt", "phi"]
-        ) | set( #GenJets
+        ) | set(  # GenJets
             f"{gen_jet_obj}.{field}"
             for gen_jet_obj in ["GenJet"]
             for field in ["pt", "eta", "phi", "mass"]
