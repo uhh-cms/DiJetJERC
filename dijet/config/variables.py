@@ -159,7 +159,7 @@ def add_variables(config: od.Config) -> None:
 
     config.add_variable(
         name="dijets_alpha",
-        expression="dijets.alpha",
+        expression="alpha",
         binning=(100, 0, 1),
         x_title=r"$\alpha$",
     )

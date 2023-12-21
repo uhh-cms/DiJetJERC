@@ -4,13 +4,10 @@
 Selectors to set ak columns for dijet properties
 """
 
-# TODO: Not all columns needed are present yet for pt balance method
-#       - Include probe and reference jet from jet assignment
-#       - is FE or SM Method
-
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column
 from columnflow.production import Producer, producer
+from dijet.production.jet_assignment import jet_assignment
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
@@ -23,12 +20,11 @@ Creates column 'Dijet', which includes the most relevant properties of the JetME
 
 @producer(
     uses={
-        "Jet.pt",
-        "probe_jet.pt", "reference_jet.pt", "probe_jet.phi",
-        "MET.pt", "MET.phi",
+        "Jet.pt", "MET.pt", "MET.phi",
+        jet_assignment,
     },
     produces={
-        "dijets.pt_avg", "dijets.asymmetry", "dijets.alpha", "dijets.mpf", "dijets.mpfx",
+        "dijets.pt_avg", "dijets.asymmetry", "dijets.mpf", "dijets.mpfx",
     },
 )
 def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
@@ -40,6 +36,7 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     jets = ak.pad_none(jets, 3)
 
     pt_avg = (events.probe_jet.pt + events.reference_jet.pt) / 2
+
     if self.dataset_inst.is_mc:
         probe_genJet_pt = np.array(
             [
@@ -100,6 +97,7 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
             "mpf": mpf,
             "mpfx": mpfx,
         })
+
     events = set_ak_column(events, "dijets", dijets)
 
     return events

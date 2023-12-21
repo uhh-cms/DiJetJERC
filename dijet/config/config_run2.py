@@ -130,7 +130,8 @@ def add_config(
     # (used during plotting)
     cfg.x.category_groups = {
         "default": ["incl"],
-        "binning": ["eta_0p5_1p0__pt_100_500__alpha_lt_0p1", "eta_0p5_1p0__pt_100_500__alpha_lt_0p3"],
+        "sm": ["sm"],
+        "fe": ["fe"],
     }
 
     # variable groups for conveniently looping over certain variables
@@ -408,7 +409,7 @@ def add_config(
         return f"{jme_aux.source}/{jme_full_version}/{jme_full_version}_{name}_{jme_aux.jet_type}.txt"
 
     # external files
-    json_mirror = "/afs/cern.ch/work/m/mrieger/public/mirrors/jsonpog-integration-9ea86c4c"
+    json_mirror = "/afs/cern.ch/user/m/mrieger/public/mirrors/jsonpog-integration-9ea86c4c"
     cfg.x.external_files = DotDict.wrap({
         # jet energy correction
         "jet_jerc": (f"{json_mirror}/POG/JME/{year}{corr_postfix}_UL/jet_jerc.json.gz", "v1"),
@@ -454,7 +455,7 @@ def add_config(
     cfg.x.keep_columns = DotDict.wrap({
         "cf.SelectEvents": {"mc_weight"},
         "cf.MergeSelectionMasks": {
-            "mc_weight", "normalization_weight", "process_id", "category_ids", "cutflow.*",
+            "mc_weight", "normalization_weight", "process_id", "category_ids",
         },
     })
 
@@ -468,6 +469,8 @@ def add_config(
             "pu_weight*", "pdf_weight*",
             "murf_envelope_weight*", "mur_weight*", "muf_weight*",
             "btag_weight*",
+            # Properties for dijet
+            "alpha",
         } | set(  # Jets
             f"{jet_obj}.{field}"
             for jet_obj in ["Jet"]
@@ -597,13 +600,13 @@ def add_config(
     # Version of required tasks
     reduce_version = "v4"
     cfg.x.versions = {
-        "cf.CalibrateEvents": reduce_version,
-        "cf.SelectEvents": reduce_version,
-        "cf.MergeSelectionStats": reduce_version,
-        "cf.MergeSelectionMasks": reduce_version,
-        "cf.ReduceEvents": reduce_version,
-        "cf.MergeReductionStats": reduce_version,
-        "cf.MergeReducedEvents": reduce_version,
+        "cf.CalibrateEvents": "v0",
+        # "cf.SelectEvents": reduce_version,
+        # "cf.MergeSelectionStats": reduce_version,
+        # "cf.MergeSelectionMasks": reduce_version,
+        # "cf.ReduceEvents": reduce_version,
+        # "cf.MergeReductionStats": reduce_version,
+        # "cf.MergeReducedEvents": reduce_version,
     }
 
     # add categories

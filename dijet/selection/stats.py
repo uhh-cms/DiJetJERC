@@ -25,7 +25,7 @@ def dijet_increment_stats(
     **kwargs,
 ) -> ak.Array:
     # collect important information from the results
-    event_mask = results.main.event
+    event_mask = results.event
 
     # weight map definition
     weight_map = {
