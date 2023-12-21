@@ -598,7 +598,6 @@ def add_config(
     #     return version
 
     # Version of required tasks
-    reduce_version = "v4"
     cfg.x.versions = {
         "cf.CalibrateEvents": "v0",
         # "cf.SelectEvents": reduce_version,
