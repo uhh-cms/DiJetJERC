@@ -91,7 +91,9 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     reference_jet = ak.firsts(jets[ak.singletons(ref_index)])
 
     # write out probe and reference jet fields
-    fields = ("pt", "eta", "phi", "mass", "genJetIdx") if self.dataset_inst.is_mc else ("pt", "eta", "phi", "mass")
+    fields = ("pt", "eta", "phi", "mass")
+    if self.dataset_inst.is_mc:
+        fields += ("genJetIdx",)
     probe_jet = ak.zip({f: getattr(probe_jet, f) for f in fields})
     events = set_ak_column(events, "probe_jet", probe_jet)
 

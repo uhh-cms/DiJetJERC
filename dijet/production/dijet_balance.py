@@ -5,6 +5,7 @@ Selectors to set ak columns for dijet properties
 """
 
 from columnflow.util import maybe_import
+from columnflow.columnar_util import EMPTY_FLOAT
 from columnflow.columnar_util import set_ak_column
 from columnflow.production import Producer, producer
 from dijet.production.jet_assignment import jet_assignment
@@ -36,40 +37,54 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     jets = ak.pad_none(jets, 3)
 
     pt_avg = (events.probe_jet.pt + events.reference_jet.pt) / 2
-
     if self.dataset_inst.is_mc:
-        probe_genJet_pt = np.array(
-            [
-                all_genJets[index] for all_genJets, index in zip(genJets.pt, events.probe_jet.genJetIdx)
-            ],
-        )
-        reference_genJet_pt = np.array(
-            [
-                all_genJets[index] for all_genJets, index in zip(genJets.pt, events.reference_jet.genJetIdx)
-            ],
-        )
-        probe_genJet_phi = np.array(
-            [
-                all_genJets[index] for all_genJets, index in zip(genJets.phi, events.probe_jet.genJetIdx)
-            ],
-        )
+
+        # check if probe/reference jets have valid gen match
+
+        probe_jet_valid_gen_match = (events.probe_jet.genJetIdx >= 0)
+        reference_jet_valid_gen_match = (events.reference_jet.genJetIdx >= 0)
+        both_jets_valid_gen_match = (probe_jet_valid_gen_match & reference_jet_valid_gen_match)
+
+        # get gen jet object matched to probe and reference jets
+        probe_genJetIdx_mask = ak.singletons(events.probe_jet.genJetIdx)
+        reference_genJetIdx_mask = ak.singletons(events.reference_jet.genJetIdx)
+        probe_jet_gen_jet = genJets[probe_genJetIdx_mask]
+        reference_jet_gen_jet = genJets[reference_genJetIdx_mask]
+
         response_probe = ak.where(
-            events.probe_jet.genJetIdx != -1, probe_genJet_pt / events.probe_jet.pt, -100,
+            probe_jet_valid_gen_match,
+            ak.flatten(probe_jet_gen_jet.pt) / events.probe_jet.pt,
+            EMPTY_FLOAT,
         )
         response_reference = ak.where(
-            events.reference_jet.genJetIdx != -1, reference_genJet_pt / events.reference_jet.pt, -100,
+            reference_jet_valid_gen_match,
+            ak.flatten(reference_jet_gen_jet.pt) / events.reference_jet.pt,
+            EMPTY_FLOAT,
         )
-        refAndProbe = (events.reference_jet.genJetIdx != -1) & (events.probe_jet.genJetIdx != -1)
+        # calculate gen-level pT average, MPF, MPFx
         pt_avg_gen = ak.where(
-            refAndProbe, np.divide((probe_genJet_pt + reference_genJet_pt), 2), -100,
+            both_jets_valid_gen_match,
+            np.divide(
+                ak.flatten(probe_jet_gen_jet.pt) + ak.flatten(reference_jet_gen_jet.pt),
+                2,
+            ),
+            EMPTY_FLOAT,
         )
-        mpf_gen_val = np.divide(events.GenMET.pt * np.cos(probe_genJet_phi - events.GenMET.phi), (2 * pt_avg_gen))
         mpf_gen = ak.where(
-            refAndProbe, mpf_gen_val, -100,
+            both_jets_valid_gen_match,
+            np.divide(
+                events.GenMET.pt * np.cos(ak.flatten(probe_jet_gen_jet.phi) - events.GenMET.phi),
+                2 * pt_avg_gen,
+            ),
+            EMPTY_FLOAT,
         )
-        mpfx_gen_val = np.divide(events.GenMET.pt * np.sin(probe_genJet_phi - events.GenMET.phi), (2 * pt_avg_gen))
         mpfx_gen = ak.where(
-            refAndProbe, mpfx_gen_val, -100,
+            both_jets_valid_gen_match,
+            np.divide(
+                events.GenMET.pt * np.sin(ak.flatten(probe_jet_gen_jet.phi) - events.GenMET.phi),
+                2 * pt_avg_gen,
+            ),
+            EMPTY_FLOAT,
         )
     asym = (events.probe_jet.pt - events.reference_jet.pt) / (2 * pt_avg)
     alpha = jets.pt[:, 2] / pt_avg
@@ -106,7 +121,19 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 @dijet_balance.init
 def dijet_balance_init(self: Producer) -> None:
     if self.dataset_inst.is_mc:
-        self.uses |= {"GenJet.pt", "GenJet.phi", "probe_jet.genJetIdx",
-        "reference_jet.genJetIdx", "GenMET.pt", "GenMET.phi"}
-        self.produces |= {"dijets.response_probe", "dijets.response_reference",
-        "dijets.mpf_gen", "dijets.mpfx_gen", "dijets.pt_avg_gen"}
+        self.uses |= {
+            "GenJet.pt",
+            "GenJet.phi",
+            "probe_jet.genJetIdx",
+            "reference_jet.genJetIdx",
+            "GenMET.pt",
+            "GenMET.phi",
+        }
+
+        self.produces |= {
+            "dijets.response_probe",
+            "dijets.response_reference",
+            "dijets.mpf_gen",
+            "dijets.mpfx_gen",
+            "dijets.pt_avg_gen",
+        }
