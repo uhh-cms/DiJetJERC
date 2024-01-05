@@ -194,14 +194,14 @@ def add_variables(config: od.Config) -> None:
     config.add_variable(
         name="dijets_mpf_gen",
         expression="dijets.mpf_gen",
-        binning=(100, -1, 1),
+        binning=(100, -0.025, 0.025),
         x_title=r"MPF gen",
     )
 
     config.add_variable(
         name="dijets_mpfx_gen",
         expression="dijets.mpfx_gen",
-        binning=(100, -1, 1),
+        binning=(100, -0.025, 0.025),
         x_title=r"MPFx gen",
     )
 
