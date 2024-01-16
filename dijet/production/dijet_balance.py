@@ -36,7 +36,11 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
         genJets = events.GenJet
     jets = ak.pad_none(jets, 3)
 
-    pt_avg = (events.probe_jet.pt + events.reference_jet.pt) / 2
+    pt_avg = ak.fill_none(
+        ((events.probe_jet.pt + events.reference_jet.pt) / 2),
+        EMPTY_FLOAT,
+    )
+
     if self.dataset_inst.is_mc:
 
         # check if probe/reference jets have valid gen match
@@ -48,49 +52,69 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
         # get gen jet object matched to probe and reference jets
         probe_genJetIdx_mask = ak.singletons(events.probe_jet.genJetIdx)
         reference_genJetIdx_mask = ak.singletons(events.reference_jet.genJetIdx)
-        probe_jet_gen_jet = genJets[probe_genJetIdx_mask]
-        reference_jet_gen_jet = genJets[reference_genJetIdx_mask]
+        probe_jet_gen_jet = ak.firsts(genJets[probe_genJetIdx_mask])
+        reference_jet_gen_jet = ak.firsts(genJets[reference_genJetIdx_mask])
 
-        response_probe = ak.where(
-            probe_jet_valid_gen_match,
-            ak.flatten(probe_jet_gen_jet.pt) / events.probe_jet.pt,
+        response_probe = ak.fill_none(
+            ak.where(
+                probe_jet_valid_gen_match,
+                probe_jet_gen_jet.pt / events.probe_jet.pt,
+                EMPTY_FLOAT,
+            ),
             EMPTY_FLOAT,
         )
-        response_reference = ak.where(
-            reference_jet_valid_gen_match,
-            ak.flatten(reference_jet_gen_jet.pt) / events.reference_jet.pt,
+
+        response_reference = ak.fill_none(
+            ak.where(
+                reference_jet_valid_gen_match,
+                reference_jet_gen_jet.pt / events.reference_jet.pt,
+                EMPTY_FLOAT,
+            ),
             EMPTY_FLOAT,
         )
+
         # calculate gen-level pT average, MPF, MPFx
-        pt_avg_gen = ak.where(
-            both_jets_valid_gen_match,
-            np.divide(
-                ak.flatten(probe_jet_gen_jet.pt) + ak.flatten(reference_jet_gen_jet.pt),
-                2,
+        pt_avg_gen = ak.fill_none(
+            ak.where(
+                both_jets_valid_gen_match,
+                np.divide(
+                    probe_jet_gen_jet.pt + reference_jet_gen_jet.pt,
+                    2,
+                ),
+                EMPTY_FLOAT,
             ),
             EMPTY_FLOAT,
         )
-        mpf_gen = ak.where(
-            both_jets_valid_gen_match,
-            np.divide(
-                events.GenMET.pt * np.cos(ak.flatten(probe_jet_gen_jet.phi) - events.GenMET.phi),
-                2 * pt_avg_gen,
+
+        mpf_gen = ak.fill_none(
+            ak.where(
+                both_jets_valid_gen_match,
+                np.divide(
+                    events.GenMET.pt * np.cos(probe_jet_gen_jet.phi - events.GenMET.phi),
+                    2 * pt_avg_gen,
+                ),
+                EMPTY_FLOAT,
             ),
             EMPTY_FLOAT,
         )
-        mpfx_gen = ak.where(
-            both_jets_valid_gen_match,
-            np.divide(
-                events.GenMET.pt * np.sin(ak.flatten(probe_jet_gen_jet.phi) - events.GenMET.phi),
-                2 * pt_avg_gen,
+
+        mpfx_gen = ak.fill_none(
+            ak.where(
+                both_jets_valid_gen_match,
+                np.divide(
+                    events.GenMET.pt * np.sin(probe_jet_gen_jet.phi - events.GenMET.phi),
+                    2 * pt_avg_gen,
+                ),
+                EMPTY_FLOAT,
             ),
             EMPTY_FLOAT,
         )
-    asym = (events.probe_jet.pt - events.reference_jet.pt) / (2 * pt_avg)
-    alpha = jets.pt[:, 2] / pt_avg
-    delta_phi = events.probe_jet.phi - events.MET.phi
-    mpf = events.MET.pt * np.cos(delta_phi) / (2 * pt_avg)
-    mpfx = events.MET.pt * np.sin(delta_phi) / (2 * pt_avg)
+
+    asym = ak.fill_none(((events.probe_jet.pt - events.reference_jet.pt) / (2 * pt_avg)), EMPTY_FLOAT)
+    alpha = ak.fill_none((jets.pt[:, 2] / pt_avg), EMPTY_FLOAT)
+    delta_phi = ak.fill_none((events.probe_jet.phi - events.MET.phi), EMPTY_FLOAT)
+    mpf = ak.fill_none((events.MET.pt * np.cos(delta_phi) / (2 * pt_avg)), EMPTY_FLOAT)
+    mpfx = ak.fill_none((events.MET.pt * np.sin(delta_phi) / (2 * pt_avg)), EMPTY_FLOAT)
     if self.dataset_inst.is_mc:
         dijets = ak.zip({
             "pt_avg": pt_avg,
