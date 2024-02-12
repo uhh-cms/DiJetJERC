@@ -129,6 +129,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
         means = np.nansum(asyms * inclusive_norm, axis=3, keepdims=True)
 
         # TODO: np.nanaverage ?
+        #       -> only numpy.nanmean but no weights
         stds = np.sqrt(np.average(((asyms - means)**2), weights=inclusive_norm, axis=3))
         stds_err = stds / np.sqrt(np.squeeze(hists["integral"]))
 
@@ -136,7 +137,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
     def method_index(self, method):
         indices = {"sm": 1, "fe": 2}
-        # TODO: implement check for sm and fe
+        # TODO: check that method is either sm or fe
         return indices[method]
 
     def run(self):
@@ -182,7 +183,6 @@ class AlphaExtrapolation(HistogramsBaseTask):
         print(f"Number pT bins: {len(centers_eta)}")
         print(f"Number A bins: {len(centers_ptavg)}")
 
-        # TODO: Use category names instead of IDs for SM and FE
         sm = self.process_asymmetry(asym_sm, centers_asym)
         fe = self.process_asymmetry(asym_fe, centers_asym)
 
