@@ -109,12 +109,9 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
     def get_norm_asymmetries(self, histogram, method):
 
-        # TODO: Write own task
-        #       1: SM
-        #       2: FE
         # NOTE: Alternative loop over alpha like here:
         #       histogram[hist.loc(method), slice(hist.loc(0), hist.loc(0.3), sum), :, :, :].values()
-        # TODO: Loose hist structure here. Methd to keep structure here ? 
+        # TODO: Loose hist structure here. Methd to keep structure here ?
         #       histogram[hist.loc(method), slice(hist.loc(0), hist.loc(0.3)), :, :, :]
         #       For integral not taking .values()
         values = histogram[hist.loc(method), slice(hist.loc(0), hist.loc(0.3)), :, :, :].values()
@@ -125,7 +122,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         return inclusiv / integral
 
-    def process_asymmetry(self, hists, asyms, method):
+    def process_asymmetry(self, hists, asyms):
 
         # TODO: Alread in get_asymmetry, do not run double
         values = hists[hist.loc(method), slice(hist.loc(0), hist.loc(0.3)), :, :, :].values()
@@ -138,8 +135,11 @@ class AlphaExtrapolation(HistogramsBaseTask):
         stds = np.sqrt(np.average(((asyms - means)**2), weights=inclusive_norm, axis=3))
         stds_err = stds/np.sqrt(np.squeeze(integral))
 
-        # TODO: retnur dictionary
-        return stds, stds_err
+
+    def method_index(self, method):
+        indices = {"sm": 1, "fe": 2}
+        # TODO: implement check for sm and fe
+        return indices[method]
 
     def run(self):
         # TODO: Gen level for MC
@@ -162,9 +162,11 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         # TODO: Need own task to store asymmetry before this one
         #       New structure of base histogram task necessary
+        asym_sm = self.get_norm_asymmetries(h_all, self.method_index("sm"))
+        asym_fe = self.get_norm_asymmetries(h_all, self.method_index("fe"))
         results_asym = {
-            "sm": self.get_norm_asymmetries(h_all, 1),
-            "fe": self.get_norm_asymmetries(h_all, 2),
+            "sm": asym_sm["content"]/asym_sm["integral"],
+            "fe": asym_fe["content"]/asym_fe["integral"],
             "bins": {
                 "pt": h_all.axes["dijets_pt_avg"].edges,
                 "eta": h_all.axes["probejet_abseta"].edges,
@@ -183,8 +185,8 @@ class AlphaExtrapolation(HistogramsBaseTask):
         print(f"Number A bins: {len(centers_ptavg)}")
 
         # TODO: Use category names instead of IDs for SM and FE
-        sm = self.process_asymmetry(h_all, centers_asym, 1)
-        fe = self.process_asymmetry(h_all, centers_asym, 2)
+        sm = self.process_asymmetry(asym_sm, centers_asym)
+        fe = self.process_asymmetry(asym_fe, centers_asym)
 
         # TODO: Use correlated fit
         def fit_linear(subarray):
