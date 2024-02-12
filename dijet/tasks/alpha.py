@@ -130,7 +130,9 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         # TODO: np.nanaverage ?
         stds = np.sqrt(np.average(((asyms - means)**2), weights=inclusive_norm, axis=3))
-        stds_err = stds/np.sqrt(np.squeeze(integral))
+        stds_err = stds/np.sqrt(np.squeeze(hists["integral"]))
+
+        return {"widths": stds, "errors": stds_err}
 
 
     def method_index(self, method):
@@ -194,16 +196,16 @@ class AlphaExtrapolation(HistogramsBaseTask):
                 coefficients = np.polyfit(amax[fitting], subarray[fitting], 1)
             return coefficients
         # TODO: Fit Messungen abspeichern (chi2, ndf, etc.) for diagnostic
-        fit_sm = np.apply_along_axis(fit_linear, axis=0, arr=sm[0])
-        fit_fe = np.apply_along_axis(fit_linear, axis=0, arr=fe[0])
+        fit_sm = np.apply_along_axis(fit_linear, axis=0, arr=sm["widths"])
+        fit_fe = np.apply_along_axis(fit_linear, axis=0, arr=fe["widths"])
 
         results_alphas = {}
         results_alphas["sm"] = {
-            "alphas": sm[0],
+            "alphas": sm["widths"],
             "fits": fit_sm
         }
         results_alphas["fe"] = {
-            "alphas": fe[0],
+            "alphas": fe["widths"],
             "fits": fit_fe
         }
         results_asym["bins"] = {
