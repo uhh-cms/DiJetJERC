@@ -214,27 +214,3 @@ class AlphaExtrapolation(HistogramsBaseTask):
             "alpha": amax,
         }
         self.output()["alphas"].dump(results_alphas, formatter="pickle")
-
-        # def plot_alpha(subarray, fits, eta, pt):
-        #     print(eta, pt, subarray)
-        #     fitting = ~np.isnan(subarray)
-        #     fig, ax = plt.subplots()
-        #     ax.set_xlim(0, 0.35)
-        #     ax.plot(amax[fitting], subarray[fitting], marker="o", linestyle='None')  # Set linestyle to 'None'
-        #     coefficients = fit_data_sm[:,eta,pt].flatten()
-
-        #     fit_line_x = np.linspace(0, 0.35, 100)
-        #     fit_line_y = np.polyval(coefficients, fit_line_x)
-        #     label = rf'$\sigma(\alpha\rightarrow 0) = {coefficients[0]:.2f}x + {coefficients[1]:.2f}$'
-        #     ax.plot(fit_line_x, fit_line_y, color='red', label=label)
-
-        #     # Customize the plot
-        #     ax.set_ylabel(r"$\alpha$")
-        #     ax.set_xlabel(r"$\sigma_{A}$")
-        #     mplhep.cms.label(ax=ax, llabel="Work in progress", data=True)
-
-        #     plt.tight_layout()
-        #     # output["plot_alpha"].child(f"alpha_e{eta}_p{pt}.pdf", type="f").dump(plt, formatter="mpl")
-
-        # TODO: Parallize; Current approach:
-        #       apply along axis, but no info on eta and pt
