@@ -7,13 +7,11 @@ Custom base tasks.
 import law
 
 
-from columnflow.tasks.framework.base import Requirements, BaseTask, ShiftTask
+from columnflow.tasks.framework.base import BaseTask, ShiftTask
 from columnflow.tasks.framework.mixins import (
     CalibratorsMixin, SelectorStepsMixin, ProducersMixin,
     VariablesMixin, DatasetsProcessesMixin, CategoriesMixin,
 )
-from columnflow.tasks.reduction import MergeReducedEventsUser, MergeReducedEvents
-from columnflow.tasks.production import ProduceColumns
 from columnflow.config_util import get_datasets_from_process
 from columnflow.util import dev_sandbox
 
@@ -53,7 +51,7 @@ class HistogramsBaseTask(
             samples = process_names
         return (
             samples,
-            self.config_inst.get_dataset(process_sets[0]).is_mc
+            self.config_inst.get_dataset(process_sets[0]).is_mc,
         )
 
     def store_parts(self):

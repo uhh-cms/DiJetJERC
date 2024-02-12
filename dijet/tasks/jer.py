@@ -69,7 +69,7 @@ class JER(HistogramsBaseTask):
             runs = []
             for dataset in datasets:
                 runs.append(dataset.replace("data_jetht_", "").upper())
-            sample = "Run"+("".join(sorted(runs)))
+            sample = "Run" + ("".join(sorted(runs)))
         target = self.target(f"{sample}", dir=True)
 
         # declare the main target
@@ -85,7 +85,7 @@ class JER(HistogramsBaseTask):
 
         # ### Now JER SM Data
 
-        jer_sm = widths["sm"]["fits"][0][:, :]*np.sqrt(2)
+        jer_sm = widths["sm"]["fits"][0][:, :] * np.sqrt(2)
 
         # TODO: Define eta bin in config
         # NOTE: weighting number by appearence in eta regions

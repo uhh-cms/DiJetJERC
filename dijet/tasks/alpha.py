@@ -73,7 +73,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
             samples = process_names
         return (
             samples,
-            self.config_inst.get_dataset(process_sets[0]).is_mc
+            self.config_inst.get_dataset(process_sets[0]).is_mc,
         )
 
     def output(self) -> dict[law.FileSystemTarget]:
@@ -90,7 +90,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
             runs = []
             for dataset in datasets:
                 runs.append(dataset.replace("data_jetht_", "").upper())
-            sample = "Run"+("".join(sorted(runs)))
+            sample = "Run" + ("".join(sorted(runs)))
         target = self.target(f"{sample}", dir=True)
 
         # declare the main target
@@ -130,10 +130,9 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         # TODO: np.nanaverage ?
         stds = np.sqrt(np.average(((asyms - means)**2), weights=inclusive_norm, axis=3))
-        stds_err = stds/np.sqrt(np.squeeze(hists["integral"]))
+        stds_err = stds / np.sqrt(np.squeeze(hists["integral"]))
 
         return {"widths": stds, "errors": stds_err}
-
 
     def method_index(self, method):
         indices = {"sm": 1, "fe": 2}
@@ -152,7 +151,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
                 h_in = self.reduce_histogram(
                     self.load_histogram(dataset, variable),
                     self.processes,
-                    self.shift
+                    self.shift,
                 )
                 # Store all hists in a list to sum over after reading
                 h_all.append(h_in)
@@ -164,8 +163,8 @@ class AlphaExtrapolation(HistogramsBaseTask):
         asym_sm = self.get_norm_asymmetries(h_all, self.method_index("sm"))
         asym_fe = self.get_norm_asymmetries(h_all, self.method_index("fe"))
         results_asym = {
-            "sm": asym_sm["content"]/asym_sm["integral"],
-            "fe": asym_fe["content"]/asym_fe["integral"],
+            "sm": asym_sm["content"] / asym_sm["integral"],
+            "fe": asym_fe["content"] / asym_fe["integral"],
             "bins": {
                 "pt": h_all.axes["dijets_pt_avg"].edges,
                 "eta": h_all.axes["probejet_abseta"].edges,
@@ -202,11 +201,11 @@ class AlphaExtrapolation(HistogramsBaseTask):
         results_alphas = {}
         results_alphas["sm"] = {
             "alphas": sm["widths"],
-            "fits": fit_sm
+            "fits": fit_sm,
         }
         results_alphas["fe"] = {
             "alphas": fe["widths"],
-            "fits": fit_fe
+            "fits": fit_fe,
         }
         results_asym["bins"] = {
             "pt": h_all.axes["dijets_pt_avg"].edges,
