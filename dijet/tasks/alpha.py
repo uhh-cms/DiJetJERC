@@ -120,15 +120,12 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # axis = 3 asymmetry
         integral = inclusiv.sum(axis=3, keepdims=True)
 
-        return inclusiv / integral
+        # Store in dictonary to use in alpha extrapolation
+        return {"content": inclusiv, "integral": integral}
 
     def process_asymmetry(self, hists, asyms):
 
-        # TODO: Alread in get_asymmetry, do not run double
-        values = hists[hist.loc(method), slice(hist.loc(0), hist.loc(0.3)), :, :, :].values()
-        inclusiv = np.apply_along_axis(np.cumsum, 0, values)
-        integral = inclusiv.sum(axis=3, keepdims=True)
-        inclusive_norm = inclusiv / integral
+        inclusive_norm = hists["content"] / hists["integral"]
         means = np.nansum(asyms * inclusive_norm, axis=3, keepdims=True)
 
         # TODO: np.nanaverage ?
