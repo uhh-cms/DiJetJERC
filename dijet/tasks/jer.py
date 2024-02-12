@@ -85,11 +85,9 @@ class JER(HistogramsBaseTask):
 
         # ### Now JER SM Data
 
-        # TODO: Check ind = 0 is alpha at 0 and not slope
         jer_sm = widths["sm"]["fits"][0][:, :]*np.sqrt(2)
 
-        # TODO: not sqrt(2) but more complicated
-        #       Define bin in config
+        # TODO: Define eta bin in config
         # NOTE: weighting number by appearence in eta regions
         jer_ref = np.mean(jer_sm[:5, :], axis=0).reshape(1, -1)
         jer_fe = np.sqrt(4 * widths["fe"]["fits"][0][:, :]**2 - jer_ref**2)
