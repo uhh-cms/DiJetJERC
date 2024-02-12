@@ -10,7 +10,7 @@ from dijet.tasks.base import HistogramsBaseTask
 from columnflow.util import maybe_import, DotDict
 from columnflow.tasks.framework.base import Requirements
 
-from dijet.tasks.jersf import AlphaExtrapolation
+from dijet.tasks.alpha import AlphaExtrapolation
 
 ak = maybe_import("awkward")
 hist = maybe_import("hist")
