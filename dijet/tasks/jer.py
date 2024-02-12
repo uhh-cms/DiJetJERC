@@ -58,26 +58,11 @@ class JER(HistogramsBaseTask):
 
     def output(self) -> dict[law.FileSystemTarget]:
         # TODO: Into base and add argument alphas, jers, etc.
-
-        datasets, isMC = self.get_datasets()
-
-        # Define output name
-        sample = ""
-        if isMC:
-            sample = "QCDHT"
-        else:
-            runs = []
-            for dataset in datasets:
-                runs.append(dataset.replace("data_jetht_", "").upper())
-            sample = "Run" + ("".join(sorted(runs)))
+        sample = self.extract_sample()
         target = self.target(f"{sample}", dir=True)
-
-        # declare the main target
         outp = {
-            # "sample": target,  # NOTE: Only if use output().sample
             "jers": target.child("jers.pickle", type="f"),
         }
-
         return outp
 
     def run(self):

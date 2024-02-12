@@ -58,6 +58,19 @@ class HistogramsBaseTask(
         parts = super().store_parts()
         return parts
 
+    def extract_sample(self):
+        datasets, isMC = self.get_datasets()
+        # Define output name
+        sample = ""
+        if isMC:
+            sample = "QCDHT"
+        else:
+            runs = []
+            for dataset in datasets:
+                runs.append(dataset.replace("data_jetht_", "").upper())
+            sample = "Run" + ("".join(sorted(runs)))
+        return sample
+
     def reduce_histogram(self, histogram, processes, shifts):
         import hist
 

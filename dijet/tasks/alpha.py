@@ -77,34 +77,15 @@ class AlphaExtrapolation(HistogramsBaseTask):
         )
 
     def output(self) -> dict[law.FileSystemTarget]:
-
-        datasets, isMC = self.get_datasets()
-
-        # Define output name
         # TODO: Unstable for changes like data_jetmet_X
         #       Make independent like in config datasetname groups
-        sample = ""
-        if isMC:
-            sample = "QCDHT"
-        else:
-            runs = []
-            for dataset in datasets:
-                runs.append(dataset.replace("data_jetht_", "").upper())
-            sample = "Run" + ("".join(sorted(runs)))
+        sample = self.extract_sample()
         target = self.target(f"{sample}", dir=True)
-
         # declare the main target
         outp = {
-            # "sample": target,  # NOTE: Only if use output().sample
             "alphas": target.child("alphas.pickle", type="f"),
             "asym": target.child("asym.pickle", type="f", optional=True),
         }
-
-        # define all files that need to be present
-        # outp["required_files"] = [
-        #     target.child("alphas.pickle", type="f"),
-        # ]
-
         return outp
 
     def get_norm_asymmetries(self, histogram, method):
