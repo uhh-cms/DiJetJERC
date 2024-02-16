@@ -88,39 +88,6 @@ class AlphaExtrapolation(HistogramsBaseTask):
         }
         return outp
 
-    def get_norm_asymmetries(self, histogram, method):
-
-        # NOTE: Alternative loop over alpha like here:
-        #       histogram[hist.loc(method), slice(hist.loc(0), hist.loc(0.3), sum), :, :, :].values()
-        # TODO: Loose hist structure here. Methd to keep structure here ?
-        #       histogram[hist.loc(method), slice(hist.loc(0), hist.loc(0.3)), :, :, :]
-        #       For integral not taking .values()
-        values = histogram[hist.loc(method), slice(hist.loc(0), hist.loc(0.3)), :, :, :].values()
-        # axis = 0 alpha
-        inclusiv = np.apply_along_axis(np.cumsum, 0, values)
-        # axis = 3 asymmetry
-        integral = inclusiv.sum(axis=3, keepdims=True)
-
-        # Store in dictonary to use in alpha extrapolation
-        return {"content": inclusiv, "integral": integral}
-
-    def process_asymmetry(self, hists, asyms):
-
-        inclusive_norm = hists["content"] / hists["integral"]
-        means = np.nansum(asyms * inclusive_norm, axis=3, keepdims=True)
-
-        # TODO: np.nanaverage ?
-        #       -> only numpy.nanmean but no weights
-        stds = np.sqrt(np.average(((asyms - means)**2), weights=inclusive_norm, axis=3))
-        stds_err = stds / np.sqrt(np.squeeze(hists["integral"]))
-
-        return {"widths": stds, "errors": stds_err}
-
-    def method_index(self, method):
-        indices = {"sm": 1, "fe": 2}
-        # TODO: check that method is either sm or fe
-        return indices[method]
-
     def run(self):
         # TODO: Gen level for MC
         #       Correlated fit (in jupyter)
