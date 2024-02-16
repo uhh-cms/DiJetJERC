@@ -156,21 +156,29 @@ class AlphaExtrapolation(HistogramsBaseTask):
                 coefficients = np.polyfit(amax[fitting], subarray[fitting], 1)
             return coefficients
         # TODO: Fit Messungen abspeichern (chi2, ndf, etc.) for diagnostic
-        fit_sm = np.apply_along_axis(fit_linear, axis=0, arr=sm["widths"])
-        fit_fe = np.apply_along_axis(fit_linear, axis=0, arr=fe["widths"])
+        fits = np.apply_along_axis(fit_linear, axis=1, arr=h_stds.view().value, max=max_lin_alpha)
 
-        results_alphas = {}
-        results_alphas["sm"] = {
-            "alphas": sm["widths"],
-            "fits": fit_sm,
-        }
-        results_alphas["fe"] = {
-            "alphas": fe["widths"],
-            "fits": fit_fe,
-        }
-        results_asym["bins"] = {
-            "pt": h_all.axes["dijets_pt_avg"].edges,
-            "eta": h_all.axes["probejet_abseta"].edges,
-            "alpha": amax,
+        # NOTE: store fits into hist.
+
+        h_fits = h_stds.copy()
+        # Remove axis for alpha for histogram
+        h_fits = h_fits[{"dijets_alpha": sum}]
+        # Interception of fit with y axis stored in index 0
+        h_fits.view().value = fits[:,0,:,:]
+        # Errors temporary used; Later get:
+        # Error on fit from fit function (how?) or new method with three fits
+        h_fits.view().variance = np.ones(h_fits.shape)
+
+        h_slopes = h_fits.copy()
+        # Slope of fit stored in index 1
+        h_fits.view().value = fits[:,1,:,:]
+        # Only stored for plotting, no defined error
+        h_fits.view().variance = np.zeros(h_fits.shape)
+
+        # TODO: Currently store axes with each histogram; not ideal!
+        results_alphas = {
+            "alphas": h_stds,
+            "fits": h_fits,
+            "slopes": h_slopes,
         }
         self.output()["alphas"].dump(results_alphas, formatter="pickle")
