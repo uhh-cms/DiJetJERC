@@ -34,12 +34,6 @@ class JER(HistogramsBaseTask):
         AlphaExtrapolation=AlphaExtrapolation,
     )
 
-    def create_branch_map(self):
-        return [
-            DotDict({"process": process})
-            for process in sorted(self.processes)
-        ]
-
     def requires(self):
         return self.reqs.AlphaExtrapolation.req(
             self,

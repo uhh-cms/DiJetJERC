@@ -48,15 +48,6 @@ class AlphaExtrapolation(HistogramsBaseTask):
             for d in self.datasets
         }
 
-    def create_branch_map(self):
-        """
-        Workflow has one branch for each process supplied via `processed`.
-        """
-        return [
-            DotDict({"process": process})
-            for process in sorted(self.processes)
-        ]
-
     def workflow_requires(self):
         reqs = super().workflow_requires()
         reqs["merged_hists"] = self.requires_from_branch()
@@ -65,19 +56,6 @@ class AlphaExtrapolation(HistogramsBaseTask):
     def load_histogram(self, dataset, variable):
         histogram = self.input()[dataset]["collection"][0]["hists"].targets[variable].load(formatter="pickle")
         return histogram
-
-    def get_datasets(self):
-        # Get a samples from process
-        process_sets = get_datasets_from_process(self.config_inst, self.branch_data.process, only_first=False)
-        process_names = [item.name for item in process_sets]
-        # Get all samples from input belonging to process
-        samples = set(self.datasets).intersection(process_names)
-        if len(samples) == 0:
-            samples = process_names
-        return (
-            samples,
-            self.config_inst.get_dataset(process_sets[0]).is_mc,
-        )
 
     def output(self) -> dict[law.FileSystemTarget]:
         # TODO: Unstable for changes like data_jetmet_X

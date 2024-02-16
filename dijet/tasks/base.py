@@ -88,6 +88,15 @@ class HistogramsBaseTask(
             list(datasets_filtered_is_mc)[0]
         )
 
+    def create_branch_map(self):
+        """
+        Workflow has one branch for each process supplied via `processed`.
+        """
+        return [
+            DotDict({"process": process})
+            for process in sorted(self.processes)
+        ]
+
     def store_parts(self):
         parts = super().store_parts()
         return parts
