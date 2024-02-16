@@ -109,33 +109,46 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         # TODO: Need own task to store asymmetry before this one
         #       New structure of base histogram task necessary
-        asym_sm = self.get_norm_asymmetries(h_all, self.method_index("sm"))
-        asym_fe = self.get_norm_asymmetries(h_all, self.method_index("fe"))
-        results_asym = {
-            "sm": asym_sm["content"] / asym_sm["integral"],
-            "fe": asym_fe["content"] / asym_fe["integral"],
-            "bins": {
-                "pt": h_all.axes["dijets_pt_avg"].edges,
-                "eta": h_all.axes["probejet_abseta"].edges,
-                "alpha": amax,
-            },
-        }
-        self.output()["asym"].dump(results_asym, formatter="pickle")
+        view = h_all.view()
+        view.value = np.apply_along_axis(np.cumsum, 1, view.value)
 
-        # Get binning
-        centers_ptavg = h_all.axes["dijets_pt_avg"].centers
-        centers_asym = h_all.axes["dijets_asymmetry"].centers
-        centers_eta = h_all.axes["probejet_abseta"].centers
+        # Get integral of asymmetries (last dim) as array
+        integral = h_all.values().sum(axis=-1, keepdims=True)
 
-        print(f"Number \u03B7 bins: {len(centers_asym)}")
-        print(f"Number pT bins: {len(centers_eta)}")
-        print(f"Number A bins: {len(centers_ptavg)}")
+        # Get normalized asymmetries
+        view.value = view.value / integral
+        view.variance = view.variance/integral**2
 
-        sm = self.process_asymmetry(asym_sm, centers_asym)
-        fe = self.process_asymmetry(asym_fe, centers_asym)
+        # Store in pickle file for plotting task
+        self.output()["asym"].dump(h_all, formatter="pickle")
+
+        # Get widths of asymmetries
+        asyms = h_all.axes["dijets_asymmetry"].centers
+        # Take mean value from normalized asymmetry
+        means = np.nansum(
+            asyms * h_all.view().value,
+            axis=-1,
+            keepdims=True
+        )
+        h_stds = h_all.copy()
+        h_stds = h_stds[{"dijets_asymmetry": sum}]
+        # Get stds
+        h_stds.view().value = np.sqrt(
+            np.average(
+                ((asyms - means)**2),
+                weights=h_all.view().value,
+                axis=-1
+            )
+        )
+        # Get stds error; squeeze to reshape integral from (x,y,z,1) to (x,y,z)
+        h_stds.view().variance = h_stds.view().value**2 / (2*np.squeeze(integral))  # TODO: Check again
+
+        # Get max alpha for fit; usually 0.3
+        max_lin_alpha = np.where(np.isclose(h_all.axes["dijets_alpha"].edges, 0.3))[0][0]
 
         # TODO: Use correlated fit
-        def fit_linear(subarray):
+        def fit_linear(subarray, max):
+            subarray = subarray[:max]
             fitting = ~np.isnan(subarray)
             if len(subarray[fitting]) < 2:
                 coefficients = [0, 0]
