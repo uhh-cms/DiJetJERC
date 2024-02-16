@@ -77,11 +77,12 @@ class JER(HistogramsBaseTask):
         jer_ref = np.mean(jer_sm[:5, :], axis=0).reshape(1, -1)
         jer_fe = np.sqrt(4 * widths["fe"]["fits"][0][:, :]**2 - jer_ref**2)
 
-        results_jers = {}
-        results_jers["sm"] = {
-            "jers": jer_sm,
-        }
-        results_jers["fe"] = {
-            "jers": jer_fe,
+        results_jers = {
+            "sm": {
+                "jers": jer_sm,   
+            },
+            "fe": {
+                "jers": jer_fe,  
+            },
         }
         self.output()["jers"].dump(results_jers, formatter="pickle")

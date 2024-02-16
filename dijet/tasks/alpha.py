@@ -49,6 +49,9 @@ class AlphaExtrapolation(HistogramsBaseTask):
         }
 
     def create_branch_map(self):
+        """
+        Workflow has one branch for each process supplied via `processed`.
+        """
         return [
             DotDict({"process": process})
             for process in sorted(self.processes)
@@ -88,21 +91,31 @@ class AlphaExtrapolation(HistogramsBaseTask):
         }
         return outp
 
-    def get_norm_asymmetries(self, histogram, method):
+    def get_norm_asymmetries(self, histogram, method: str) -> dict:
+        """
+        Return a dictionary of multidimensional arrays containining the asymmetry
+        distributions for the inclusive alpha binning (cumulative sum over alpha
+        bins), normalized to the integral over the asymmetry distribution in each
+        bin.
+        """
+        # resolve category ID
+        category_id = {"sm": 1, "fe": 2}[method]
 
-        # NOTE: Alternative loop over alpha like here:
-        #       histogram[hist.loc(method), slice(hist.loc(0), hist.loc(0.3), sum), :, :, :].values()
-        # TODO: Loose hist structure here. Methd to keep structure here ?
-        #       histogram[hist.loc(method), slice(hist.loc(0), hist.loc(0.3)), :, :, :]
-        #       For integral not taking .values()
-        values = histogram[hist.loc(method), slice(hist.loc(0), hist.loc(0.3)), :, :, :].values()
+        # input histogram (select alpha range
+        # and sm/fe category
+        h = histogram[{
+            "category": hist.loc(category_id),
+            "dijets_alpha": slice(hist.loc(0), hist.loc(0.3)),
+        }]
+        values = h.values()
+
         # axis = 0 alpha
-        inclusiv = np.apply_along_axis(np.cumsum, 0, values)
+        cumulative = np.apply_along_axis(np.cumsum, axis=0, arr=values)
         # axis = 3 asymmetry
-        integral = inclusiv.sum(axis=3, keepdims=True)
+        integral = cumulative.sum(axis=3, keepdims=True)
 
         # Store in dictonary to use in alpha extrapolation
-        return {"content": inclusiv, "integral": integral}
+        return {"content": cumulative, "integral": integral}
 
     def process_asymmetry(self, hists, asyms):
 
@@ -115,11 +128,6 @@ class AlphaExtrapolation(HistogramsBaseTask):
         stds_err = stds / np.sqrt(np.squeeze(hists["integral"]))
 
         return {"widths": stds, "errors": stds_err}
-
-    def method_index(self, method):
-        indices = {"sm": 1, "fe": 2}
-        # TODO: check that method is either sm or fe
-        return indices[method]
 
     def run(self):
         # TODO: Gen level for MC
@@ -142,8 +150,9 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         # TODO: Need own task to store asymmetry before this one
         #       New structure of base histogram task necessary
-        asym_sm = self.get_norm_asymmetries(h_all, self.method_index("sm"))
-        asym_fe = self.get_norm_asymmetries(h_all, self.method_index("fe"))
+        method_index = {"sm": 1, "fe": 2}
+        asym_sm = self.get_norm_asymmetries(h_all, method_index["sm"])
+        asym_fe = self.get_norm_asymmetries(h_all, method_index["fe"])
         results_asym = {
             "sm": asym_sm["content"] / asym_sm["integral"],
             "fe": asym_fe["content"] / asym_fe["integral"],
@@ -179,18 +188,19 @@ class AlphaExtrapolation(HistogramsBaseTask):
         fit_sm = np.apply_along_axis(fit_linear, axis=0, arr=sm["widths"])
         fit_fe = np.apply_along_axis(fit_linear, axis=0, arr=fe["widths"])
 
-        results_alphas = {}
-        results_alphas["sm"] = {
-            "alphas": sm["widths"],
-            "fits": fit_sm,
-        }
-        results_alphas["fe"] = {
-            "alphas": fe["widths"],
-            "fits": fit_fe,
-        }
-        results_asym["bins"] = {
-            "pt": h_all.axes["dijets_pt_avg"].edges,
-            "eta": h_all.axes["probejet_abseta"].edges,
-            "alpha": amax,
+        results_alphas = {
+            "sm": {
+                "alphas": sm["widths"],
+                "fits": fit_sm,
+            },
+            "fe": {
+                "alphas": fe["widths"],
+                "fits": fit_fe,
+            },
+            "bins": {
+                "pt": h_all.axes["dijets_pt_avg"].edges,
+                "eta": h_all.axes["probejet_abseta"].edges,
+                "alpha": amax,
+            },
         }
         self.output()["alphas"].dump(results_alphas, formatter="pickle")
