@@ -134,7 +134,7 @@ class HistogramsBaseTask(
 
         # get shift instance
         shift_inst = self.config_inst.get_shift(shift)
-        if shift_inst.id not in h.axes["shift"]:
+        if shift_inst.id not in histogram.axes["shift"]:
             raise ValueError(f"histogram does not contain shift `{shift}`")
 
         # work on a copy
