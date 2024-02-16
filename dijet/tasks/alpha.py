@@ -8,8 +8,7 @@ import law
 
 from columnflow.tasks.framework.base import Requirements
 from columnflow.tasks.histograms import MergeHistograms
-from columnflow.config_util import get_datasets_from_process
-from columnflow.util import maybe_import, DotDict
+from columnflow.util import maybe_import
 
 from dijet.tasks.base import HistogramsBaseTask
 

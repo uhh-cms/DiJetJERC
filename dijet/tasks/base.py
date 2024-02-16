@@ -13,7 +13,7 @@ from columnflow.tasks.framework.mixins import (
     VariablesMixin, DatasetsProcessesMixin, CategoriesMixin,
 )
 from columnflow.config_util import get_datasets_from_process
-from columnflow.util import dev_sandbox
+from columnflow.util import dev_sandbox, DotDict
 
 
 class DiJetTask(BaseTask):
@@ -54,7 +54,7 @@ class HistogramsBaseTask(
         )
 
         # check that at least one config dataset matched
-        if not datasets_from_process:
+        if not dataset_insts_from_process:
             raise RuntimeError(
                 "no single dataset found in config matching "
                 f"process `{self.branch_data.process}`"
