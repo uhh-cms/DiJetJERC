@@ -68,20 +68,18 @@ class AlphaExtrapolation(HistogramsBaseTask):
         }
         return outp
 
-    def get_norm_asymmetries(self, histogram, method: str) -> dict:
+    def get_norm_asymmetries(self, histogram, method: int) -> dict:
         """
         Return a dictionary of multidimensional arrays containining the asymmetry
         distributions for the inclusive alpha binning (cumulative sum over alpha
         bins), normalized to the integral over the asymmetry distribution in each
         bin.
         """
-        # resolve category ID
-        category_id = {"sm": 1, "fe": 2}[method]
 
         # input histogram (select alpha range
         # and sm/fe category
         h = histogram[{
-            "category": hist.loc(category_id),
+            "category": hist.loc(method),
             "dijets_alpha": slice(hist.loc(0), hist.loc(0.3)),
         }]
         values = h.values()
