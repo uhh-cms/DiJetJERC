@@ -7,3 +7,23 @@ dijet_selection(){
 dijet_plotting(){
     law run cf.PlotVariables1D --config config_2017_limited --version v0 --dataset data_jetht_e --remove-output 2,a,y --variables dijets_asymmetry
 }
+
+dijet_alpha(){
+    law run dijet.AlphaExtrapolation                                         \
+    --config config_2017                                                     \
+    --version sync_alpha                                                     \
+    --datasets data_jetht_f                                                  \
+    --processes data                                                         \
+    --variables dijets_alpha-probejet_abseta-dijets_pt_avg-dijets_asymmetry  \
+    --remove-output 0,a,y
+}
+
+dijet_jer(){
+    law run dijet.JER                                                        \
+    --config config_2017                                                     \
+    --version sync_alpha                                                     \
+    --datasets data_jetht_f                                                  \
+    --processes data                                                         \
+    --variables dijets_alpha-probejet_abseta-dijets_pt_avg-dijets_asymmetry  \
+    --remove-output 0,a,y
+}
