@@ -89,7 +89,7 @@ class HistogramsBaseTask(
 
     def create_branch_map(self):
         """
-        Workflow has one branch for each process supplied via `processed`.
+        Workflow has one branch for each process supplied via `processes`.
         """
         return [
             DotDict({"process": process})
