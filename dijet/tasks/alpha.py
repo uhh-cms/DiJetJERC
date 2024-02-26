@@ -99,7 +99,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         # Get normalized asymmetries
         view.value = view.value / integral
-        view.variance = view.variance/integral**2
+        view.variance = view.variance / integral**2
 
         # Store in pickle file for plotting task
         self.output()["asym"].dump(h_all, formatter="pickle")
@@ -110,7 +110,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
         means = np.nansum(
             asyms * h_all.view().value,
             axis=-1,
-            keepdims=True
+            keepdims=True,
         )
         h_stds = h_all.copy()
         h_stds = h_stds[{"dijets_asymmetry": sum}]
@@ -119,11 +119,11 @@ class AlphaExtrapolation(HistogramsBaseTask):
             np.average(
                 ((asyms - means)**2),
                 weights=h_all.view().value,
-                axis=-1
-            )
+                axis=-1,
+            ),
         )
         # Get stds error; squeeze to reshape integral from (x,y,z,1) to (x,y,z)
-        h_stds.view().variance = h_stds.view().value**2 / (2*np.squeeze(integral))
+        h_stds.view().variance = h_stds.view().value**2 / (2 * np.squeeze(integral))
 
         # Store alphas here to get alpha up to 1
         # In the next stepts only alpha<0.3 needed; avoid slicing from there
@@ -134,7 +134,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         # Get max alpha for fit; usually 0.3
         amax = 0.3  # TODO: define in config
-        h_stds = h_stds[{"dijets_alpha": slice(0,hist.loc(amax))}]
+        h_stds = h_stds[{"dijets_alpha": slice(0, hist.loc(amax))}]
 
         # TODO: Use correlated fit
         def fit_linear(subarray):
@@ -153,14 +153,14 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # Remove axis for alpha for histogram
         h_fits = h_fits[{"dijets_alpha": sum}]
         # y intercept of fit (x=0)
-        h_fits.view().value = fits[:,0,:,:]
+        h_fits.view().value = fits[:, 0, :, :]
         # Errors temporarly used; Later get:
         # Error on fit from fit function (how?) or new method with three fits
         h_fits.view().variance = np.ones(h_fits.shape)
 
         h_slopes = h_fits.copy()
         # Slope of fit stored in index 1
-        h_fits.view().value = fits[:,1,:,:]
+        h_fits.view().value = fits[:, 1, :, :]
         # Only stored for plotting, no defined error
         h_fits.view().variance = np.zeros(h_fits.shape)
 

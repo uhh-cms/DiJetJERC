@@ -7,7 +7,7 @@ Custom tasks to derive JER SF.
 import law
 
 from dijet.tasks.base import HistogramsBaseTask
-from columnflow.util import maybe_import, DotDict
+from columnflow.util import maybe_import
 from columnflow.tasks.framework.base import Requirements
 
 from dijet.tasks.alpha import AlphaExtrapolation
@@ -79,7 +79,7 @@ class JER(HistogramsBaseTask):
         # TODO: Define eta bin in config
         # NOTE: weighting number by appearence in eta regions
         jer_ref = np.mean(view.value[index_methods["sm"], :5, 0], axis=0).reshape(1, -1)
-        view.value[index_methods["fe"]] = np.sqrt(4*view.value[index_methods["fe"],:,:]**2 - jer_ref**2)
+        view.value[index_methods["fe"]] = np.sqrt(4 * view.value[index_methods["fe"], :, :]**2 - jer_ref**2)
 
         results_jers = {
             "jer": jer,
