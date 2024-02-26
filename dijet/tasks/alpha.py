@@ -8,8 +8,7 @@ import law
 
 from columnflow.tasks.framework.base import Requirements
 from columnflow.tasks.histograms import MergeHistograms
-from columnflow.config_util import get_datasets_from_process
-from columnflow.util import maybe_import, DotDict
+from columnflow.util import maybe_import
 
 from dijet.tasks.base import HistogramsBaseTask
 
@@ -48,12 +47,6 @@ class AlphaExtrapolation(HistogramsBaseTask):
             for d in self.datasets
         }
 
-    def create_branch_map(self):
-        return [
-            DotDict({"process": process})
-            for process in sorted(self.processes)
-        ]
-
     def workflow_requires(self):
         reqs = super().workflow_requires()
         reqs["merged_hists"] = self.requires_from_branch()
@@ -62,19 +55,6 @@ class AlphaExtrapolation(HistogramsBaseTask):
     def load_histogram(self, dataset, variable):
         histogram = self.input()[dataset]["collection"][0]["hists"].targets[variable].load(formatter="pickle")
         return histogram
-
-    def get_datasets(self):
-        # Get a samples from process
-        process_sets = get_datasets_from_process(self.config_inst, self.branch_data.process, only_first=False)
-        process_names = [item.name for item in process_sets]
-        # Get all samples from input belonging to process
-        samples = set(self.datasets).intersection(process_names)
-        if len(samples) == 0:
-            samples = process_names
-        return (
-            samples,
-            self.config_inst.get_dataset(process_sets[0]).is_mc,
-        )
 
     def output(self) -> dict[law.FileSystemTarget]:
         # TODO: Unstable for changes like data_jetmet_X
@@ -89,6 +69,46 @@ class AlphaExtrapolation(HistogramsBaseTask):
         }
         return outp
 
+<<<<<<< HEAD
+=======
+    def get_norm_asymmetries(self, histogram, method: str) -> dict:
+        """
+        Return a dictionary of multidimensional arrays containining the asymmetry
+        distributions for the inclusive alpha binning (cumulative sum over alpha
+        bins), normalized to the integral over the asymmetry distribution in each
+        bin.
+        """
+
+        # input histogram (select alpha range
+        # and sm/fe category
+        category_id = {"sm": 1, "fe": 2}[method]
+        h = histogram[{
+            "category": hist.loc(category_id),
+            "dijets_alpha": slice(hist.loc(0), hist.loc(0.3)),
+        }]
+        values = h.values()
+
+        # axis = 0 alpha
+        cumulative = np.apply_along_axis(np.cumsum, axis=0, arr=values)
+        # axis = 3 asymmetry
+        integral = cumulative.sum(axis=3, keepdims=True)
+
+        # Store in dictonary to use in alpha extrapolation
+        return {"content": cumulative, "integral": integral}
+
+    def process_asymmetry(self, hists, asyms):
+
+        inclusive_norm = hists["content"] / hists["integral"]
+        means = np.nansum(asyms * inclusive_norm, axis=3, keepdims=True)
+
+        # TODO: np.nanaverage ?
+        #       -> only numpy.nanmean but no weights
+        stds = np.sqrt(np.average(((asyms - means)**2), weights=inclusive_norm, axis=3))
+        stds_err = stds / np.sqrt(np.squeeze(hists["integral"]))
+
+        return {"widths": stds, "errors": stds_err}
+
+>>>>>>> master
     def run(self):
         # TODO: Gen level for MC
         #       Correlated fit (in jupyter)
@@ -109,6 +129,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         # TODO: Need own task to store asymmetry before this one
         #       New structure of base histogram task necessary
+<<<<<<< HEAD
         axes_names = [a.name for a in h_all.axes]
         view = h_all.view()
         view.value = np.apply_along_axis(np.cumsum, axis=axes_names.index("dijets_alpha"), arr=view.value)
@@ -149,6 +170,18 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # In the next stepts only alpha<0.3 needed; avoid slicing from there
         results_widths = {
             "widths": h_stds,
+=======
+        asym_sm = self.get_norm_asymmetries(h_all, "sm")
+        asym_fe = self.get_norm_asymmetries(h_all, "fe")
+        results_asym = {
+            "sm": asym_sm["content"] / asym_sm["integral"],
+            "fe": asym_fe["content"] / asym_fe["integral"],
+            "bins": {
+                "pt": h_all.axes["dijets_pt_avg"].edges,
+                "eta": h_all.axes["probejet_abseta"].edges,
+                "alpha": amax,
+            },
+>>>>>>> master
         }
         self.output()["widths"].dump(results_widths, formatter="pickle")
 
