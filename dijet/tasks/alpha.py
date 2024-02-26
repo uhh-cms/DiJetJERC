@@ -106,15 +106,16 @@ class AlphaExtrapolation(HistogramsBaseTask):
                 # Store all hists in a list to sum over after reading
                 h_all.append(h_in)
         h_all = sum(h_all)
-        amax = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3])
 
         # TODO: Need own task to store asymmetry before this one
         #       New structure of base histogram task necessary
+        axes_names = [a.name for a in h_all.axes]
         view = h_all.view()
-        view.value = np.apply_along_axis(np.cumsum, 1, view.value)
+        view.value = np.apply_along_axis(np.cumsum, axis=axes_names.index("dijets_alpha"), arr=view.value)
+        view.variance = np.apply_along_axis(np.cumsum, axis=axes_names.index("dijets_alpha"), arr=view.variance)
 
-        # Get integral of asymmetries (last dim) as array
-        integral = h_all.values().sum(axis=-1, keepdims=True)
+        # Get integral of asymmetries as array
+        integral = h_all.values().sum(axis=axes_names.index("dijets_asymmetry"), keepdims=True)
 
         # Get normalized asymmetries
         view.value = view.value / integral

@@ -69,19 +69,25 @@ class JER(HistogramsBaseTask):
         widths = self.load_widths()
 
         # ### Now JER SM Data
+        jer = widths["fits"].copy()
+        view = jer.view()
 
-        jer_sm = widths["sm"]["fits"][0][:, :] * np.sqrt(2)
+        # Get index of method to change methods individually
+        # hist.view() only works if the full histgram is taken w.o. selecting the categories before hand
+        category_id = {"sm": 1, "fe": 2}
+        # Get list of categories with the correct order
+        categories = list(jer.axes["category"])
+        index_methods = {m: categories.index(category_id[m]) for m in category_id}
+
+        # calcuate jer for standard method
+        view.value[index_methods["sm"]] = view.value[index_methods["sm"], :, :] * np.sqrt(2)
 
         # TODO: Define eta bin in config
         # NOTE: weighting number by appearence in eta regions
-        jer_ref = np.mean(jer_sm[:5, :], axis=0).reshape(1, -1)
-        jer_fe = np.sqrt(4 * widths["fe"]["fits"][0][:, :]**2 - jer_ref**2)
+        jer_ref = np.mean(view.value[index_methods["sm"], :5, 0], axis=0).reshape(1, -1)
+        view.value[index_methods["fe"]] = np.sqrt(4*view.value[index_methods["fe"],:,:]**2 - jer_ref**2)
 
-        results_jers = {}
-        results_jers["sm"] = {
-            "jers": jer_sm,
-        }
-        results_jers["fe"] = {
-            "jers": jer_fe,
+        results_jers = {
+            "jer": jer,
         }
         self.output()["jers"].dump(results_jers, formatter="pickle")
