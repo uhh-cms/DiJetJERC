@@ -52,8 +52,8 @@ class JER(HistogramsBaseTask):
         reqs["key"] = self.as_branch().requires()
         return reqs
 
-    def load_alpha(self):
-        histogram = self.input().collection[0]["alphas"].load(formatter="pickle")
+    def load_widths(self):
+        histogram = self.input().collection[0]["fits"].load(formatter="pickle")
         return histogram
 
     def output(self) -> dict[law.FileSystemTarget]:
@@ -66,7 +66,7 @@ class JER(HistogramsBaseTask):
         return outp
 
     def run(self):
-        widths = self.load_alpha()
+        widths = self.load_widths()
 
         # ### Now JER SM Data
 

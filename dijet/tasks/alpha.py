@@ -83,7 +83,8 @@ class AlphaExtrapolation(HistogramsBaseTask):
         target = self.target(f"{sample}", dir=True)
         # declare the main target
         outp = {
-            "alphas": target.child("alphas.pickle", type="f"),
+            "widths": target.child("widths.pickle", type="f"),
+            "fits": target.child("fits.pickle", type="f"),
             "asym": target.child("asym.pickle", type="f", optional=True),
         }
         return outp
@@ -141,7 +142,14 @@ class AlphaExtrapolation(HistogramsBaseTask):
             )
         )
         # Get stds error; squeeze to reshape integral from (x,y,z,1) to (x,y,z)
-        h_stds.view().variance = h_stds.view().value**2 / (2*np.squeeze(integral))  # TODO: Check again
+        h_stds.view().variance = h_stds.view().value**2 / (2*np.squeeze(integral))
+
+        # Store alphas here to get alpha up to 1
+        # In the next stepts only alpha<0.3 needed; avoid slicing from there
+        results_widths = {
+            "widths": h_stds,
+        }
+        self.output()["widths"].dump(results_widths, formatter="pickle")
 
         # Get max alpha for fit; usually 0.3
         max_lin_alpha = np.where(np.isclose(h_all.axes["dijets_alpha"].edges, 0.3))[0][0]
@@ -175,10 +183,8 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # Only stored for plotting, no defined error
         h_fits.view().variance = np.zeros(h_fits.shape)
 
-        # TODO: Currently store axes with each histogram; not ideal!
-        results_alphas = {
-            "alphas": h_stds,
+        results_fits = {
             "fits": h_fits,
             "slopes": h_slopes,
         }
-        self.output()["alphas"].dump(results_alphas, formatter="pickle")
+        self.output()["fits"].dump(results_fits, formatter="pickle")
