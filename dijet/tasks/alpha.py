@@ -153,28 +153,28 @@ class AlphaExtrapolation(HistogramsBaseTask):
         self.output()["widths"].dump(results_widths, formatter="pickle")
 
         # Get max alpha for fit; usually 0.3
-        max_lin_alpha = np.where(np.isclose(h_all.axes["dijets_alpha"].edges, 0.3))[0][0]
+        amax = 0.3  # TODO: define in config
+        h_stds = h_stds[{"dijets_alpha": slice(0,hist.loc(amax))}]
 
         # TODO: Use correlated fit
-        def fit_linear(subarray, max):
-            subarray = subarray[:max]
+        def fit_linear(subarray):
+            alphas = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3])
             fitting = ~np.isnan(subarray)
             if len(subarray[fitting]) < 2:
                 coefficients = [0, 0]
             else:
-                coefficients = np.polyfit(amax[fitting], subarray[fitting], 1)
+                coefficients = np.polyfit(alphas[fitting], subarray[fitting], 1)
             return coefficients
         # TODO: Fit Messungen abspeichern (chi2, ndf, etc.) for diagnostic
-        fits = np.apply_along_axis(fit_linear, axis=1, arr=h_stds.view().value, max=max_lin_alpha)
+        fits = np.apply_along_axis(fit_linear, axis=axes_names.index("dijets_alpha"), arr=h_stds.view().value)
 
         # NOTE: store fits into hist.
-
         h_fits = h_stds.copy()
         # Remove axis for alpha for histogram
         h_fits = h_fits[{"dijets_alpha": sum}]
-        # Interception of fit with y axis stored in index 0
+        # y intercept of fit (x=0)
         h_fits.view().value = fits[:,0,:,:]
-        # Errors temporary used; Later get:
+        # Errors temporarly used; Later get:
         # Error on fit from fit function (how?) or new method with three fits
         h_fits.view().variance = np.ones(h_fits.shape)
 
