@@ -78,7 +78,7 @@ class JER(HistogramsBaseTask):
 
         # TODO: Define eta bin in config
         # NOTE: weighting number by appearence in eta regions
-        jer_ref = np.mean(view.value[index_methods["sm"], :5, 0], axis=0).reshape(1, -1)
+        jer_ref = np.mean(view.value[index_methods["sm"], :5, :], axis=0).reshape(1, -1)
         view.value[index_methods["fe"]] = np.sqrt(4 * view.value[index_methods["fe"], :, :]**2 - jer_ref**2)
 
         results_jers = {
