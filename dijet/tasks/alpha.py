@@ -140,10 +140,11 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # Get max alpha for fit; usually 0.3
         amax = 0.3  # TODO: define in config
         h_stds = h_stds[{"dijets_alpha": slice(0, hist.loc(amax))}]
+        # exclude 0, the first bin, from alpha edges
+        alphas = h_stds.axes["dijets_alpha"].edges[1:]
 
         # TODO: Use correlated fit
         def fit_linear(subarray):
-            alphas = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3])
             fitting = ~np.isnan(subarray)
             if len(subarray[fitting]) < 2:
                 coefficients = [0, 0]
