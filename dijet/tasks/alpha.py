@@ -109,6 +109,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # Get widths of asymmetries
         asyms = h_all.axes["dijets_asymmetry"].centers
         # Take mean value from normalized asymmetry
+        assert axes_names[-1] == "dijets_asymmetry", "asymmetry axis must come last"
         means = np.nansum(
             asyms * h_all.view().value,
             axis=-1,
