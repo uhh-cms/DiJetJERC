@@ -60,28 +60,45 @@ class JER(HistogramsBaseTask):
         return outp
 
     def run(self):
+        # load extrapolation results
         results_extrapolation = self.load_extrapolation()
 
-        # ### Now JER SM Data
-        jer = results_extrapolation["intercepts"].copy()
-        view = jer.view()
+        # get extrapolated distribution widths
+        h_widths = results_extrapolation["intercepts"]
 
-        # Get index of method to change methods individually
-        # hist.view() only works if the full histgram is taken w.o. selecting the categories before hand
+        # get index on `category` axis corresponding to
+        # the two computation methods
         category_id = {"sm": 1, "fe": 2}
-        # Get list of categories with the correct order
-        categories = list(jer.axes["category"])
+        categories = list(h_widths.axes["category"])
         index_methods = {m: categories.index(category_id[m]) for m in category_id}
 
-        # calcuate jer for standard method
-        view.value[index_methods["sm"]] = view.value[index_methods["sm"], :, :] * np.sqrt(2)
+        # calcuate JER for standard method
+        jer_sm_val = h_widths[index_methods["sm"], :, :].view().value * np.sqrt(2)
+        jer_sm_err = np.sqrt(h_widths[index_methods["sm"], :, :].view().variance) * np.sqrt(2)
 
+        # average over first few eta bins to get
+        # reference JER for forward method
         # TODO: Define eta bin in config
-        # NOTE: weighting number by appearence in eta regions
-        jer_ref = np.mean(view.value[index_methods["sm"], :5, :], axis=0, keepdims=True)
-        view.value[index_methods["fe"]] = np.sqrt(4 * view.value[index_methods["fe"], :, :]**2 - jer_ref**2)
+        jer_ref_val = np.mean(jer_sm_val[:5, :], axis=0, keepdims=True)
+        jer_ref_err = np.mean(jer_sm_err[:5, :], axis=0, keepdims=True)
+
+        # calculate JER for forward extension method
+        jer_fe_val = np.sqrt(4 * h_widths[index_methods["fe"], :, :].view().value**2 - jer_ref_val**2)
+        term_probe = 2 * h_widths[index_methods["fe"], :, :].values() * h_widths[index_methods["fe"], :, :].variances()
+        term_ref = jer_ref_val * jer_ref_err
+        jer_fe_err = np.sqrt(term_probe**2 + term_ref**2) / jer_fe_val
+
+        # create output histogram and view for filling
+        h_jer = h_widths.copy()
+        v_jer = h_jer.view()
+
+        # write JER values to output histogram
+        v_jer[index_methods["sm"], :, :].value = jer_sm_val
+        v_jer[index_methods["sm"], :, :].variance = jer_sm_err**2
+        v_jer[index_methods["fe"], :, :].value = jer_fe_val
+        v_jer[index_methods["fe"], :, :].variance = jer_fe_err**2
 
         results_jers = {
-            "jer": jer,
+            "jer": h_jer,
         }
         self.output()["jers"].dump(results_jers, formatter="pickle")
