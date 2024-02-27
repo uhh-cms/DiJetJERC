@@ -160,9 +160,9 @@ class AlphaExtrapolation(HistogramsBaseTask):
 
         h_slopes = h_fits.copy()
         # Slope of fit stored in index 1
-        h_fits.view().value = fits[:, 1, :, :]
+        h_slopes.view().value = fits[:, 1, :, :]
         # Only stored for plotting, no defined error
-        h_fits.view().variance = np.zeros(h_fits.shape)
+        h_slopes.view().variance = np.zeros(h_fits.shape)
 
         results_fits = {
             "fits": h_fits,
