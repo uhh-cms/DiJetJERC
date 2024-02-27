@@ -130,6 +130,8 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
 @dijet_balance.init
 def dijet_balance_init(self: Producer) -> None:
+    if not getattr(self, "dataset_inst", None):
+        return
     if self.dataset_inst.is_mc:
         self.uses |= {
             "GenJet.pt",

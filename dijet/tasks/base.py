@@ -9,7 +9,7 @@ import law
 
 from columnflow.tasks.framework.base import BaseTask, ShiftTask
 from columnflow.tasks.framework.mixins import (
-    CalibratorsMixin, ProducersMixin,
+    CalibratorsMixin, SelectorMixin, ProducersMixin,
     VariablesMixin, DatasetsProcessesMixin, CategoriesMixin,
 )
 from columnflow.config_util import get_datasets_from_process
@@ -26,6 +26,7 @@ class HistogramsBaseTask(
     CategoriesMixin,
     VariablesMixin,
     ProducersMixin,
+    SelectorMixin,
     CalibratorsMixin,
     ShiftTask,
     law.LocalWorkflow,
@@ -70,7 +71,7 @@ class HistogramsBaseTask(
                 "no single user-supplied dataset matched "
                 f"process `{self.branch_data.process}`"
             )
-        
+
         # set MC flag if any of the filtered datasets
         datasets_filtered_is_mc = set(
             self.config_inst.get_dataset(d).is_mc
@@ -84,7 +85,7 @@ class HistogramsBaseTask(
         # return filtered datasets and is_mc flag
         return (
             datasets_filtered,
-            list(datasets_filtered_is_mc)[0]
+            list(datasets_filtered_is_mc)[0],
         )
 
     def create_branch_map(self):
