@@ -164,11 +164,11 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # Error on fit from fit function (how?) or new method with three fits
         h_intercepts.view().variance = np.ones(h_intercepts.shape)
 
-        h_slopes = h_fits.copy()
+        h_slopes = h_intercepts.copy()
         # Slope of fit stored in index 1
         h_slopes.view().value = fits[:, 1, :, :]
         # Only stored for plotting, no defined error
-        h_slopes.view().variance = np.zeros(h_fits.shape)
+        h_slopes.view().variance = np.zeros(h_slopes.shape)
 
         results_extrapolation = {
             "intercepts": h_intercepts,

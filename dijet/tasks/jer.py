@@ -63,7 +63,8 @@ class JER(HistogramsBaseTask):
         results_extrapolation = self.load_extrapolation()
 
         # ### Now JER SM Data
-        widths = results_extrapolation["intercepts"].copy()
+        jer = results_extrapolation["intercepts"].copy()
+        view = jer.view()
 
         # Get index of method to change methods individually
         # hist.view() only works if the full histgram is taken w.o. selecting the categories before hand
