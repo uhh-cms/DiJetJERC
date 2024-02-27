@@ -73,8 +73,8 @@ class JER(HistogramsBaseTask):
         index_methods = {m: categories.index(category_id[m]) for m in category_id}
 
         # calcuate JER for standard method
-        jer_sm_val = h_widths[index_methods["sm"], :, :].view().value * np.sqrt(2)
-        jer_sm_err = np.sqrt(h_widths[index_methods["sm"], :, :].view().variance) * np.sqrt(2)
+        jer_sm_val = h_widths[index_methods["sm"], :, :].values() * np.sqrt(2)
+        jer_sm_err = np.sqrt(h_widths[index_methods["sm"], :, :].variances()) * np.sqrt(2)
 
         # average over first few eta bins to get
         # reference JER for forward method
@@ -83,7 +83,7 @@ class JER(HistogramsBaseTask):
         jer_ref_err = np.mean(jer_sm_err[:5, :], axis=0, keepdims=True)
 
         # calculate JER for forward extension method
-        jer_fe_val = np.sqrt(4 * h_widths[index_methods["fe"], :, :].view().value**2 - jer_ref_val**2)
+        jer_fe_val = np.sqrt(4 * h_widths[index_methods["fe"], :, :].values()**2 - jer_ref_val**2)
         term_probe = 2 * h_widths[index_methods["fe"], :, :].values() * h_widths[index_methods["fe"], :, :].variances()
         term_ref = jer_ref_val * jer_ref_err
         jer_fe_err = np.sqrt(term_probe**2 + term_ref**2) / jer_fe_val
