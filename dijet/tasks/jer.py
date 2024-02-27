@@ -46,8 +46,8 @@ class JER(HistogramsBaseTask):
         reqs["key"] = self.as_branch().requires()
         return reqs
 
-    def load_widths(self):
-        histogram = self.input().collection[0]["fits"].load(formatter="pickle")
+    def load_extrapolation(self):
+        histogram = self.input().collection[0]["extrapolation"].load(formatter="pickle")
         return histogram
 
     def output(self) -> dict[law.FileSystemTarget]:
@@ -60,11 +60,10 @@ class JER(HistogramsBaseTask):
         return outp
 
     def run(self):
-        widths = self.load_widths()
+        results_extrapolation = self.load_extrapolation()
 
         # ### Now JER SM Data
-        jer = widths["fits"].copy()
-        view = jer.view()
+        widths = results_extrapolation["intercepts"].copy()
 
         # Get index of method to change methods individually
         # hist.view() only works if the full histgram is taken w.o. selecting the categories before hand

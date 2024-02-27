@@ -64,7 +64,7 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # declare the main target
         outp = {
             "widths": target.child("widths.pickle", type="f"),
-            "fits": target.child("fits.pickle", type="f"),
+            "extrapolation": target.child("extrapolation.pickle", type="f"),
             "asym": target.child("asym.pickle", type="f", optional=True),
         }
         return outp
@@ -91,13 +91,15 @@ class AlphaExtrapolation(HistogramsBaseTask):
         #       New structure of base histogram task necessary
         axes_names = [a.name for a in h_all.axes]
         view = h_all.view()
+
+        # replace histogram contents with cumulative sum over alpha bins
         view.value = np.apply_along_axis(np.cumsum, axis=axes_names.index("dijets_alpha"), arr=view.value)
         view.variance = np.apply_along_axis(np.cumsum, axis=axes_names.index("dijets_alpha"), arr=view.variance)
 
         # Get integral of asymmetries as array
         integral = h_all.values().sum(axis=axes_names.index("dijets_asymmetry"), keepdims=True)
 
-        # Get normalized asymmetries
+        # normalize histogram to integral over asymmetry
         view.value = view.value / integral
         view.variance = view.variance / integral**2
 
@@ -123,6 +125,8 @@ class AlphaExtrapolation(HistogramsBaseTask):
             ),
         )
         # Get stds error; squeeze to reshape integral from (x,y,z,1) to (x,y,z)
+        # note: error on std deviation analogous to implementation in ROOT::TH1
+        # https://root.cern/doc/v630/TH1_8cxx_source.html#l07520
         h_stds.view().variance = h_stds.view().value**2 / (2 * np.squeeze(integral))
 
         # Store alphas here to get alpha up to 1
@@ -145,18 +149,18 @@ class AlphaExtrapolation(HistogramsBaseTask):
             else:
                 coefficients = np.polyfit(alphas[fitting], subarray[fitting], 1)
             return coefficients
-        # TODO: Fit Messungen abspeichern (chi2, ndf, etc.) for diagnostic
+        # TODO: save fit results (chi2, ndf, etc.) for diagnostic
         fits = np.apply_along_axis(fit_linear, axis=axes_names.index("dijets_alpha"), arr=h_stds.view().value)
 
         # NOTE: store fits into hist.
-        h_fits = h_stds.copy()
+        h_intercepts = h_stds.copy()
         # Remove axis for alpha for histogram
-        h_fits = h_fits[{"dijets_alpha": sum}]
+        h_intercepts = h_intercepts[{"dijets_alpha": sum}]
         # y intercept of fit (x=0)
-        h_fits.view().value = fits[:, 0, :, :]
+        h_intercepts.view().value = fits[:, 0, :, :]
         # Errors temporarly used; Later get:
         # Error on fit from fit function (how?) or new method with three fits
-        h_fits.view().variance = np.ones(h_fits.shape)
+        h_intercepts.view().variance = np.ones(h_intercepts.shape)
 
         h_slopes = h_fits.copy()
         # Slope of fit stored in index 1
@@ -164,8 +168,8 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # Only stored for plotting, no defined error
         h_slopes.view().variance = np.zeros(h_fits.shape)
 
-        results_fits = {
-            "fits": h_fits,
+        results_extrapolation = {
+            "intercepts": h_intercepts,
             "slopes": h_slopes,
         }
-        self.output()["fits"].dump(results_fits, formatter="pickle")
+        self.output()["extrapolation"].dump(results_extrapolation, formatter="pickle")
