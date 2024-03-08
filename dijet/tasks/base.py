@@ -41,6 +41,9 @@ class HistogramsBaseTask(
     # Add nested sibling directories to output path
     output_collection_cls = law.NestedSiblingFileCollection
 
+    # Category ID for methods
+    category_id = {"sm": 1, "fe": 2}
+
     def get_datasets(self) -> tuple[list[str], bool]:
         """
         Select datasets belonging to the `process` of the current branch task.
