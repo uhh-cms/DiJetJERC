@@ -3,7 +3,7 @@
 import law
 
 from dijet.tasks.base import HistogramsBaseTask
-from columnflow.util import maybe_import, import_ROOT
+from columnflow.util import maybe_import
 from columnflow.tasks.framework.base import Requirements
 
 from dijet.tasks.jer import JER
@@ -63,7 +63,6 @@ class JERtoRoot(HistogramsBaseTask):
         jer = results_jer["jer"]
 
         eta_bins = jer.axes["probejet_abseta"].edges
-        eta_centers = jer.axes["probejet_abseta"].centers
 
         # Get error for pt bins. These will be symmetrical for the moment
         # TODO: Define pt value by the mean value of the pt in given a pt bin
@@ -74,15 +73,15 @@ class JERtoRoot(HistogramsBaseTask):
 
         def get_eta_bins(self, i: int):
             up = "{:.3f}".format(eta_bins[i])
-            do = "{:.3f}".format(eta_bins[i+1])
-            bin_low = up.replace(".","p")
-            bin_high = do.replace(".","p")
+            do = "{:.3f}".format(eta_bins[i + 1])
+            bin_low = up.replace(".", "p")
+            bin_high = do.replace(".", "p")
             return bin_low, bin_high
 
         # Store values for TGraphAsymmError in dictionary and convert with additional script.
         results_jers = {}
         for m in self.category_id:
-            for i in range(len(eta_bins)-1):
+            for i in range(len(eta_bins) - 1):
                 low, high = get_eta_bins(self, i)
                 tmp = jer[
                     {
@@ -92,7 +91,7 @@ class JERtoRoot(HistogramsBaseTask):
                 ]
                 jers = tmp.values()
                 jers_errors = tmp.variances()
-                assert len(jers)==len(pt_centers), f"Check number of bins for {i}"
+                assert len(jers) == len(pt_centers), f"Check number of bins for {i}"
                 results_jers[f"jer_eta_{low}_{high}_{m}"] = {
                     "fY": jers,
                     "fYerrUp": jers_errors,

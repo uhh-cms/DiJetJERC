@@ -60,8 +60,8 @@ class HistogramsBaseTask(
         # check that at least one config dataset matched
         if not dataset_insts_from_process:
             raise RuntimeError(
-                "no single dataset found in config matching "
-                f"process `{self.branch_data.process}`"
+                "no single dataset found in config matching ",
+                f"process `{self.branch_data.process}`",
             )
 
         # filter to contain only user-supplied datasets
@@ -71,8 +71,8 @@ class HistogramsBaseTask(
         # check that at least one user-supplied dataset matched
         if not datasets_filtered:
             raise RuntimeError(
-                "no single user-supplied dataset matched "
-                f"process `{self.branch_data.process}`"
+                "no single user-supplied dataset matched ",
+                f"process `{self.branch_data.process}`",
             )
 
         # set MC flag if any of the filtered datasets
@@ -82,7 +82,7 @@ class HistogramsBaseTask(
         )
         if len(datasets_filtered_is_mc) > 1:
             raise RuntimeError(
-                "filtered datasets have mismatched `is_mc` flags"
+                "filtered datasets have mismatched `is_mc` flags",
             )
 
         # return filtered datasets and is_mc flag

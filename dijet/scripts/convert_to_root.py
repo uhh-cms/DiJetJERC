@@ -20,19 +20,19 @@ import pickle
 import ROOT
 
 # Filter sys.path to remove Python 3.9 specific paths
-# Conflicts of 3.9 to 3.6. 
+# Conflicts of 3.9 to 3.6.
 # Second option is to sort sys.path and move paths from 3.9 to bottom
 sys.path = [p for p in sys.path if "python3.9" not in p]
 
 # Set up argument parser
-parser = argparse.ArgumentParser(description='Read a pickle file with JERs and convert them to root objects.')
-parser.add_argument('--config', default='config_2017', help='Configuration name (default: config_2017)')
-parser.add_argument('--shift', default='nominal', help='Shift type (default: nominal)')
-parser.add_argument('--uncertainty', default='skip_jecunc', help='Uncertainty type (default: skip_jecunc)')
-parser.add_argument('--selector', default='default', help='Selector type (default: default)')
-parser.add_argument('--producer', default='default', help='Producer type (default: default)')
-parser.add_argument('--version', required=True, help='Version, must be specified.')
-parser.add_argument('--sample', required=True, help='Sample name, must be specified.')
+parser = argparse.ArgumentParser(description="Read a pickle file with JERs and convert them to root objects.")
+parser.add_argument("--config", default="config_2017", help="Configuration name (default: config_2017)")
+parser.add_argument("--shift", default="nominal", help="Shift type (default: nominal)")
+parser.add_argument("--uncertainty", default="skip_jecunc", help="Uncertainty type (default: skip_jecunc)")
+parser.add_argument("--selector", default="default", help="Selector type (default: default)")
+parser.add_argument("--producer", default="default", help="Producer type (default: default)")
+parser.add_argument("--version", required=True, help="Version, must be specified.")
+parser.add_argument("--sample", required=True, help="Sample name, must be specified.")
 
 # Parse the command-line arguments
 args = parser.parse_args()
@@ -61,7 +61,7 @@ if not os.path.exists(full_path):
     raise Exception(f"The file {full_path} does not exist.")
 
 # Load and display the contents of the pickle file
-with open(full_path, 'rb') as file:
+with open(full_path, "rb") as file:
     data = pickle.load(file)
 
 # Store root file in output directory from analysis
@@ -72,16 +72,14 @@ os.makedirs(os.path.dirname(root_path), exist_ok=True)
 root_file = ROOT.TFile(root_path, "RECREATE")
 
 for key, value in data.items():
-    # Extract data for TGraphAsymmErrors
-    # mask = value['fX'].nonzero()
-    n = len(value['fX'])
-    x = value['fX']
-    y = value['fY']
-    xerrup = value['fXerrUp']
-    xerrdown = value['fXerrDown']
-    yerrup = value['fYerrUp']
-    yerrdown = value['fYerrDown']
-    
+    n = len(value["fX"])
+    x = value["fX"]
+    y = value["fY"]
+    xerrup = value["fXerrUp"]
+    xerrdown = value["fXerrDown"]
+    yerrup = value["fYerrUp"]
+    yerrdown = value["fYerrDown"]
+
     # Create TGraphAsymmErrors object
     graph = ROOT.TGraphAsymmErrors(n, y, x, yerrdown, yerrup, xerrdown, xerrup)
 
