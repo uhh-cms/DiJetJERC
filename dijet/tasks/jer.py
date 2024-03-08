@@ -94,10 +94,10 @@ class JER(HistogramsBaseTask):
         v_jer = h_jer.view()
 
         # write JER values to output histogram
-        v_jer[index_methods["sm"], :, :].value = jer_sm_val
-        v_jer[index_methods["sm"], :, :].variance = jer_sm_err**2
-        v_jer[index_methods["fe"], :, :].value = jer_fe_val
-        v_jer[index_methods["fe"], :, :].variance = jer_fe_err**2
+        v_jer[index_methods["sm"], :, :].value = np.nan_to_num(jer_sm_val)
+        v_jer[index_methods["sm"], :, :].variance = np.nan_to_num(jer_sm_err**2)
+        v_jer[index_methods["fe"], :, :].value = np.nan_to_num(jer_fe_val)
+        v_jer[index_methods["fe"], :, :].variance = np.nan_to_num(jer_fe_err**2)
 
         results_jers = {
             "jer": h_jer,
