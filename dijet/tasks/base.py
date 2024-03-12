@@ -42,7 +42,7 @@ class HistogramsBaseTask(
     output_collection_cls = law.NestedSiblingFileCollection
 
     # Category ID for methods
-    category_id = {"sm": 1, "fe": 2}
+    LOOKUP_CATEGORY_ID = {"sm": 1, "fe": 2}
 
     def get_datasets(self) -> tuple[list[str], bool]:
         """

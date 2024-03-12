@@ -8,13 +8,7 @@ from columnflow.tasks.framework.base import Requirements
 
 from dijet.tasks.jer import JER
 
-ak = maybe_import("awkward")
 hist = maybe_import("hist")
-np = maybe_import("numpy")
-plt = maybe_import("matplotlib.pyplot")
-mplhep = maybe_import("mplhep")
-it = maybe_import("itertools")
-up = maybe_import("uproot")
 
 
 class JERtoRoot(HistogramsBaseTask):
@@ -60,45 +54,51 @@ class JERtoRoot(HistogramsBaseTask):
 
     def run(self):
         results_jer = self.load_jer()
-        jer = results_jer["jer"]
+        h_jer = results_jer["jer"]
 
-        eta_bins = jer.axes["probejet_abseta"].edges
+        # get pt bins (errors symmetrical for now)
+        pt_bins = h_jer.axes["dijets_pt_avg"].edges
+        pt_centers = h_jer.axes["dijets_pt_avg"].centers
+        pt_error_lo = pt_centers - pt_bins[:-1]
+        pt_error_hi = pt_bins[1:] - pt_centers
 
-        # Get error for pt bins. These will be symmetrical for the moment
-        # TODO: Define pt value by the mean value of the pt in given a pt bin
-        pt_bins = jer.axes["dijets_pt_avg"].edges
-        pt_centers = jer.axes["dijets_pt_avg"].centers
-        pt_error_low = pt_centers - pt_bins[:-1]
-        pt_error_high = pt_bins[1:] - pt_centers
-
-        def get_eta_bins(self, i: int):
-            up = "{:.3f}".format(eta_bins[i])
-            do = "{:.3f}".format(eta_bins[i + 1])
-            bin_low = up.replace(".", "p")
-            bin_high = do.replace(".", "p")
-            return bin_low, bin_high
-
-        # Store values for TGraphAsymmError in dictionary and convert with additional script.
+        # compute and store values for building `TGraphAsymmError`
+        # in external script
         results_jers = {}
-        for m in self.category_id:
-            for i in range(len(eta_bins) - 1):
-                low, high = get_eta_bins(self, i)
-                tmp = jer[
+        abseta_bins = h_jer.axes["probejet_abseta"].edges
+        for method in self.LOOKUP_CATEGORY_ID:
+            for abseta_lo, abseta_hi in zip(
+                abseta_bins[:-1],
+                abseta_bins[1:],
+            ):
+                 
+                abseta_lo_str = f"{abseta_lo:.3f}".replace(".", "p")
+                abseta_hi_str = f"{abseta_hi:.3f}".replace(".", "p")
+                abseta_str = f"abseta_{abseta_lo_str}_{abseta_hi_str}"
+
+                abseta_center = (abseta_lo + abseta_hi) / 2
+                h_jer_category_abseta = h_jer[
                     {
-                        "category": hist.loc(self.category_id[m]),
-                        "probejet_abseta": i,
+                        "category": hist.loc(self.LOOKUP_CATEGORY_ID[method]),
+                        "probejet_abseta": hist.loc(abseta_center),
                     }
                 ]
-                jers = tmp.values()
-                jers_errors = tmp.variances()
-                assert len(jers) == len(pt_centers), f"Check number of bins for {i}"
-                results_jers[f"jer_eta_{low}_{high}_{m}"] = {
+
+                jers = h_jer_category_abseta.values()
+                jers_errors = h_jer_category_abseta.variances()
+
+                # sanity check
+                assert len(jers) == len(pt_centers), f"check number of bins for {abseta_str!r}"
+
+                # store results
+                results_jers[f"jer_{abseta_str}_{method}"] = {
                     "fY": jers,
                     "fYerrUp": jers_errors,
                     "fYerrDown": jers_errors,
                     "fX": pt_centers,
-                    "fXerrUp": pt_error_high,
-                    "fXerrDown": pt_error_low,
+                    "fXerrUp": pt_error_hi,
+                    "fXerrDown": pt_error_lo,
                 }
 
+        # store results
         self.output()["jers"].dump(results_jers, formatter="pickle")
