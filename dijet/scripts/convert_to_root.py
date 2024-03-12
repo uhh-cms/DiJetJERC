@@ -42,17 +42,18 @@ for arg in vars(args):
     print(f"{arg}: {getattr(args, arg)}")
 
 # Construct the file path
-base_path = "/nfs/dust/cms/user/paaschal/WorkingArea/Analysis/JERC/DiJet/data/dijet_store/analysis_dijet/"
+base_path = os.getenv("CF_STORE_LOCAL")
 full_path = os.path.join(
     base_path,
-    "dijet.JERtoRoot/",
-    f"{args.config}/",
-    f"{args.shift}/",
-    f"calib__{args.uncertainty}/",
+    "analysis_dijet",
+    "dijet.JERtoRoot",
+    f"{args.config}",
+    f"{args.shift}",
+    f"calib__{args.uncertainty}",
     f"sel__{args.selector}",
-    f"prod__{args.producer}/",
-    f"{args.version}/",
-    f"{args.sample}/",
+    f"prod__{args.producer}",
+    f"{args.version}",
+    f"{args.sample}",
     "jers.pickle",
 )
 
