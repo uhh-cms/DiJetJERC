@@ -23,6 +23,7 @@ np = maybe_import("numpy")
 def trigger_selection(
     self: Selector,
     events: ak.Array,
+    data_only: bool = True,
     **kwargs,
 ) -> Tuple[ak.Array, SelectionResult]:
 
