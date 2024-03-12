@@ -71,7 +71,7 @@ class JERtoRoot(HistogramsBaseTask):
                 abseta_bins[:-1],
                 abseta_bins[1:],
             ):
-                 
+
                 abseta_lo_str = f"{abseta_lo:.3f}".replace(".", "p")
                 abseta_hi_str = f"{abseta_hi:.3f}".replace(".", "p")
                 abseta_str = f"abseta_{abseta_lo_str}_{abseta_hi_str}"

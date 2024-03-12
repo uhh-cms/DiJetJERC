@@ -60,7 +60,7 @@ class HistogramsBaseTask(
         # check that at least one config dataset matched
         if not dataset_insts_from_process:
             raise RuntimeError(
-                "no single dataset found in config matching ",
+                "no single dataset found in config matching "
                 f"process `{self.branch_data.process}`",
             )
 
@@ -71,7 +71,7 @@ class HistogramsBaseTask(
         # check that at least one user-supplied dataset matched
         if not datasets_filtered:
             raise RuntimeError(
-                "no single user-supplied dataset matched ",
+                "no single user-supplied dataset matched "
                 f"process `{self.branch_data.process}`",
             )
 
