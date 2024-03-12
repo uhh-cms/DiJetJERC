@@ -36,7 +36,7 @@ def jet_selection(
         (abs(events.Jet.eta) < 5.2) &
         # IDs in NanoAOD https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD
         (events.Jet.jetId == 6) &  # 2: fail tight LepVeto and 6: pass tightLepVeto
-        (events.Jet.puId == 7)  # pass all IDs (l, m and t)
+        ( (events.Jet.puId == 7) | (events.Jet.pt > 50))  # pass all IDs (l, m and t) only for jets with pt < 50 GeV
     )
     jet_sel = ak.num(events.Jet[jet_mask]) >= 2
 
