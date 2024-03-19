@@ -7,7 +7,7 @@ Keep eye on uprrot PR https://github.com/scikit-hep/uproot5/pull/1144
 to directly implement it in the task itself.
 
 Root is not in Sandboxes from CF.
-Needs to be run with python 3.6 isntead.
+Needs to be run with python 3.6 instead.
 
 Structure of arguments is based on CF output. Run via
 ./convert_to_root.py --version <v> --sample <dataset> --<option> <arg> ...
@@ -28,7 +28,7 @@ sys.path = [p for p in sys.path if "python3.9" not in p]
 parser = argparse.ArgumentParser(description="Read a pickle file with JERs and convert them to root objects.")
 parser.add_argument("--config", default="config_2017", help="Configuration name (default: config_2017)")
 parser.add_argument("--shift", default="nominal", help="Shift type (default: nominal)")
-parser.add_argument("--uncertainty", default="skip_jecunc", help="Uncertainty type (default: skip_jecunc)")
+parser.add_argument("--calibrator", default="skip_jecunc", help="Calibrator type (default: skip_jecunc)")
 parser.add_argument("--selector", default="default", help="Selector type (default: default)")
 parser.add_argument("--producer", default="default", help="Producer type (default: default)")
 parser.add_argument("--version", required=True, help="Version, must be specified.")
@@ -49,7 +49,7 @@ full_path = os.path.join(
     "dijet.JERtoRoot",
     f"{args.config}",
     f"{args.shift}",
-    f"calib__{args.uncertainty}",
+    f"calib__{args.calibrator}",
     f"sel__{args.selector}",
     f"prod__{args.producer}",
     f"{args.version}",
