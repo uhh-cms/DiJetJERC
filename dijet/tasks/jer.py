@@ -68,9 +68,8 @@ class JER(HistogramsBaseTask):
 
         # get index on `category` axis corresponding to
         # the two computation methods
-        category_id = {"sm": 1, "fe": 2}
         categories = list(h_widths.axes["category"])
-        index_methods = {m: categories.index(category_id[m]) for m in category_id}
+        index_methods = {m: categories.index(self.LOOKUP_CATEGORY_ID[m]) for m in self.LOOKUP_CATEGORY_ID}
 
         # calcuate JER for standard method
         jer_sm_val = h_widths[index_methods["sm"], :, :].values() * np.sqrt(2)
@@ -94,10 +93,10 @@ class JER(HistogramsBaseTask):
         v_jer = h_jer.view()
 
         # write JER values to output histogram
-        v_jer[index_methods["sm"], :, :].value = jer_sm_val
-        v_jer[index_methods["sm"], :, :].variance = jer_sm_err**2
-        v_jer[index_methods["fe"], :, :].value = jer_fe_val
-        v_jer[index_methods["fe"], :, :].variance = jer_fe_err**2
+        v_jer[index_methods["sm"], :, :].value = np.nan_to_num(jer_sm_val, nan=0.0)
+        v_jer[index_methods["sm"], :, :].variance = np.nan_to_num(jer_sm_err**2, nan=0.0)
+        v_jer[index_methods["fe"], :, :].value = np.nan_to_num(jer_fe_val, nan=0.0)
+        v_jer[index_methods["fe"], :, :].variance = np.nan_to_num(jer_fe_err**2, nan=0.0)
 
         results_jers = {
             "jer": h_jer,

@@ -41,6 +41,9 @@ class HistogramsBaseTask(
     # Add nested sibling directories to output path
     output_collection_cls = law.NestedSiblingFileCollection
 
+    # Category ID for methods
+    LOOKUP_CATEGORY_ID = {"sm": 1, "fe": 2}
+
     def get_datasets(self) -> tuple[list[str], bool]:
         """
         Select datasets belonging to the `process` of the current branch task.
@@ -58,7 +61,7 @@ class HistogramsBaseTask(
         if not dataset_insts_from_process:
             raise RuntimeError(
                 "no single dataset found in config matching "
-                f"process `{self.branch_data.process}`"
+                f"process `{self.branch_data.process}`",
             )
 
         # filter to contain only user-supplied datasets
@@ -69,7 +72,7 @@ class HistogramsBaseTask(
         if not datasets_filtered:
             raise RuntimeError(
                 "no single user-supplied dataset matched "
-                f"process `{self.branch_data.process}`"
+                f"process `{self.branch_data.process}`",
             )
 
         # set MC flag if any of the filtered datasets
@@ -79,7 +82,7 @@ class HistogramsBaseTask(
         )
         if len(datasets_filtered_is_mc) > 1:
             raise RuntimeError(
-                "filtered datasets have mismatched `is_mc` flags"
+                "filtered datasets have mismatched `is_mc` flags",
             )
 
         # return filtered datasets and is_mc flag
