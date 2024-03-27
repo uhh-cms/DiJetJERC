@@ -27,3 +27,13 @@ dijet_jer(){
     --variables dijets_alpha-probejet_abseta-dijets_pt_avg-dijets_asymmetry  \
     --remove-output 0,a,y
 }
+
+dijet_plot_asym(){
+    law run dijet.PlotAsymmetries                                            \
+    --config config_2017                                                     \
+    --version sync_alpha                                                     \
+    --datasets data_jetht_f,mc                                               \
+    --processes data,qcd                                                     \
+    --variables dijets_alpha-probejet_abseta-dijets_pt_avg-dijets_asymmetry  \
+    --remove-output 0,a,y
+}
