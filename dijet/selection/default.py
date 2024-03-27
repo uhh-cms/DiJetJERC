@@ -90,8 +90,9 @@ def default(
 
     # trigger selection
     # Uses pt_avg and the probe jet
-    events, results_trigger = self[trigger_selection](events, **kwargs)
-    results += results_trigger
+    if self.dataset_inst.is_data:
+        events, results_trigger = self[trigger_selection](events, **kwargs)
+        results += results_trigger
 
     events, results_dijet = self[dijet_selection](events, **kwargs)
     results += results_dijet
