@@ -81,7 +81,7 @@ class PlotAsymmetries(PlottingBaseTask):
             label="MC",
         )
         plt.scatter(asym.flatten(), data.flatten(), marker="o", color="black", label="Data")
-        ax.set_xlabel("A")
+        ax.set_xlabel("Asymmetry")
         ax.set_ylabel(r"$\Delta$N/N")
         return fig, ax
 
