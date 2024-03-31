@@ -89,8 +89,9 @@ class PlotAsymmetries(PlottingBaseTask):
         asymm_data, asymm_mc = self.load_asymmetry()
 
         eta_lo, eta_hi = self.branch_data.eta
-        asymm_data = asymm_data[{"probejet_abseta": hist.loc(eta_lo), "dijets_alpha": slice(0, hist.loc(0.3))}]
-        asymm_mc = asymm_mc[{"probejet_abseta": hist.loc(eta_lo), "dijets_alpha": slice(0, hist.loc(0.3))}]
+        eta_midp = 0.5 * (eta_lo + eta_hi)
+        asymm_data = asymm_data[{"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+        asymm_mc = asymm_mc[{"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
 
         asymm_data.view().value = np.nan_to_num(asymm_data.view().value, nan=0.0)
         asymm_data.view().variance = np.nan_to_num(asymm_data.view().variance, nan=0.0)
