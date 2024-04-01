@@ -9,6 +9,7 @@ from columnflow.tasks.framework.base import Requirements
 
 from dijet.tasks.alpha import AlphaExtrapolation
 from dijet.constants import eta
+from dijet.plotting.util import eta_bin, pt_bin, alpha_bin, add_text, dot_to_p
 
 hist = maybe_import("hist")
 np = maybe_import("numpy")
@@ -60,8 +61,8 @@ class PlotAsymmetries(PlottingBaseTask):
         target = self.target(f"{sample}", dir=True)
         # declare the main target
         eta_lo, eta_hi = self.branch_data.eta
-        n_eta_lo = self.dot_to_p(eta_lo)
-        n_eta_hi = self.dot_to_p(eta_hi)
+        n_eta_lo = dot_to_p(eta_lo)
+        n_eta_hi = dot_to_p(eta_hi)
         outp = {
             "single": target.child(f"eta_{n_eta_lo}_{n_eta_hi}", type="d"),
             "dummy": target.child(f"eta_{n_eta_lo}_{n_eta_hi}/dummy.txt", type="f"),
@@ -109,8 +110,8 @@ class PlotAsymmetries(PlottingBaseTask):
         pos_y = 0.95
         offset = 0.05
 
-        text_eta_bin = self.eta_bin(eta_lo, eta_hi)
-        store_bin_eta = f"eta_{self.dot_to_p(eta_lo)}_{self.dot_to_p(eta_hi)}"
+        text_eta_bin = eta_bin(eta_lo, eta_hi)
+        store_bin_eta = f"eta_{dot_to_p(eta_lo)}_{dot_to_p(eta_hi)}"
 
         for m in self.LOOKUP_CATEGORY_ID:
             for ip, (pt_lo, pt_hi) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
@@ -133,16 +134,16 @@ class PlotAsymmetries(PlottingBaseTask):
                         data=True,
                     )
 
-                    self.add_text(ax, pos_x, pos_y, text_eta_bin)
-                    self.add_text(ax, pos_x, pos_y, self.pt_bin(pt_lo, pt_hi), offset=offset)
-                    self.add_text(ax, pos_x, pos_y, self.alpha_bin(a), offset=2 * offset)
+                    add_text(ax, pos_x, pos_y, text_eta_bin)
+                    add_text(ax, pos_x, pos_y, pt_bin(pt_lo, pt_hi), offset=offset)
+                    add_text(ax, pos_x, pos_y, alpha_bin(a), offset=2 * offset)
 
                     plt.xlim(-0.5, 0.5)
                     plt.legend(loc="upper right")
 
                     # keep short lines
-                    store_bin_pt = f"pt_{self.dot_to_p(pt_lo)}_{self.dot_to_p(pt_hi)}"
-                    store_bin_alpha = f"alpha_lt_{self.dot_to_p(a)}"
+                    store_bin_pt = f"pt_{dot_to_p(pt_lo)}_{dot_to_p(pt_hi)}"
+                    store_bin_alpha = f"alpha_lt_{dot_to_p(a)}"
                     self.output()["single"].child(
                         f"asym_{m}_{store_bin_eta}_{store_bin_pt}_{store_bin_alpha}.pdf",
                         type="f",
