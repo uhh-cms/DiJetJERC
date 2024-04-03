@@ -6,7 +6,7 @@ import law
 from columnflow.util import maybe_import, DotDict
 from columnflow.tasks.framework.base import Requirements
 
-from dijet.tasks.alpha import AlphaExtrapolation
+from dijet.tasks.jer import JER
 from dijet.constants import eta
 from dijet.plotting.base import PlottingBaseTask
 from dijet.plotting.util import eta_bin, add_text, dot_to_p
@@ -21,6 +21,17 @@ class PlotJERs(PlottingBaseTask):
     Task to plot all JERs.
     One plot for each eta bin for each method (fe,sm).
     """
+
+    reqs = Requirements(
+        JER=JER,
+    )
+
+    def requires(self):
+        return self.reqs.JER.req(
+            self,
+            processes=("qcd", "data"),
+            branch=-1,
+        )
 
     def run(self):
         init=0
