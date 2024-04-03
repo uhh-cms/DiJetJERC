@@ -82,3 +82,33 @@ class PlotWidths(PlottingBaseTask):
         eta_lo, eta_hi = self.branch_data.eta
         eta_midp = 0.5 * (eta_lo + eta_hi)
 
+        # TODO: Variable as input for alpha to e.g. plot up to 0.5?
+        upper = 0.3
+        widths_da = widths_da["widths"][
+            {"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(upper))}
+        ]
+        widths_mc = widths_mc["widths"][
+            {"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(upper))}
+        ]
+        widths_da.view().value = np.nan_to_num(widths_da.view().value, nan=0.0)
+        widths_mc.view().value = np.nan_to_num(widths_mc.view().value, nan=0.0)
+        widths_da.view().variance = np.nan_to_num(widths_da.view().variance, nan=0.0)
+        widths_mc.view().variance = np.nan_to_num(widths_mc.view().variance, nan=0.0)
+
+        inter_da = extrapol_da["intercepts"][{"probejet_abseta": hist.loc(eta_midp)}]
+        inter_mc = extrapol_mc["intercepts"][{"probejet_abseta": hist.loc(eta_midp)}]
+        inter_da.view().value = np.nan_to_num(inter_da.view().value, nan=0.0)
+        inter_mc.view().value = np.nan_to_num(inter_mc.view().value, nan=0.0)
+        inter_da.view().variance = np.nan_to_num(inter_da.view().variance, nan=0.0)
+        inter_mc.view().variance = np.nan_to_num(inter_mc.view().variance, nan=0.0)
+
+        slope_da = extrapol_da["slopes"][{"probejet_abseta": hist.loc(eta_midp)}]
+        slope_mc = extrapol_mc["slopes"][{"probejet_abseta": hist.loc(eta_midp)}]
+        slope_da.view().value = np.nan_to_num(slope_da.view().value, nan=0.0)
+        slope_mc.view().value = np.nan_to_num(slope_mc.view().value, nan=0.0)
+        slope_da.view().variance = np.nan_to_num(slope_da.view().variance, nan=0.0)
+        slope_mc.view().variance = np.nan_to_num(slope_mc.view().variance, nan=0.0)
+
+        pt_edges = widths_da.axes["dijets_pt_avg"].edges
+        alpha_edges = widths_da.axes["dijets_alpha"].edges[1:]
+
