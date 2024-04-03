@@ -3,12 +3,12 @@
 import law
 
 # from dijet.tasks.base import HistogramsBaseTask
-from dijet.tasks.plot_base import PlottingBaseTask
 from columnflow.util import maybe_import, DotDict
 from columnflow.tasks.framework.base import Requirements
 
 from dijet.tasks.alpha import AlphaExtrapolation
 from dijet.constants import eta
+from dijet.plotting.base import PlottingBaseTask
 from dijet.plotting.util import eta_bin, pt_bin, alpha_bin, add_text, dot_to_p
 
 hist = maybe_import("hist")
@@ -116,7 +116,8 @@ class PlotAsymmetries(PlottingBaseTask):
         for m in self.LOOKUP_CATEGORY_ID:
             for ip, (pt_lo, pt_hi) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
                 for ia, a in enumerate(alpha_edges[1:]):  # skip first alpha bin for nameing scheme
-                    print(f"Start with pt {pt_lo} to {pt_hi} and alpha {a}")
+                    # TODO: status/debugging option for input to print current bin ? 
+                    # print(f"Start with pt {pt_lo} to {pt_hi} and alpha {a}")
 
                     # TODO: Include errors
                     input_ = {
