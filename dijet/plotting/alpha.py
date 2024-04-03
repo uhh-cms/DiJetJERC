@@ -30,6 +30,11 @@ class PlotWidths(PlottingBaseTask):
         AlphaExtrapolation=AlphaExtrapolation,
     )
 
+    colors = {
+        "da": "black",
+        "mc": "indianred",
+    }
+
     def create_branch_map(self):
         """
         Workflow has one branch for each eta bin (eta).
@@ -75,6 +80,22 @@ class PlotWidths(PlottingBaseTask):
         }
         return outp
 
+    def plot_widths(self, widths, inters, slopes, wmax):
+        fig, ax = plt.subplots()
+
+        plt.scatter(wmax, widths["mc"], marker="o", color=self.colors["mc"], label="MC")
+        plt.scatter(wmax, widths["da"], marker="o", color=self.colors["da"], label="Data")
+
+        x = np.linspace(0, wmax[-1], 100)
+        fit_mc = inters["mc"] * x + slopes["mc"]
+        fit_da = inters["da"] * x + slopes["da"]
+        plt.plot(x, fit_mc, color=self.colors["mc"], linestyle="dashed", linewidth=2)
+        plt.plot(x, fit_da, color=self.colors["da"], linestyle="dashed", linewidth=2)
+
+        ax.set_xlabel(r"$\alpha_{max}$")
+        ax.set_ylabel(r"$\sigma_{Asym}$")
+        return fig, ax
+
     def run(self):
         widths_da, widths_mc = self.load_widths()
         extrapol_da, extrapol_mc = self.load_extrapolation()
@@ -112,3 +133,39 @@ class PlotWidths(PlottingBaseTask):
         pt_edges = widths_da.axes["dijets_pt_avg"].edges
         alpha_edges = widths_da.axes["dijets_alpha"].edges[1:]
 
+        # Set plotting style
+        plt.style.use(mplhep.style.CMS)
+
+        for m in self.LOOKUP_CATEGORY_ID:
+            for ip, (pt_lo, pt_hi) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
+                # TODO: status/debugging option for input to print current bin ?
+                print(f"Start with pt {pt_lo} to {pt_hi} for {m} method")
+
+                # TODO: Include errors
+                input_ = {
+                    "widths": {
+                        "da": widths_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), :, ip].values(),
+                        "mc": widths_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), :, ip].values(),
+                    },
+                    "inters": {
+                        "da": inter_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ip].value,
+                        "mc": inter_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ip].value,
+                    },
+                    "slopes": {
+                        "da": slope_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ip].value,
+                        "mc": slope_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ip].value,
+                    },
+                    "wmax": alpha_edges,
+                }
+
+                fig, ax = self.plot_widths(**input_)
+                mplhep.cms.label(
+                    lumi=41.48,  # TODO: from self.config_inst.x.luminosity?
+                    com=13,
+                    ax=ax,
+                    llabel="Private Work",
+                    data=True,
+                )
+
+                plt.xlim(0, alpha_edges[-1] + 0.05)
+                plt.legend(loc="lower right")
