@@ -23,6 +23,20 @@ class PlotWidths(PlottingBaseTask):
     One plot for each eta and pt bin for each method (fe,sm).
     """
 
+    output_collection_cls = law.NestedSiblingFileCollection
+
+    # upstream requirements
+    reqs = Requirements(
+        AlphaExtrapolation=AlphaExtrapolation,
+    )
+
+    def requires(self):
+        return self.reqs.AlphaExtrapolation.req(
+            self,
+            processes=("qcd", "data"),
+            branch=-1,
+        )
+
     def load_widths(self):
         return (
             self.input().collection[0]["widths"].load(formatter="pickle"),
