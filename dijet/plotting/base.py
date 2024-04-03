@@ -75,4 +75,3 @@ class PlottingBaseTask(
     def store_parts(self):
         parts = super().store_parts()
         return parts
-

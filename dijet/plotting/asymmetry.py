@@ -116,7 +116,7 @@ class PlotAsymmetries(PlottingBaseTask):
         for m in self.LOOKUP_CATEGORY_ID:
             for ip, (pt_lo, pt_hi) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
                 for ia, a in enumerate(alpha_edges[1:]):  # skip first alpha bin for nameing scheme
-                    # TODO: status/debugging option for input to print current bin ? 
+                    # TODO: status/debugging option for input to print current bin ?
                     # print(f"Start with pt {pt_lo} to {pt_hi} and alpha {a}")
 
                     # TODO: Include errors
