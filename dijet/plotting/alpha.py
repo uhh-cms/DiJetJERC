@@ -9,7 +9,7 @@ from columnflow.tasks.framework.base import Requirements
 from dijet.tasks.alpha import AlphaExtrapolation
 from dijet.constants import eta
 from dijet.plotting.base import PlottingBaseTask
-from dijet.plotting.util import eta_bin, pt_bin, alpha_bin, add_text, dot_to_p
+from dijet.plotting.util import eta_bin, pt_bin, add_text, dot_to_p
 
 hist = maybe_import("hist")
 np = maybe_import("numpy")
