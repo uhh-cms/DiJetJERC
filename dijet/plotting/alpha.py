@@ -30,6 +30,17 @@ class PlotWidths(PlottingBaseTask):
         AlphaExtrapolation=AlphaExtrapolation,
     )
 
+    def create_branch_map(self):
+        """
+        Workflow has one branch for each eta bin (eta).
+        TODO: Hard coded for now
+              Into Base Task
+        """
+        return [
+            DotDict({"eta": (eta_lo, eta_hi)})
+            for eta_lo, eta_hi in zip(eta[:-1], eta[1:])
+        ]
+
     def requires(self):
         return self.reqs.AlphaExtrapolation.req(
             self,
@@ -52,3 +63,7 @@ class PlotWidths(PlottingBaseTask):
     def run(self):
         widths_da, widths_mc = self.load_widths()
         extrapol_da, extrapol_mc = self.load_extrapolation()
+
+        eta_lo, eta_hi = self.branch_data.eta
+        eta_midp = 0.5 * (eta_lo + eta_hi)
+
