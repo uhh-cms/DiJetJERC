@@ -35,6 +35,12 @@ class PlotJERs(PlottingBaseTask):
             branch=-1,
         )
 
+    def load_jers(self):
+        return (
+            self.input().collection[0]["jers"].load(formatter="pickle"),
+            self.input().collection[1]["jers"].load(formatter="pickle"),
+        )
+
     def output(self) -> dict[law.FileSystemTarget]:
         # TODO: Unstable for changes like data_jetmet_X
         #       Make independent like in config datasetname groups
@@ -47,4 +53,7 @@ class PlotJERs(PlottingBaseTask):
         return outp
 
     def run(self):
-        init=0
+        jers_da, jers_mc = self.load_jers()
+        jers_da = jers_da["jer"]
+        jers_mc = jers_mc["jer"]
+
