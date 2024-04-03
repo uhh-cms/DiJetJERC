@@ -141,6 +141,7 @@ class PlotWidths(PlottingBaseTask):
         offset = 0.05
 
         text_eta_bin = eta_bin(eta_lo, eta_hi)
+        store_bin_eta = f"eta_{dot_to_p(eta_lo)}_{dot_to_p(eta_hi)}"
 
         for m in self.LOOKUP_CATEGORY_ID:
             for ip, (pt_lo, pt_hi) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
@@ -178,3 +179,11 @@ class PlotWidths(PlottingBaseTask):
 
                 plt.xlim(0, alpha_edges[-1] + 0.05)
                 plt.legend(loc="lower right")
+
+                # keep short lines
+                store_bin_pt = f"pt_{dot_to_p(pt_lo)}_{dot_to_p(pt_hi)}"
+                self.output()["single"].child(
+                    f"widths_{m}_{store_bin_eta}_{store_bin_pt}.pdf",
+                    type="f",
+                ).dump(plt, formatter="mpl")
+                plt.close(fig)
