@@ -57,3 +57,8 @@ class PlotJERs(PlottingBaseTask):
         jers_da = jers_da["jer"]
         jers_mc = jers_mc["jer"]
 
+        jers_da.view().value = np.nan_to_num(jers_da.view().value, nan=0.0)
+        jers_mc.view().value = np.nan_to_num(jers_mc.view().value, nan=0.0)
+        jers_da.view().variance = np.nan_to_num(jers_da.view().variance, nan=0.0)
+        jers_mc.view().variance = np.nan_to_num(jers_mc.view().variance, nan=0.0)
+
