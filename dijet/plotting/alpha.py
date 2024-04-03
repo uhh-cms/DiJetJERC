@@ -23,5 +23,18 @@ class PlotWidths(PlottingBaseTask):
     One plot for each eta and pt bin for each method (fe,sm).
     """
 
+    def load_widths(self):
+        return (
+            self.input().collection[0]["widths"].load(formatter="pickle"),
+            self.input().collection[1]["widths"].load(formatter="pickle"),
+        )
+
+    def load_extrapolation(self):
+        return (
+            self.input().collection[0]["extrapolation"].load(formatter="pickle"),
+            self.input().collection[1]["extrapolation"].load(formatter="pickle"),
+        )
+
     def run(self):
-        return
+        widths_da, widths_mc = self.load_widths()
+        extrapol_da, extrapol_mc = self.load_extrapolation()
