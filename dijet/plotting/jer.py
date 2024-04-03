@@ -22,6 +22,8 @@ class PlotJERs(PlottingBaseTask):
     One plot for each eta bin for each method (fe,sm).
     """
 
+    output_collection_cls = law.NestedSiblingFileCollection
+
     reqs = Requirements(
         JER=JER,
     )
@@ -32,6 +34,17 @@ class PlotJERs(PlottingBaseTask):
             processes=("qcd", "data"),
             branch=-1,
         )
+
+    def output(self) -> dict[law.FileSystemTarget]:
+        # TODO: Unstable for changes like data_jetmet_X
+        #       Make independent like in config datasetname groups
+        sample = self.extract_sample()
+        target = self.target(f"{sample}", dir=True)
+        # declare the main target
+        outp = {
+            "dummy": target.child("dummy.txt", type="f"),
+        }
+        return outp
 
     def run(self):
         init=0
