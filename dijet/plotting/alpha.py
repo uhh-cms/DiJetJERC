@@ -136,6 +136,12 @@ class PlotWidths(PlottingBaseTask):
         # Set plotting style
         plt.style.use(mplhep.style.CMS)
 
+        pos_x = 0.05
+        pos_y = 0.95
+        offset = 0.05
+
+        text_eta_bin = eta_bin(eta_lo, eta_hi)
+
         for m in self.LOOKUP_CATEGORY_ID:
             for ip, (pt_lo, pt_hi) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
                 # TODO: status/debugging option for input to print current bin ?
@@ -166,6 +172,9 @@ class PlotWidths(PlottingBaseTask):
                     llabel="Private Work",
                     data=True,
                 )
+
+                add_text(ax, pos_x, pos_y, text_eta_bin)
+                add_text(ax, pos_x, pos_y, pt_bin(pt_lo, pt_hi), offset=offset)
 
                 plt.xlim(0, alpha_edges[-1] + 0.05)
                 plt.legend(loc="lower right")
