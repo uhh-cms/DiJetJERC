@@ -17,7 +17,7 @@ plt = maybe_import("matplotlib.pyplot")
 mplhep = maybe_import("mplhep")
 
 
-class PlotAlpha(PlottingBaseTask):
+class PlotWidths(PlottingBaseTask):
     """
     Task to plot all alphas.
     One plot for each eta and pt bin for each method (fe,sm).
