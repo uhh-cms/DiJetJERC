@@ -62,3 +62,10 @@ class PlotJERs(PlottingBaseTask):
         jers_da.view().variance = np.nan_to_num(jers_da.view().variance, nan=0.0)
         jers_mc.view().variance = np.nan_to_num(jers_mc.view().variance, nan=0.0)
 
+        eta_edges = jers_da.axes["probejet_abseta"].edges
+
+        for m in self.LOOKUP_CATEGORY_ID:
+            for ie, (eta_lo, eta_hi) in enumerate(zip(eta_edges[:-1], eta_edges[1:])):
+
+                text_eta_bin = eta_bin(eta_lo, eta_hi)
+                store_bin_eta = f"eta_{dot_to_p(eta_lo)}_{dot_to_p(eta_hi)}"
