@@ -17,7 +17,10 @@ plt = maybe_import("matplotlib.pyplot")
 mplhep = maybe_import("mplhep")
 
 
-class PlotAsymmetries(PlottingBaseTask):
+class PlotAsymmetries(
+    PlottingBaseTask,
+    law.LocalWorkflow,
+):
     """
     Task to plot all asymmetries.
     One plot for each eta, pt and alpha bin for each method (fe,sm).

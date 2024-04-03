@@ -26,7 +26,6 @@ class PlottingBaseTask(
     SelectorMixin,
     CalibratorsMixin,
     ShiftTask,
-    law.LocalWorkflow,
 ):
     """
     Base task to plot histogram from each step of the JER SF workflow.
