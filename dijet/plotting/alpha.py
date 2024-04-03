@@ -60,6 +60,21 @@ class PlotWidths(PlottingBaseTask):
             self.input().collection[1]["extrapolation"].load(formatter="pickle"),
         )
 
+    def output(self) -> dict[law.FileSystemTarget]:
+        # TODO: Unstable for changes like data_jetmet_X
+        #       Make independent like in config datasetname groups
+        sample = self.extract_sample()
+        target = self.target(f"{sample}", dir=True)
+        # declare the main target
+        eta_lo, eta_hi = self.branch_data.eta
+        n_eta_lo = dot_to_p(eta_lo)
+        n_eta_hi = dot_to_p(eta_hi)
+        outp = {
+            "single": target.child(f"eta_{n_eta_lo}_{n_eta_hi}", type="d"),
+            "dummy": target.child(f"eta_{n_eta_lo}_{n_eta_hi}/dummy.txt", type="f"),
+        }
+        return outp
+
     def run(self):
         widths_da, widths_mc = self.load_widths()
         extrapol_da, extrapol_mc = self.load_extrapolation()
