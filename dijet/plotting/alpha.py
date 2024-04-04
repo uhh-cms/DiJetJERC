@@ -5,6 +5,7 @@ import law
 # from dijet.tasks.base import HistogramsBaseTask
 from columnflow.util import maybe_import, DotDict
 from columnflow.tasks.framework.base import Requirements
+from columnflow.tasks.framework.remote import RemoteWorkflow
 
 from dijet.tasks.alpha import AlphaExtrapolation
 from dijet.constants import eta
@@ -20,6 +21,7 @@ mplhep = maybe_import("mplhep")
 class PlotWidth(
     PlottingBaseTask,
     law.LocalWorkflow,
+    RemoteWorkflow,
 ):
     """
     Task to plot all alphas.
@@ -30,6 +32,7 @@ class PlotWidth(
 
     # upstream requirements
     reqs = Requirements(
+        RemoteWorkflow.reqs,
         AlphaExtrapolation=AlphaExtrapolation,
     )
 
