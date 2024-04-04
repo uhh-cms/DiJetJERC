@@ -37,8 +37,6 @@ class JER(HistogramsBaseTask):
     def requires(self):
         return self.reqs.AlphaExtrapolation.req(
             self,
-            branch=-1,
-            _exclude={"branches"},
         )
 
     def workflow_requires(self):
@@ -47,22 +45,7 @@ class JER(HistogramsBaseTask):
         return reqs
 
     def load_extrapolation(self):
-        # TODO: This task loads both, data [0] and MC [1], at the same time.
-        #       Decide which collection to take, but think about solution to run
-        #       self.input()[sample]["collection"][0]
-        sample = self.extract_sample()
-        dir0 = self.input().collection[0]["widths"].path
-        dir1 = self.input().collection[1]["widths"].path
-        if sample in dir0:
-            ind = 0
-        elif sample in dir1:
-            ind = 1
-        else:
-            raise RuntimeError(
-                f"Sample {sample} does not match input paths:\n"
-                f"{dir0}\n{dir1}",
-            )
-        histogram = self.input().collection[ind]["extrapolation"].load(formatter="pickle")
+        histogram = self.input()["extrapolation"].load(formatter="pickle")
         return histogram
 
     def output(self) -> dict[law.FileSystemTarget]:
@@ -76,6 +59,7 @@ class JER(HistogramsBaseTask):
 
     def run(self):
         # load extrapolation results
+        # from IPython import embed;embed()
         results_extrapolation = self.load_extrapolation()
 
         # get extrapolated distribution widths
