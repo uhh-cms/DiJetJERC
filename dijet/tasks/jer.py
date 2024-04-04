@@ -47,7 +47,22 @@ class JER(HistogramsBaseTask):
         return reqs
 
     def load_extrapolation(self):
-        histogram = self.input().collection[0]["extrapolation"].load(formatter="pickle")
+        # TODO: This task loads both, data [0] and MC [1], at the same time.
+        #       Decide which collection to take, but think about solution to run
+        #       self.input()[sample]["collection"][0]
+        sample = self.extract_sample()
+        dir0 = self.input().collection[0]["widths"].path
+        dir1 = self.input().collection[1]["widths"].path
+        if sample in dir0:
+            ind = 0
+        elif sample in dir1:
+            ind = 1
+        else:
+            raise RuntimeError(
+                f"Sample {sample} does not match input paths:\n"
+                f"{dir0}\n{dir1}",
+            )
+        histogram = self.input().collection[ind]["extrapolation"].load(formatter="pickle")
         return histogram
 
     def output(self) -> dict[law.FileSystemTarget]:
