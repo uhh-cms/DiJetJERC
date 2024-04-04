@@ -53,7 +53,7 @@ class PlotWidth(
         return self.reqs.AlphaExtrapolation.req(
             self,
             processes=("qcd", "data"),
-            branch=-1,
+            _exclude={"branches"},
         )
 
     def load_widths(self):
