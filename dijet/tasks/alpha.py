@@ -11,6 +11,7 @@ from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import maybe_import
 
 from dijet.tasks.base import HistogramsBaseTask
+from dijet.tasks.correlated_fit import CorrelatedFit
 
 ak = maybe_import("awkward")
 hist = maybe_import("hist")
@@ -20,7 +21,10 @@ mplhep = maybe_import("mplhep")
 it = maybe_import("itertools")
 
 
-class AlphaExtrapolation(HistogramsBaseTask):
+class AlphaExtrapolation(
+    HistogramsBaseTask,
+    CorrelatedFit,
+):
     """
     Task to perform alpha extrapolation.
     Read in and plot asymmetry histograms.
@@ -143,32 +147,44 @@ class AlphaExtrapolation(HistogramsBaseTask):
         # exclude 0, the first bin, from alpha edges
         alphas = h_stds.axes["dijets_alpha"].edges[1:]
 
-        # TODO: Use correlated fit
-        def fit_linear(subarray):
-            fitting = ~np.isnan(subarray)
-            if len(subarray[fitting]) < 2:
-                coefficients = [0, 0]
-            else:
-                coefficients = np.polyfit(alphas[fitting], subarray[fitting], 1)
-            return coefficients
-        # TODO: save fit results (chi2, ndf, etc.) for diagnostic
-        fits = np.apply_along_axis(fit_linear, axis=axes_names.index("dijets_alpha"), arr=h_stds.view().value)
+        # TODO: More efficient procedure than for loop?
+        #       - Idea: Array with same shape but with tuple (width, error) as entry
+        n_eta = len(h_stds.axes["probejet_abseta"].centers)
+        n_pt = len(h_stds.axes["dijets_pt_avg"].centers)
+        n_methods = len(h_stds.axes["category"].centers)  # ony length
+        inter = h_stds.values()
+        inter = inter[:,:2,:,:]  # keep first two entries
+        slope = h_stds.values()
+        slope = slope[:,:2,:,:]  # keep first two entries
+        for m, e, p in it.product(
+            range(n_methods),
+            range(n_eta),
+            range(n_pt),
+        ):
+            tmp = h_stds[{
+                "category": m,
+                "probejet_abseta": e,
+                "dijets_pt_avg": p,
+            }]
+            coeff, err = self.get_correlated_fit(alphas,tmp.values(),tmp.variances())
+            inter[m,:,e,p] = [coeff[0], err[0]]
+            slope[m,:,e,p] = [coeff[1], err[1]]
 
         # NOTE: store fits into hist.
         h_intercepts = h_stds.copy()
         # Remove axis for alpha for histogram
         h_intercepts = h_intercepts[{"dijets_alpha": sum}]
         # y intercept of fit (x=0)
-        h_intercepts.view().value = fits[:, 0, :, :]
+        h_intercepts.view().value = inter[:, 0, :, :]
         # Errors temporarly used; Later get:
         # Error on fit from fit function (how?) or new method with three fits
-        h_intercepts.view().variance = np.ones(h_intercepts.shape)
+        h_intercepts.view().variance = inter[:, 1, :, :]
 
         h_slopes = h_intercepts.copy()
         # Slope of fit stored in index 1
-        h_slopes.view().value = fits[:, 1, :, :]
+        h_slopes.view().value = slope[:, 0, :, :]
         # Only stored for plotting, no defined error
-        h_slopes.view().variance = np.zeros(h_slopes.shape)
+        h_slopes.view().variance = slope[:, 1, :, :]
 
         results_extrapolation = {
             "intercepts": h_intercepts,
