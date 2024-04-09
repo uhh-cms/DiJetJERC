@@ -134,6 +134,9 @@ class AlphaExtrapolation(
         # https://root.cern/doc/v630/TH1_8cxx_source.html#l07520
         h_stds.view().variance = h_stds.view().value**2 / (2 * np.squeeze(integral))
 
+        h_stds.view().value = np.nan_to_num(h_stds.view().value, nan=0.0)
+        h_stds.view().variance = np.nan_to_num(h_stds.view().variance, nan=0.0)
+
         # Store alphas here to get alpha up to 1
         # In the next stepts only alpha<0.3 needed; avoid slicing from there
         results_widths = {
