@@ -5,6 +5,7 @@ import law
 # from dijet.tasks.base import HistogramsBaseTask
 from columnflow.util import maybe_import, DotDict
 from columnflow.tasks.framework.base import Requirements
+from columnflow.tasks.framework.remote import RemoteWorkflow
 
 from dijet.tasks.alpha import AlphaExtrapolation
 from dijet.constants import eta
@@ -20,6 +21,7 @@ mplhep = maybe_import("mplhep")
 class PlotAsymmetries(
     PlottingBaseTask,
     law.LocalWorkflow,
+    RemoteWorkflow,
 ):
     """
     Task to plot all asymmetries.
@@ -30,6 +32,7 @@ class PlotAsymmetries(
 
     # upstream requirements
     reqs = Requirements(
+        RemoteWorkflow.reqs,
         AlphaExtrapolation=AlphaExtrapolation,
     )
 
@@ -48,7 +51,7 @@ class PlotAsymmetries(
         return self.reqs.AlphaExtrapolation.req(
             self,
             processes=("qcd", "data"),
-            branch=-1,
+            _exclude={"branches"},
         )
 
     def load_asymmetry(self):

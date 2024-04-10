@@ -37,7 +37,7 @@ class PlotJERs(PlottingBaseTask):
         return self.reqs.JER.req(
             self,
             processes=("qcd", "data"),
-            branch=-1,
+            _exclude={"branches"},
         )
 
     def load_jers(self):
