@@ -3,6 +3,8 @@
 import law
 from columnflow.util import maybe_import
 
+from dijet.tasks.util import chi2
+
 sc = maybe_import("scipy.optimize")
 nd = maybe_import("numdifftools")
 np = maybe_import("numpy")
@@ -45,15 +47,6 @@ class CorrelatedFit():
 
         return np.nan_to_num(y_cov_mc)
 
-    def linear_function(self, x, p):
-        return p[0] * x + p[1]
-
-    def chi2(self, params, wmax, data, cov):
-        y_hat = self.linear_function(x=wmax, p=params)
-        residuals = data - y_hat
-        error = residuals.T @ cov @ residuals
-        return error
-
     def correlated_fit(self, wmax, data, cov):
         # Set the initial parameters.
         params = np.array([0.05, 0.15])
@@ -61,12 +54,12 @@ class CorrelatedFit():
 
         # Minimize the correlated fit error.
         result = sc.minimize(
-            self.chi2,
+            chi2,
             params,
             args=(wmax, data, cov)
         )
 
-        hess = nd.Hessian(self.chi2)(result.x, wmax, data, cov)
+        hess = nd.Hessian(chi2)(result.x, wmax, data, cov)
         hess_inv = np.linalg.inv(hess)
 
         pcov = 2.0 * hess_inv
