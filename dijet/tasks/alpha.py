@@ -156,9 +156,9 @@ class AlphaExtrapolation(
         n_pt = len(h_stds.axes["dijets_pt_avg"].centers)
         n_methods = len(h_stds.axes["category"].centers)  # ony length
         inter = h_stds.values()
-        inter = inter[:,:2,:,:]  # keep first two entries
+        inter = inter[:, :2, :, :]  # keep first two entries
         slope = h_stds.values()
-        slope = slope[:,:2,:,:]  # keep first two entries
+        slope = slope[:, :2, :, :]  # keep first two entries
         for m, e, p in it.product(
             range(n_methods),
             range(n_eta),
@@ -169,9 +169,9 @@ class AlphaExtrapolation(
                 "probejet_abseta": e,
                 "dijets_pt_avg": p,
             }]
-            coeff, err = self.get_correlated_fit(alphas,tmp.values(),tmp.variances())
-            inter[m,:,e,p] = [coeff[0], err[0]]
-            slope[m,:,e,p] = [coeff[1], err[1]]
+            coeff, err = self.get_correlated_fit(alphas, tmp.values(), tmp.variances())
+            inter[m, :, e, p] = [coeff[0], err[0]]
+            slope[m, :, e, p] = [coeff[1], err[1]]
 
         # NOTE: store fits into hist.
         h_intercepts = h_stds.copy()
