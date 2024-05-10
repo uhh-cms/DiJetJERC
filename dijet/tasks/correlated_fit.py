@@ -3,7 +3,7 @@
 import law
 from columnflow.util import maybe_import
 
-from dijet.tasks.util import chi2
+from dijet.tasks.util import chi2_linear
 
 sc = maybe_import("scipy.optimize")
 nd = maybe_import("numdifftools")
@@ -23,8 +23,8 @@ class CorrelatedFit():
     func. createCov()
     """
 
-    def createCov(self, widths, widths_err):
-        widths_err2 = pow(widths_err, 2)  # square each element
+    def create_cov(self, widths, widths_err):
+        widths_err2 = widths_err**2  # square each element
 
         # 3x3 matrix with the smaller error of indices i&j (Check [1])
         # [1,2,3] ->
@@ -33,13 +33,13 @@ class CorrelatedFit():
         #  [1,2,2]
         #  [1,2,3]
         # ]
-        matrix_err = np.maximum.outer(widths_err2,widths_err2)
+        matrix_err = np.maximum.outer(widths_err2, widths_err2)
 
-        ratio = ( pow(widths,2) / (2 * widths_err2) )
-        n_ratio = pow((ratio[:, None] / ratio),2)  # get ij element
+        ratio = widths**2 / (2 * widths_err2)
+        n_ratio = (ratio[:, None] / ratio)**2  # get ij element
         w_ratio = (widths[:, None] / widths)  # get ij element
 
-        # Calculate the upper triangle of the covariance matrix.
+        # Consider only the upper triangle of the covariance matrix.
         y_cov_mc = np.triu(matrix_err * w_ratio * n_ratio)
 
         # Fill in the lower triangle of the covariance matrix.
@@ -47,19 +47,19 @@ class CorrelatedFit():
 
         return np.nan_to_num(y_cov_mc)
 
-    def correlated_fit(self, wmax, data, cov):
+    @staticmethod
+    def correlated_fit(wmax, data, cov):
         # Set the initial parameters.
         params = np.array([0.05, 0.15])
-        bounds = [(0.001,0.15), (0.05,0.5)]
 
         # Minimize the correlated fit error.
         result = sc.minimize(
-            chi2,
+            chi2_linear,
             params,
-            args=(wmax, data, cov)
+            args=(wmax, data, cov_inv)
         )
 
-        hess = nd.Hessian(chi2)(result.x, wmax, data, cov)
+        hess = nd.Hessian(chi2)(result.x, wmax, data, cov_inv)
         hess_inv = np.linalg.inv(hess)
 
         pcov = 2.0 * hess_inv
@@ -76,13 +76,13 @@ class CorrelatedFit():
             np.insert(std[:-1] != std[1:], 0, True)
         )
         if len(mask[mask]) < 2:
-                return [[0,0], [0,0]]
+            return [[0, 0], [0, 0]]
 
         wmax = wmax[mask]
         std = std[mask]
         err = err[mask]
 
-        y_cov_mc = self.createCov(widths=std, widths_err=err)
+        y_cov_mc = self.create_cov(widths=std, widths_err=err)
         y_cov_mc_inv = np.linalg.inv(y_cov_mc)
         popt, perr = self.correlated_fit(wmax, std, y_cov_mc_inv)
 

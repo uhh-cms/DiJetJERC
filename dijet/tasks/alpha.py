@@ -169,7 +169,7 @@ class AlphaExtrapolation(
                 "probejet_abseta": e,
                 "dijets_pt_avg": p,
             }]
-            coeff, err = self.get_correlated_fit(alphas,tmp.values(),tmp.variances())
+            coeff, err = self.get_correlated_fit(alphas, tmp.values(), tmp.variances())
             inter[m,:,e,p] = [coeff[0], err[0]]
             slope[m,:,e,p] = [coeff[1], err[1]]
 
