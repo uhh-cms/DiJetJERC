@@ -1,6 +1,5 @@
 # coding: utf-8
 
-import law
 from columnflow.util import maybe_import
 
 from dijet.tasks.util import chi2_linear
@@ -9,11 +8,12 @@ sc = maybe_import("scipy.optimize")
 nd = maybe_import("numdifftools")
 np = maybe_import("numpy")
 
+
 class CorrelatedFit():
     """
     Task to calculated correlated fit to widths.
 
-    ## Covariance matrix 
+    ## Covariance matrix
     [1] Based on K. Goebel dissertation ch. A.3.
     https://www.physik.uni-hamburg.de/en/iexp/gruppe-haller/scientific-output/documents/thesis-kristin-goebel.pdf
 
@@ -48,7 +48,7 @@ class CorrelatedFit():
         return np.nan_to_num(y_cov_mc)
 
     @staticmethod
-    def correlated_fit(wmax, data, cov):
+    def correlated_fit(wmax, data, cov_inv):
         # Set the initial parameters.
         params = np.array([0.05, 0.15])
 
@@ -56,10 +56,10 @@ class CorrelatedFit():
         result = sc.minimize(
             chi2_linear,
             params,
-            args=(wmax, data, cov_inv)
+            args=(wmax, data, cov_inv),
         )
 
-        hess = nd.Hessian(chi2)(result.x, wmax, data, cov_inv)
+        hess = nd.Hessian(chi2_linear)(result.x, wmax, data, cov_inv)
         hess_inv = np.linalg.inv(hess)
 
         pcov = 2.0 * hess_inv
