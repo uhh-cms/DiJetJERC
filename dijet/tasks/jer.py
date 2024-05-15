@@ -59,7 +59,6 @@ class JER(HistogramsBaseTask):
 
     def run(self):
         # load extrapolation results
-        # from IPython import embed;embed()
         results_extrapolation = self.load_extrapolation()
 
         # get extrapolated distribution widths

@@ -93,8 +93,8 @@ class PlotWidth(
         plt.scatter(wmax, widths["da"], marker="o", color=self.colors["da"], label="Data")
 
         x = np.linspace(0, wmax[-1], 100)
-        fit_mc = inters["mc"] * x + slopes["mc"]
-        fit_da = inters["da"] * x + slopes["da"]
+        fit_mc = slopes["mc"] * x + inters["mc"]
+        fit_da = slopes["da"] * x + inters["da"]
         plt.plot(x, fit_mc, color=self.colors["mc"], linestyle="dashed", linewidth=2)
         plt.plot(x, fit_da, color=self.colors["da"], linestyle="dashed", linewidth=2)
 
