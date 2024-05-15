@@ -33,7 +33,7 @@ class CorrelatedFit():
         #  [1,2,2]
         #  [1,2,3]
         # ]
-        matrix_err = np.maximum.outer(widths_err2, widths_err2)
+        matrix_err = np.minimum.outer(widths_err2, widths_err2)
 
         ratio = widths**2 / (2 * widths_err2)
         n_ratio = (ratio[:, None] / ratio)**2  # get ij element
