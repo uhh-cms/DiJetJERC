@@ -5,6 +5,7 @@ import law
 # from dijet.tasks.base import HistogramsBaseTask
 from columnflow.util import maybe_import, DotDict
 from columnflow.tasks.framework.base import Requirements
+from columnflow.tasks.framework.remote import RemoteWorkflow
 
 from dijet.tasks.alpha import AlphaExtrapolation
 from dijet.constants import eta
@@ -17,7 +18,11 @@ plt = maybe_import("matplotlib.pyplot")
 mplhep = maybe_import("mplhep")
 
 
-class PlotAsymmetries(PlottingBaseTask):
+class PlotAsymmetries(
+    PlottingBaseTask,
+    law.LocalWorkflow,
+    RemoteWorkflow,
+):
     """
     Task to plot all asymmetries.
     One plot for each eta, pt and alpha bin for each method (fe,sm).
@@ -27,6 +32,7 @@ class PlotAsymmetries(PlottingBaseTask):
 
     # upstream requirements
     reqs = Requirements(
+        RemoteWorkflow.reqs,
         AlphaExtrapolation=AlphaExtrapolation,
     )
 
@@ -45,7 +51,7 @@ class PlotAsymmetries(PlottingBaseTask):
         return self.reqs.AlphaExtrapolation.req(
             self,
             processes=("qcd", "data"),
-            branch=-1,
+            _exclude={"branches"},
         )
 
     def load_asymmetry(self):
@@ -116,7 +122,7 @@ class PlotAsymmetries(PlottingBaseTask):
         for m in self.LOOKUP_CATEGORY_ID:
             for ip, (pt_lo, pt_hi) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
                 for ia, a in enumerate(alpha_edges[1:]):  # skip first alpha bin for nameing scheme
-                    # TODO: status/debugging option for input to print current bin ? 
+                    # TODO: status/debugging option for input to print current bin ?
                     # print(f"Start with pt {pt_lo} to {pt_hi} and alpha {a}")
 
                     # TODO: Include errors
