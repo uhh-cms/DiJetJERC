@@ -51,7 +51,7 @@ class PlotAsymmetries(
         return self.reqs.AlphaExtrapolation.req(
             self,
             processes=("qcd", "data"),
-            _exclude={"branches"},
+            branch=-1
         )
 
     def load_asymmetry(self):
