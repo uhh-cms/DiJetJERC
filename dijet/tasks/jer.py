@@ -37,8 +37,6 @@ class JER(HistogramsBaseTask):
     def requires(self):
         return self.reqs.AlphaExtrapolation.req(
             self,
-            branch=-1,
-            _exclude={"branches"},
         )
 
     def workflow_requires(self):
@@ -47,7 +45,7 @@ class JER(HistogramsBaseTask):
         return reqs
 
     def load_extrapolation(self):
-        histogram = self.input().collection[0]["extrapolation"].load(formatter="pickle")
+        histogram = self.input()["extrapolation"].load(formatter="pickle")
         return histogram
 
     def output(self) -> dict[law.FileSystemTarget]:
