@@ -110,6 +110,11 @@ class AlphaExtrapolation(
         # Store in pickle file for plotting task
         self.output()["asym"].dump(h_all, formatter="pickle")
 
+        # Get histogram with number of events for each asymmetry
+        h_nevts = h_all.copy()
+        h_nevts = h_nevts[{"dijets_asymmetry":sum}]  # reduce by one dim
+        h_nevts.view().value = np.squeeze(integral)
+
         # Get widths of asymmetries
         asyms = h_all.axes["dijets_asymmetry"].centers
         # Take mean value from normalized asymmetry
@@ -129,12 +134,12 @@ class AlphaExtrapolation(
                 axis=-1,
             ),
         )
+        h_stds.view().value = np.nan_to_num(h_stds.view().value, nan=0.0)
+
         # Get stds error; squeeze to reshape integral from (x,y,z,1) to (x,y,z)
         # note: error on std deviation analogous to implementation in ROOT::TH1
         # https://root.cern/doc/v630/TH1_8cxx_source.html#l07520
-        h_stds.view().variance = h_stds.view().value**2 / (2 * np.squeeze(integral))
-
-        h_stds.view().value = np.nan_to_num(h_stds.view().value, nan=0.0)
+        h_stds.view().variance = h_stds.values()**2 / (2 * h_nevts.values())
         h_stds.view().variance = np.nan_to_num(h_stds.view().variance, nan=0.0)
 
         # Store alphas here to get alpha up to 1
@@ -147,6 +152,7 @@ class AlphaExtrapolation(
         # Get max alpha for fit; usually 0.3
         amax = 0.3  # TODO: define in config
         h_stds = h_stds[{"dijets_alpha": slice(0, hist.loc(amax))}]
+        h_nevts = h_nevts[{"dijets_alpha": slice(0, hist.loc(amax))}]
         # exclude 0, the first bin, from alpha edges
         alphas = h_stds.axes["dijets_alpha"].edges[1:]
 
@@ -169,7 +175,12 @@ class AlphaExtrapolation(
                 "probejet_abseta": e,
                 "dijets_pt_avg": p,
             }]
-            coeff, err = self.get_correlated_fit(alphas, tmp.values(), tmp.variances())
+            tmp_evts = h_nevts[{
+                "category": m,
+                "probejet_abseta": e,
+                "dijets_pt_avg": p,
+            }]
+            coeff, err = self.get_correlated_fit(wmax=alphas, std=tmp.values(), nevts=tmp_evts.values())
             inter[m, :, e, p] = [coeff[0], err[0]]
             slope[m, :, e, p] = [coeff[1], err[1]]
 

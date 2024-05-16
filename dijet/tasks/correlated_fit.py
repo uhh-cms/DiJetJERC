@@ -23,29 +23,36 @@ class CorrelatedFit():
     func. createCov()
     """
 
-    def create_cov(self, widths, widths_err):
-        widths_err2 = widths_err**2  # square each element
+    @staticmethod
+    def create_cov(widths, nevts):
+        """
+        Calculate a covariance matrix for a sequence of distribution widths
+        correspondin to inclusive alpha bins. The input values must be in
+        order of ascending alpha.
 
-        # 3x3 matrix with the smaller error of indices i&j (Check [1])
-        # [1,2,3] ->
-        # [
-        #  [1,1,1]
-        #  [1,2,2]
-        #  [1,2,3]
-        # ]
-        matrix_err = np.minimum.outer(widths_err2, widths_err2)
+        widths: array of widths of the asymmetry distributions in the inclusive alpha bins
+        nevts: array of event counts in the inclusive alpha bins
+        """
+        # square of the uncertainty on the width from normal approximation
+        # note: error on std deviation analogous to implementation in ROOT::TH1
+        # https://root.cern/doc/v630/TH1_8cxx_source.html#l07520
+        widths_err2 = widths**2 / (2 * nevts)
 
-        ratio = widths**2 / (2 * widths_err2)
-        n_ratio = (ratio[:, None] / ratio)**2  # get ij element
-        w_ratio = (widths[:, None] / widths)  # get ij element
+        # NxN matrices mapping pair of values (a_i, a_j) to that
+        # corresponding to the lower (higher) index,
+        # i.e. entry at (i, j) = min(i, j) or max(i, j)
+        idx = np.arange(len(widths))
+        min_idx_matrix = np.minimum.outer(idx, idx)
+        max_idx_matrix = np.maximum.outer(idx, idx)
 
-        # Consider only the upper triangle of the covariance matrix.
-        y_cov_mc = np.triu(matrix_err * w_ratio * n_ratio)
+        # obtain ratios of widths and event counts
+        # for larger over smaller index
+        width_matrix = widths[min_idx_matrix] / widths[max_idx_matrix]
+        n_matrix = nevts[min_idx_matrix] / nevts[max_idx_matrix]
 
-        # Fill in the lower triangle of the covariance matrix.
-        y_cov_mc += y_cov_mc.T - np.diag(y_cov_mc.diagonal())
-
-        return np.nan_to_num(y_cov_mc)
+        # calculate covariance and return
+        cov_mat = width_matrix * n_matrix * widths_err2
+        return np.nan_to_num(cov_mat)
 
     @staticmethod
     def correlated_fit(wmax, data, cov_inv):
@@ -67,7 +74,7 @@ class CorrelatedFit():
 
         return result.x, perr
 
-    def get_correlated_fit(self, wmax, std, err):
+    def get_correlated_fit(self, wmax, std, nevts):
         # In case of very few events in a eta-pt bin two alpha bins can be equal
         # In that case the matrix is not invertable "numpy.linalg.LinAlgError: Singular matrix"
         # np.insert(std[:-1] != std[1:], 0, True) sets entry i to False if entry i-1 is equal
@@ -80,9 +87,9 @@ class CorrelatedFit():
 
         wmax = wmax[mask]
         std = std[mask]
-        err = err[mask]
+        nevts = nevts[mask]
 
-        y_cov_mc = self.create_cov(widths=std, widths_err=err)
+        y_cov_mc = self.create_cov(widths=std, nevts=nevts)
         y_cov_mc_inv = np.linalg.inv(y_cov_mc)
         popt, perr = self.correlated_fit(wmax, std, y_cov_mc_inv)
 
