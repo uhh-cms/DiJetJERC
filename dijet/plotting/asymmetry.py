@@ -90,6 +90,7 @@ class PlotAsymmetries(
         plt.scatter(asym.flatten(), data.flatten(), marker="o", color="black", label="Data")
         ax.set_xlabel("Asymmetry")
         ax.set_ylabel(r"$\Delta$N/N")
+        ax.set_yscale("log")
         return fig, ax
 
     def run(self):
