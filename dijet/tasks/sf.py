@@ -13,12 +13,7 @@ from columnflow.tasks.framework.base import Requirements
 from dijet.tasks.jer import JER
 from dijet.tasks.merge import MergeTask
 
-ak = maybe_import("awkward")
-hist = maybe_import("hist")
 np = maybe_import("numpy")
-plt = maybe_import("matplotlib.pyplot")
-mplhep = maybe_import("mplhep")
-it = maybe_import("itertools")
 
 
 class SF(MergeTask):
@@ -68,9 +63,9 @@ class SF(MergeTask):
         h_sf = jers_da.copy()
         v_sf = h_sf.view()
 
-        v_sf.value = v_jers_da.value/v_jers_mc.value
+        v_sf.value = v_jers_da.value / v_jers_mc.value
         # inf values if mc is zero; add for precaution
-        mask = np.fabs(v_sf.value)==np.inf  # account also for -inf
+        mask = np.fabs(v_sf.value) == np.inf  # account also for -inf
         v_sf.value[mask] = np.nan
         v_sf.value = np.nan_to_num(v_sf.value, nan=0.0)
 
@@ -78,7 +73,7 @@ class SF(MergeTask):
         # x = data; y = mc; s_x = sigma x
         # x/y -> sqrt( ( s_x/y )**2 + ( (x*s_y)/y**2 )**2 )
         term1 = v_jers_da.variance / v_jers_mc.value
-        term2 = ( v_jers_da.value * v_jers_mc.variance ) / v_jers_mc.value**2
+        term2 = (v_jers_da.value * v_jers_mc.variance) / v_jers_mc.value**2
         v_sf.variance = np.sqrt(term1**2 + term2**2)
         # inf values if mc is zero; add for precaution
         v_sf.variance[mask] = np.nan  # account also for -inf

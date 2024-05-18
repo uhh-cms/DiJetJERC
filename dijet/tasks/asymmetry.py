@@ -11,7 +11,6 @@ from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import maybe_import
 
 from dijet.tasks.base import HistogramsBaseTask
-from dijet.tasks.correlated_fit import CorrelatedFit
 
 ak = maybe_import("awkward")
 hist = maybe_import("hist")
@@ -99,7 +98,7 @@ class Asymmetry(
         # Skip over-/underflow bins (i.e. TH1F -> ComputeIntegral for UHH2)
         # h_all[{"dijets_asymmetry": sum}] includes such bins
         integral = h_all.values().sum(axis=axes_names.index("dijets_asymmetry"), keepdims=True)
-        
+
         # Store for width extrapolation
         h_nevts = h_all.copy()
         h_nevts = h_nevts[{"dijets_asymmetry": sum}]

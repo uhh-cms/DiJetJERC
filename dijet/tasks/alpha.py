@@ -13,11 +13,8 @@ from dijet.tasks.asymmetry import Asymmetry
 from dijet.tasks.base import HistogramsBaseTask
 from dijet.tasks.correlated_fit import CorrelatedFit
 
-ak = maybe_import("awkward")
 hist = maybe_import("hist")
 np = maybe_import("numpy")
-plt = maybe_import("matplotlib.pyplot")
-mplhep = maybe_import("mplhep")
 it = maybe_import("itertools")
 
 
