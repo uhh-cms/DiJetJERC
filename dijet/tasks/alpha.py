@@ -7,9 +7,9 @@ Custom tasks to derive JER SF.
 import law
 
 from columnflow.tasks.framework.base import Requirements
-from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import maybe_import
 
+from dijet.tasks.asymmetry import Asymmetry
 from dijet.tasks.base import HistogramsBaseTask
 from dijet.tasks.correlated_fit import CorrelatedFit
 
@@ -28,7 +28,7 @@ class AlphaExtrapolation(
     """
     Task to perform alpha extrapolation.
     Read in and plot asymmetry histograms.
-    Cut of non-gaussian tails and extrapolate sigma_A( alpha->0 ).
+    Extrapolate sigma_A( alpha->0 ).
     """
 
     # Add nested sibling directories to output path
@@ -36,28 +36,25 @@ class AlphaExtrapolation(
 
     # upstream requirements
     reqs = Requirements(
-        MergeHistograms=MergeHistograms,
+        Asymmetry=Asymmetry,
     )
 
     def requires(self):
-        return {
-            d: self.reqs.MergeHistograms.req(
-                self,
-                dataset=d,
-                branch=-1,
-                _exclude={"branches"},
-                _prefer_cli={"variables"},
-            )
-            for d in self.datasets
-        }
+        return self.reqs.Asymmetry.req(
+            self,
+        )
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        reqs["merged_hists"] = self.requires_from_branch()
+        reqs["key"] = self.as_branch().requires()
         return reqs
 
-    def load_histogram(self, dataset, variable):
-        histogram = self.input()[dataset]["collection"][0]["hists"].targets[variable].load(formatter="pickle")
+    def load_asymmetries(self):
+        histogram = self.input()["asym"].load(formatter="pickle")
+        return histogram
+
+    def load_integrals(self):
+        histogram = self.input()["nevt"].load(formatter="pickle")
         return histogram
 
     def output(self) -> dict[law.FileSystemTarget]:
@@ -69,7 +66,6 @@ class AlphaExtrapolation(
         outp = {
             "widths": target.child("widths.pickle", type="f"),
             "extrapolation": target.child("extrapolation.pickle", type="f"),
-            "asym": target.child("asym.pickle", type="f", optional=True),
         }
         return outp
 
@@ -77,60 +73,27 @@ class AlphaExtrapolation(
         # TODO: Gen level for MC
         #       Correlated fit (in jupyter)
 
-        h_all = []
-        datasets, isMC = self.get_datasets()
-
-        for dataset in datasets:
-            for variable in self.variables:
-                h_in = self.reduce_histogram(
-                    self.load_histogram(dataset, variable),
-                    self.processes,
-                    self.shift,
-                )
-                # Store all hists in a list to sum over after reading
-                h_all.append(h_in)
-        h_all = sum(h_all)
-
-        # TODO: Need own task to store asymmetry before this one
-        #       New structure of base histogram task necessary
-        axes_names = [a.name for a in h_all.axes]
-        view = h_all.view()
-
-        # replace histogram contents with cumulative sum over alpha bins
-        view.value = np.apply_along_axis(np.cumsum, axis=axes_names.index("dijets_alpha"), arr=view.value)
-        view.variance = np.apply_along_axis(np.cumsum, axis=axes_names.index("dijets_alpha"), arr=view.variance)
-
-        # Get integral of asymmetries as array
-        integral = h_all.values().sum(axis=axes_names.index("dijets_asymmetry"), keepdims=True)
-
-        # normalize histogram to integral over asymmetry
-        view.value = view.value / integral
-        view.variance = view.variance / integral**2
-
-        # Store in pickle file for plotting task
-        self.output()["asym"].dump(h_all, formatter="pickle")
-
-        # Get histogram with number of events for each asymmetry
-        h_nevts = h_all.copy()
-        h_nevts = h_nevts[{"dijets_asymmetry":sum}]  # reduce by one dim
-        h_nevts.view().value = np.squeeze(integral)
+        h_asyms = self.load_asymmetries()
+        h_nevts = self.load_integrals()
 
         # Get widths of asymmetries
-        asyms = h_all.axes["dijets_asymmetry"].centers
+        asyms = h_asyms.axes["dijets_asymmetry"].centers
+
         # Take mean value from normalized asymmetry
+        axes_names = [a.name for a in h_asyms.axes]
         assert axes_names[-1] == "dijets_asymmetry", "asymmetry axis must come last"
         means = np.nansum(
-            asyms * h_all.view().value,
+            asyms * h_asyms.view().value,
             axis=-1,
             keepdims=True,
         )
-        h_stds = h_all.copy()
+        h_stds = h_asyms.copy()
         h_stds = h_stds[{"dijets_asymmetry": sum}]
         # Get stds
         h_stds.view().value = np.sqrt(
             np.average(
                 ((asyms - means)**2),
-                weights=h_all.view().value,
+                weights=h_asyms.view().value,
                 axis=-1,
             ),
         )
@@ -161,9 +124,9 @@ class AlphaExtrapolation(
         n_eta = len(h_stds.axes["probejet_abseta"].centers)
         n_pt = len(h_stds.axes["dijets_pt_avg"].centers)
         n_methods = len(h_stds.axes["category"].centers)  # ony length
-        inter = h_stds.values()
+        inter = h_stds.copy().values()
         inter = inter[:, :2, :, :]  # keep first two entries
-        slope = h_stds.values()
+        slope = h_stds.copy().values()
         slope = slope[:, :2, :, :]  # keep first two entries
         for m, e, p in it.product(
             range(n_methods),
@@ -181,8 +144,8 @@ class AlphaExtrapolation(
                 "dijets_pt_avg": p,
             }]
             coeff, err = self.get_correlated_fit(wmax=alphas, std=tmp.values(), nevts=tmp_evts.values())
-            inter[m, :, e, p] = [coeff[0], err[0]]
-            slope[m, :, e, p] = [coeff[1], err[1]]
+            inter[m, :, e, p] = [coeff[1], err[1]]
+            slope[m, :, e, p] = [coeff[0], err[0]]
 
         # NOTE: store fits into hist.
         h_intercepts = h_stds.copy()

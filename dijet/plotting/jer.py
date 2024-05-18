@@ -116,6 +116,7 @@ class PlotJERs(PlottingBaseTask):
                 print(f"Start with eta {text_eta_bin} for {m} method")
 
                 plt.xlim(49, 2100)
+                plt.ylim(0, 2)
                 ax.set_xscale("log")
                 plt.legend(loc="upper right")
 

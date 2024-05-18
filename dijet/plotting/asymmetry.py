@@ -7,7 +7,7 @@ from columnflow.util import maybe_import, DotDict
 from columnflow.tasks.framework.base import Requirements
 from columnflow.tasks.framework.remote import RemoteWorkflow
 
-from dijet.tasks.alpha import AlphaExtrapolation
+from dijet.tasks.asymmetry import Asymmetry
 from dijet.constants import eta
 from dijet.plotting.base import PlottingBaseTask
 from dijet.plotting.util import eta_bin, pt_bin, alpha_bin, add_text, dot_to_p
@@ -33,7 +33,7 @@ class PlotAsymmetries(
     # upstream requirements
     reqs = Requirements(
         RemoteWorkflow.reqs,
-        AlphaExtrapolation=AlphaExtrapolation,
+        Asymmetry=Asymmetry,
     )
 
     def create_branch_map(self):
@@ -48,7 +48,7 @@ class PlotAsymmetries(
         ]
 
     def requires(self):
-        return self.reqs.AlphaExtrapolation.req(
+        return self.reqs.Asymmetry.req(
             self,
             processes=("qcd", "data"),
             branch=-1,
@@ -90,6 +90,7 @@ class PlotAsymmetries(
         plt.scatter(asym.flatten(), data.flatten(), marker="o", color="black", label="Data")
         ax.set_xlabel("Asymmetry")
         ax.set_ylabel(r"$\Delta$N/N")
+        ax.set_yscale("log")
         return fig, ax
 
     def run(self):
