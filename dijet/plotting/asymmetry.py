@@ -132,6 +132,9 @@ class PlotAsymmetries(
         pos_x = 0.05
         pos_y = 0.95
         offset = 0.05
+        x_lim = [-0.5, 0.5]
+        y_lim = [0.00005, 10]
+        range_qunatile = [y_lim[0], y_lim[1] / 100]  # Adjust to y scale
 
         text_eta_bin = eta_bin(eta_lo, eta_hi)
         store_bin_eta = f"eta_{dot_to_p(eta_lo)}_{dot_to_p(eta_hi)}"
@@ -168,7 +171,8 @@ class PlotAsymmetries(
                     add_text(ax, pos_x, pos_y, pt_bin(pt_lo, pt_hi), offset=offset)
                     add_text(ax, pos_x, pos_y, alpha_bin(a), offset=2 * offset)
 
-                    plt.xlim(-0.5, 0.5)
+                    plt.xlim(x_lim[0], x_lim[1])
+                    plt.ylim(y_lim[0], y_lim[1])
                     plt.legend(loc="upper right")
 
                     # keep short lines
