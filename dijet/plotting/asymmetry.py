@@ -65,6 +65,12 @@ class PlotAsymmetries(
             self.input().collection[1]["asym"].load(formatter="pickle"),
         )
 
+    def load_quantiles(self):
+        return (
+            self.input().collection[0]["quantiles"].load(formatter="pickle"),
+            self.input().collection[1]["quantiles"].load(formatter="pickle"),
+        )
+
     def output(self) -> dict[law.FileSystemTarget]:
         # TODO: Unstable for changes like data_jetmet_X
         #       Make independent like in config datasetname groups
@@ -110,21 +116,29 @@ class PlotAsymmetries(
         return fig, ax
 
     def run(self):
-        asymm_data, asymm_mc = self.load_asymmetry()
+        asymm_da, asymm_mc = self.load_asymmetry()
+        quant_da, quant_mc = self.load_quantiles()
 
         eta_lo, eta_hi = self.branch_data.eta
         eta_midp = 0.5 * (eta_lo + eta_hi)
-        asymm_data = asymm_data[{"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+
+        asymm_da = asymm_da[{"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
         asymm_mc = asymm_mc[{"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
 
-        asymm_data.view().value = np.nan_to_num(asymm_data.view().value, nan=0.0)
-        asymm_data.view().variance = np.nan_to_num(asymm_data.view().variance, nan=0.0)
+        axis_eta = "probejet_abseta"  # to reduce line characters
+        quant_da["low"] = quant_da["low"][{axis_eta: hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+        quant_mc["low"] = quant_mc["low"][{axis_eta: hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+        quant_da["up"] = quant_da["up"][{axis_eta: hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+        quant_mc["up"] = quant_mc["up"][{axis_eta: hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+
+        asymm_da.view().value = np.nan_to_num(asymm_da.view().value, nan=0.0)
+        asymm_da.view().variance = np.nan_to_num(asymm_da.view().variance, nan=0.0)
         asymm_mc.view().value = np.nan_to_num(asymm_mc.view().value, nan=0.0)
         asymm_mc.view().variance = np.nan_to_num(asymm_mc.view().variance, nan=0.0)
 
-        pt_edges = asymm_data.axes["dijets_pt_avg"].edges
-        alpha_edges = asymm_data.axes["dijets_alpha"].edges
-        asym_centers = asymm_data.axes["dijets_asymmetry"].centers
+        pt_edges = asymm_da.axes["dijets_pt_avg"].edges
+        alpha_edges = asymm_da.axes["dijets_alpha"].edges
+        asym_centers = asymm_da.axes["dijets_asymmetry"].centers
 
         # Set plotting style
         plt.style.use(mplhep.style.CMS)
@@ -174,6 +188,15 @@ class PlotAsymmetries(
                     plt.xlim(x_lim[0], x_lim[1])
                     plt.ylim(y_lim[0], y_lim[1])
                     plt.legend(loc="upper right")
+
+                    q_da_lo = quant_da["low"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
+                    q_da_up = quant_da["up"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
+                    q_mc_lo = quant_mc["low"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
+                    q_mc_up = quant_mc["up"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
+                    plt.plot([q_da_lo, q_da_lo], range_qunatile, color=self.colors["da"], linestyle="--")
+                    plt.plot([q_da_up, q_da_up], range_qunatile, color=self.colors["da"], linestyle="--")
+                    plt.plot([q_mc_lo, q_mc_lo], range_qunatile, color=self.colors["mc"], linestyle="--")
+                    plt.plot([q_mc_up, q_mc_up], range_qunatile, color=self.colors["mc"], linestyle="--")
 
                     # keep short lines
                     store_bin_pt = f"pt_{dot_to_p(pt_lo)}_{dot_to_p(pt_hi)}"
