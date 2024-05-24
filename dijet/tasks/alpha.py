@@ -86,6 +86,7 @@ class AlphaExtrapolation(
         )
         h_stds = h_asyms.copy()
         h_stds = h_stds[{"dijets_asymmetry": sum}]
+
         # Get stds
         h_stds.view().value = np.sqrt(
             np.average(
@@ -96,7 +97,6 @@ class AlphaExtrapolation(
         )
         h_stds.view().value = np.nan_to_num(h_stds.view().value, nan=0.0)
 
-        # Get stds error; squeeze to reshape integral from (x,y,z,1) to (x,y,z)
         # note: error on std deviation analogous to implementation in ROOT::TH1
         # https://root.cern/doc/v630/TH1_8cxx_source.html#l07520
         h_stds.view().variance = h_stds.values()**2 / (2 * h_nevts.values())
