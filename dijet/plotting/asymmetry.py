@@ -75,11 +75,12 @@ class PlotAsymmetries(
         }
         return outp
 
-    def plot_asymmetry(self, data, mc, asym):
+    def plot_asymmetry(self, content, error, asym):
         fig, ax = plt.subplots()
         plt.bar(
             asym.flatten(),
-            mc.flatten(),
+            content["mc"].flatten(),
+            yerr=error["mc"],
             align="center",
             width=np.diff(asym)[0],
             alpha=0.6,
@@ -87,7 +88,17 @@ class PlotAsymmetries(
             edgecolor="none",
             label="MC",
         )
-        plt.scatter(asym.flatten(), data.flatten(), marker="o", color="black", label="Data")
+        plt.errorbar(
+            asym.flatten(),
+            content["da"].flatten(),
+            yerr=error["da"],
+            fmt="o",
+            marker="o",
+            fillstyle="full",
+            color=self.colors["da"],
+            label="Data",
+        )
+
         ax.set_xlabel("Asymmetry")
         ax.set_ylabel(r"$\Delta$N/N")
         ax.set_yscale("log")
@@ -128,8 +139,14 @@ class PlotAsymmetries(
 
                     # TODO: Include errors
                     input_ = {
-                        "data": asymm_data[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].values(),
-                        "mc": asymm_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].values(),
+                        "content": {
+                            "da": asymm_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].values(),
+                            "mc": asymm_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].values(),
+                        },
+                        "error": {
+                            "da": np.sqrt(asymm_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].variances()),
+                            "mc": np.sqrt(asymm_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].variances()),
+                        },
                         "asym": asym_centers,
                     }
 
