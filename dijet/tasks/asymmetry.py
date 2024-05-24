@@ -62,8 +62,10 @@ class Asymmetry(
         target = self.target(f"{sample}", dir=True)
         # declare the main target
         outp = {
+            "asym_cut": target.child("asym_cut.pickle", type="f"),
             "asym": target.child("asym.pickle", type="f"),
             "nevt": target.child("nevt.pickle", type="f"),
+            "quantiles": target.child("quantile.pickle", type="f"),
         }
         return outp
 
@@ -85,8 +87,6 @@ class Asymmetry(
                 h_all.append(h_in)
         h_all = sum(h_all)
 
-        # TODO: Need own task to store asymmetry before this one
-        #       New structure of base histogram task necessary
         axes_names = [a.name for a in h_all.axes]
         view = h_all.view()
 
@@ -109,5 +109,68 @@ class Asymmetry(
         view.value = view.value / integral
         view.variance = view.variance / integral**2
 
-        # Store in pickle file for plotting task
+        # Store asymmetries with gausstails for plotting
+        # TODO: h_all is further adjusted in scope of this task
+        #       retrospectivley changing this output as well?
         self.output()["asym"].dump(h_all, formatter="pickle")
+
+        # Cut off non gaussian tails using quantiles
+        # NOTE: My first aim was to use np.quantile like
+        #       quantiles_lo = np.quantile(view.value, 0.015, axis=-1, keepdim=True)
+        #       This appraoch does not work with arrays containing histograms but only the raw data
+
+        # Get relative contribution from each bin to overall number.
+        # For each index, it adds the previous ones.
+        # For a normalized hist, the last entry must be 1.
+        percentage = np.cumsum(view.value, axis=-1)
+        # TODO: add assert so the last element is always 1
+
+        # Function to apply np.searchsorted on each 1D slice
+        def searchsorted_quantiles(cdf_slice, quantile):
+            return np.searchsorted(cdf_slice, quantile)
+
+        # TODO: As input parameter in task for uncertainties
+        #       Also needed for task output path
+        quantile_lo = 0.015  # 1.5 % / left tail
+        quantile_up = 0.985  # 98.5 % / right tail
+
+        # Find index of quantile
+        # NOTE: No alternative found yet for apply_along_axis
+        ind_lo = np.apply_along_axis(searchsorted_quantiles, -1, percentage, quantile_lo)
+        ind_up = np.apply_along_axis(searchsorted_quantiles, -1, percentage, quantile_up)
+
+        # Extend index array by one axis
+        ind_lo = np.expand_dims(ind_lo, axis=-1)
+        ind_up = np.expand_dims(ind_up, axis=-1)
+
+        # Obtain bin edge value for qunatile index
+        # Store in histogram structure
+        # NOTE: Not sure to rebin a hsitogram from (:,:,80) to (:,:,1)
+        #       Remove bin completly with sum, since only one value is needed
+        asym_edges = h_all.axes["dijets_asymmetry"].edges  # One dim more then view.value
+        asym_edges_lo = asym_edges[ind_lo]  # Get value for lower quantile
+        asym_edges_up = asym_edges[ind_up]  # Store in histogram structure
+
+        # Store in histogram strcuture for plotting task
+        # For the mask in the next step we need the shape (:,:,:,1) and can't remove the asymmetry axis completely.
+        h_asym_edges_lo = h_all.copy()[{"dijets_asymmetry": sum}]
+        h_asym_edges_up = h_asym_edges_lo.copy()
+        h_asym_edges_lo.view().value = np.squeeze(asym_edges_lo)
+        h_asym_edges_up.view().value = np.squeeze(asym_edges_up)
+        h_quantiles = {
+            "low": h_asym_edges_lo,
+            "up": h_asym_edges_up,
+        }
+        self.output()["quantiles"].dump(h_quantiles, formatter="pickle")
+
+        # Create mask to filter data; Only bins above/below qunatile bins
+        asym_centers = h_all.axes["dijets_asymmetry"].centers  # Use centers to keep dim of view.value
+        asym_centers_reshaped = asym_centers.reshape(1, 1, 1, 1, -1)  # TODO: shape not hard coded
+        mask = (asym_centers_reshaped > asym_edges_lo) & (asym_centers_reshaped < asym_edges_up)
+
+        # Filter non gaussian tailes
+        view.value = np.where(mask, view.value, np.nan)
+        view.variance = np.where(mask, view.variance, np.nan)
+
+        # Store in pickle file for plotting task
+        self.output()["asym_cut"].dump(h_all, formatter="pickle")
