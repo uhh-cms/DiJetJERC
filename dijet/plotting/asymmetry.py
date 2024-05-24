@@ -36,6 +36,11 @@ class PlotAsymmetries(
         Asymmetry=Asymmetry,
     )
 
+    colors = {
+        "da": "black",
+        "mc": "indianred",
+    }
+
     def create_branch_map(self):
         """
         Workflow has one branch for each eta bin (eta).
@@ -84,7 +89,7 @@ class PlotAsymmetries(
             align="center",
             width=np.diff(asym)[0],
             alpha=0.6,
-            color="indianred",
+            color=self.colors["mc"],
             edgecolor="none",
             label="MC",
         )
