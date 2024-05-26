@@ -12,12 +12,8 @@ from columnflow.tasks.framework.base import Requirements
 
 from dijet.tasks.alpha import AlphaExtrapolation
 
-ak = maybe_import("awkward")
 hist = maybe_import("hist")
 np = maybe_import("numpy")
-plt = maybe_import("matplotlib.pyplot")
-mplhep = maybe_import("mplhep")
-it = maybe_import("itertools")
 
 
 class JER(HistogramsBaseTask):
