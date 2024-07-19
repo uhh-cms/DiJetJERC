@@ -37,9 +37,7 @@ class AlphaExtrapolation(
     )
 
     def requires(self):
-        return self.reqs.Asymmetry.req(
-            self,
-        )
+        return self.reqs.Asymmetry.req(self)
 
     def workflow_requires(self):
         reqs = super().workflow_requires()

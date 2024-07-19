@@ -46,7 +46,6 @@ class PlotSFs(PlottingBaseTask):
         # declare the main target
         outp = {
             "single": target.child("sfs", type="d"),
-            "dummy": target.child("dummy.txt", type="f"),
         }
         return outp
 
@@ -56,7 +55,7 @@ class PlotSFs(PlottingBaseTask):
         plt.errorbar(pt, sfs["nom"], yerr=sfs["err"], fmt="o", color="black")
 
         ax.set_xlabel(r"$p_{T}^{ave}$")
-        ax.set_ylabel(r"$SF$")
+        ax.set_ylabel("SF")
         return fig, ax
 
     def run(self):

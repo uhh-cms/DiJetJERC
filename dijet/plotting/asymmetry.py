@@ -91,7 +91,7 @@ class PlotAsymmetries(
         plt.bar(
             asym.flatten(),
             content["mc"].flatten(),
-            yerr=error["mc"],
+            yerr=error["mc"].flatten(),
             align="center",
             width=np.diff(asym)[0],
             alpha=0.6,
@@ -102,7 +102,7 @@ class PlotAsymmetries(
         plt.errorbar(
             asym.flatten(),
             content["da"].flatten(),
-            yerr=error["da"],
+            yerr=error["da"].flatten(),
             fmt="o",
             marker="o",
             fillstyle="full",
@@ -148,7 +148,7 @@ class PlotAsymmetries(
         offset = 0.05
         x_lim = [-0.5, 0.5]
         y_lim = [0.00005, 10]
-        range_qunatile = [y_lim[0], y_lim[1] / 100]  # Adjust to y scale
+        range_quantile = [y_lim[0], y_lim[1] / 100]  # Adjust to y scale
 
         text_eta_bin = eta_bin(eta_lo, eta_hi)
         store_bin_eta = f"eta_{dot_to_p(eta_lo)}_{dot_to_p(eta_hi)}"
@@ -159,7 +159,6 @@ class PlotAsymmetries(
                     # TODO: status/debugging option for input to print current bin ?
                     # print(f"Start with pt {pt_lo} to {pt_hi} and alpha {a}")
 
-                    # TODO: Include errors
                     input_ = {
                         "content": {
                             "da": asymm_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].values(),
@@ -193,10 +192,10 @@ class PlotAsymmetries(
                     q_da_up = quant_da["up"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
                     q_mc_lo = quant_mc["low"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
                     q_mc_up = quant_mc["up"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
-                    plt.plot([q_da_lo, q_da_lo], range_qunatile, color=self.colors["da"], linestyle="--")
-                    plt.plot([q_da_up, q_da_up], range_qunatile, color=self.colors["da"], linestyle="--")
-                    plt.plot([q_mc_lo, q_mc_lo], range_qunatile, color=self.colors["mc"], linestyle="--")
-                    plt.plot([q_mc_up, q_mc_up], range_qunatile, color=self.colors["mc"], linestyle="--")
+                    plt.plot([q_da_lo, q_da_lo], range_quantile, color=self.colors["da"], linestyle="--")
+                    plt.plot([q_da_up, q_da_up], range_quantile, color=self.colors["da"], linestyle="--")
+                    plt.plot([q_mc_lo, q_mc_lo], range_quantile, color=self.colors["mc"], linestyle="--")
+                    plt.plot([q_mc_up, q_mc_up], range_quantile, color=self.colors["mc"], linestyle="--")
 
                     # keep short lines
                     store_bin_pt = f"pt_{dot_to_p(pt_lo)}_{dot_to_p(pt_hi)}"

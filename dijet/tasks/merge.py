@@ -18,7 +18,7 @@ from columnflow.util import dev_sandbox
 from dijet.tasks.base import DiJetTask
 
 
-class MergeTask(
+class DataMCTaskBase(
     DiJetTask,
     DatasetsProcessesMixin,
     CategoriesMixin,
@@ -29,9 +29,8 @@ class MergeTask(
     ShiftTask,
 ):
     """
-    Base task to plot histogram from each step of the JER SF workflow.
-    An example implementation of how to handle the inputs in a run method can be
-    found in columnflow/tasks/histograms.py
+    Base task to run on MC and data simultanously.
+    Needed e.g. for the SF task as those take the ratio of both.
     """
     sandbox = dev_sandbox(law.config.get("analysis", "default_columnar_sandbox"))
 

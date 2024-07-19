@@ -11,17 +11,18 @@ from columnflow.util import maybe_import
 from columnflow.tasks.framework.base import Requirements
 
 from dijet.tasks.jer import JER
-from dijet.tasks.merge import MergeTask
+from dijet.tasks.merge import DataMCTaskBase
 
 np = maybe_import("numpy")
 
 
-class SF(MergeTask):
+class SF(DataMCTaskBase):
     """
-    Task to perform JER SFs.
-    Read in and plots from JER.
-    Take ratio.
-    TODO: Add NSC fit
+    Task to derive the JER SFs and store those in a dedicated file.
+    The input for this task is taken from the JER output from data and MC.
+    The JER SFs are derived from the ratio of the JER from data and MC.
+    TODO: - Add NSC fit
+          - Add constant fit
     """
 
     output_collection_cls = law.NestedSiblingFileCollection

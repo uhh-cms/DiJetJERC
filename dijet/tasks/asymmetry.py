@@ -23,7 +23,7 @@ class Asymmetry(
     """
     Task to prepare asymmetries for width extrapolation.
     Read in and plot asymmetry histograms.
-    Cut of non-gaussian tails.
+    Cut off non-gaussian tails.
     """
 
     # Add nested sibling directories to output path
@@ -125,10 +125,6 @@ class Asymmetry(
         percentage = np.cumsum(view.value, axis=-1)
         # TODO: add assert so the last element is always 1
 
-        # Function to apply np.searchsorted on each 1D slice
-        def searchsorted_quantiles(cdf_slice, quantile):
-            return np.searchsorted(cdf_slice, quantile)
-
         # TODO: As input parameter in task for uncertainties
         #       Also needed for task output path
         quantile_lo = 0.015  # 1.5 % / left tail
@@ -136,8 +132,8 @@ class Asymmetry(
 
         # Find index of quantile
         # NOTE: No alternative found yet for apply_along_axis
-        ind_lo = np.apply_along_axis(searchsorted_quantiles, -1, percentage, quantile_lo)
-        ind_up = np.apply_along_axis(searchsorted_quantiles, -1, percentage, quantile_up)
+        ind_lo = np.apply_along_axis(np.searchsorted, -1, percentage, quantile_lo, side="left")
+        ind_up = np.apply_along_axis(np.searchsorted, -1, percentage, quantile_up, side="right")
 
         # Extend index array by one axis
         ind_lo = np.expand_dims(ind_lo, axis=-1)
@@ -149,7 +145,7 @@ class Asymmetry(
         #       Remove bin completly with sum, since only one value is needed
         asym_edges = h_all.axes["dijets_asymmetry"].edges  # One dim more then view.value
         asym_edges_lo = asym_edges[ind_lo]  # Get value for lower quantile
-        asym_edges_up = asym_edges[ind_up]  # Store in histogram structure
+        asym_edges_up = asym_edges[ind_up + 1]  # Store in histogram structure
 
         # Store in histogram strcuture for plotting task
         # For the mask in the next step we need the shape (:,:,:,1) and can't remove the asymmetry axis completely.
@@ -165,7 +161,7 @@ class Asymmetry(
 
         # Create mask to filter data; Only bins above/below qunatile bins
         asym_centers = h_all.axes["dijets_asymmetry"].centers  # Use centers to keep dim of view.value
-        asym_centers_reshaped = asym_centers.reshape(1, 1, 1, 1, -1)  # TODO: shape not hard coded
+        asym_centers_reshaped = asym_centers.reshape(1, 1, 1, 1, -1)  # TODO: not hard-coded
         mask = (asym_centers_reshaped > asym_edges_lo) & (asym_centers_reshaped < asym_edges_up)
 
         # Filter non gaussian tailes
