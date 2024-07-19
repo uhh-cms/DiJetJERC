@@ -56,7 +56,7 @@ class PlotWidth(
         return self.reqs.AlphaExtrapolation.req(
             self,
             processes=("qcd", "data"),
-            _exclude={"branches"},
+            branch=-1,
         )
 
     def load_widths(self):
@@ -88,9 +88,25 @@ class PlotWidth(
 
     def plot_widths(self, widths, inters, slopes, wmax):
         fig, ax = plt.subplots()
-
-        plt.scatter(wmax, widths["mc"], marker="o", color=self.colors["mc"], label="MC")
-        plt.scatter(wmax, widths["da"], marker="o", color=self.colors["da"], label="Data")
+        plt.errorbar(
+            wmax,
+            widths["mc"],
+            fmt="o",
+            fillstyle="full",
+            color=self.colors["mc"],
+            label="MC",
+            yerr=widths["mc_err"],
+        )
+        plt.errorbar(
+            wmax,
+            widths["da"],
+            fmt="o",
+            marker="o",
+            fillstyle="full",
+            color=self.colors["da"],
+            label="Data",
+            yerr=widths["da_err"],
+        )
 
         x = np.linspace(0, wmax[-1], 100)
         fit_mc = slopes["mc"] * x + inters["mc"]
@@ -148,17 +164,15 @@ class PlotWidth(
 
         text_eta_bin = eta_bin(eta_lo, eta_hi)
         store_bin_eta = f"eta_{dot_to_p(eta_lo)}_{dot_to_p(eta_hi)}"
-
         for m in self.LOOKUP_CATEGORY_ID:
             for ip, (pt_lo, pt_hi) in enumerate(zip(pt_edges[:-1], pt_edges[1:])):
                 # TODO: status/debugging option for input to print current bin ?
-                print(f"Start with pt {pt_lo} to {pt_hi} for {m} method")
-
-                # TODO: Include errors
                 input_ = {
                     "widths": {
                         "da": widths_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), :, ip].values(),
                         "mc": widths_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), :, ip].values(),
+                        "da_err": np.sqrt(widths_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), :, ip].variances()),
+                        "mc_err": np.sqrt(widths_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), :, ip].variances()),
                     },
                     "inters": {
                         "da": inter_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ip].value,
@@ -184,6 +198,7 @@ class PlotWidth(
                 add_text(ax, pos_x, pos_y, pt_bin(pt_lo, pt_hi), offset=offset)
 
                 plt.xlim(0, alpha_edges[-1] + 0.05)
+                plt.ylim(0, 0.25)
                 plt.legend(loc="lower right")
 
                 # keep short lines

@@ -87,7 +87,7 @@ def add_variables(config: od.Config) -> None:
     config.add_variable(
         name="jets_pt",
         expression="Jet.pt",
-        binning=(40, 0, 400),
+        binning=(100, 0, 1000),
         unit="GeV",
         x_title="$p_{T}$ of all jets",
     )
@@ -98,7 +98,7 @@ def add_variables(config: od.Config) -> None:
             name=f"jet{i+1}_pt",
             expression=f"Jet.pt[:,{i}]",
             null_value=EMPTY_FLOAT,
-            binning=(40, 0., 400.),
+            binning=(100, 0., 1000.),
             unit="GeV",
             x_title=r"Jet %i $p_{T}$" % (i + 1),
         )
@@ -106,7 +106,7 @@ def add_variables(config: od.Config) -> None:
             name=f"jet{i+1}_eta",
             expression=f"Jet.eta[:,{i}]",
             null_value=EMPTY_FLOAT,
-            binning=(50, -2.5, 2.5),
+            binning=(100, -5.0, 5.0),
             x_title=r"Jet %i $\eta$" % (i + 1),
         )
         config.add_variable(

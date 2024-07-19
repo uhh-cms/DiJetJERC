@@ -7,7 +7,7 @@ from columnflow.util import maybe_import, DotDict
 from columnflow.tasks.framework.base import Requirements
 from columnflow.tasks.framework.remote import RemoteWorkflow
 
-from dijet.tasks.alpha import AlphaExtrapolation
+from dijet.tasks.asymmetry import Asymmetry
 from dijet.constants import eta
 from dijet.plotting.base import PlottingBaseTask
 from dijet.plotting.util import eta_bin, pt_bin, alpha_bin, add_text, dot_to_p
@@ -33,8 +33,13 @@ class PlotAsymmetries(
     # upstream requirements
     reqs = Requirements(
         RemoteWorkflow.reqs,
-        AlphaExtrapolation=AlphaExtrapolation,
+        Asymmetry=Asymmetry,
     )
+
+    colors = {
+        "da": "black",
+        "mc": "indianred",
+    }
 
     def create_branch_map(self):
         """
@@ -48,16 +53,22 @@ class PlotAsymmetries(
         ]
 
     def requires(self):
-        return self.reqs.AlphaExtrapolation.req(
+        return self.reqs.Asymmetry.req(
             self,
             processes=("qcd", "data"),
-            _exclude={"branches"},
+            branch=-1,
         )
 
     def load_asymmetry(self):
         return (
             self.input().collection[0]["asym"].load(formatter="pickle"),
             self.input().collection[1]["asym"].load(formatter="pickle"),
+        )
+
+    def load_quantiles(self):
+        return (
+            self.input().collection[0]["quantiles"].load(formatter="pickle"),
+            self.input().collection[1]["quantiles"].load(formatter="pickle"),
         )
 
     def output(self) -> dict[law.FileSystemTarget]:
@@ -75,39 +86,59 @@ class PlotAsymmetries(
         }
         return outp
 
-    def plot_asymmetry(self, data, mc, asym):
+    def plot_asymmetry(self, content, error, asym):
         fig, ax = plt.subplots()
         plt.bar(
             asym.flatten(),
-            mc.flatten(),
+            content["mc"].flatten(),
+            yerr=error["mc"].flatten(),
             align="center",
             width=np.diff(asym)[0],
             alpha=0.6,
-            color="indianred",
+            color=self.colors["mc"],
             edgecolor="none",
             label="MC",
         )
-        plt.scatter(asym.flatten(), data.flatten(), marker="o", color="black", label="Data")
+        plt.errorbar(
+            asym.flatten(),
+            content["da"].flatten(),
+            yerr=error["da"].flatten(),
+            fmt="o",
+            marker="o",
+            fillstyle="full",
+            color=self.colors["da"],
+            label="Data",
+        )
+
         ax.set_xlabel("Asymmetry")
         ax.set_ylabel(r"$\Delta$N/N")
+        ax.set_yscale("log")
         return fig, ax
 
     def run(self):
-        asymm_data, asymm_mc = self.load_asymmetry()
+        asymm_da, asymm_mc = self.load_asymmetry()
+        quant_da, quant_mc = self.load_quantiles()
 
         eta_lo, eta_hi = self.branch_data.eta
         eta_midp = 0.5 * (eta_lo + eta_hi)
-        asymm_data = asymm_data[{"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+
+        asymm_da = asymm_da[{"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
         asymm_mc = asymm_mc[{"probejet_abseta": hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
 
-        asymm_data.view().value = np.nan_to_num(asymm_data.view().value, nan=0.0)
-        asymm_data.view().variance = np.nan_to_num(asymm_data.view().variance, nan=0.0)
+        axis_eta = "probejet_abseta"  # to reduce line characters
+        quant_da["low"] = quant_da["low"][{axis_eta: hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+        quant_mc["low"] = quant_mc["low"][{axis_eta: hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+        quant_da["up"] = quant_da["up"][{axis_eta: hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+        quant_mc["up"] = quant_mc["up"][{axis_eta: hist.loc(eta_midp), "dijets_alpha": slice(0, hist.loc(0.3))}]
+
+        asymm_da.view().value = np.nan_to_num(asymm_da.view().value, nan=0.0)
+        asymm_da.view().variance = np.nan_to_num(asymm_da.view().variance, nan=0.0)
         asymm_mc.view().value = np.nan_to_num(asymm_mc.view().value, nan=0.0)
         asymm_mc.view().variance = np.nan_to_num(asymm_mc.view().variance, nan=0.0)
 
-        pt_edges = asymm_data.axes["dijets_pt_avg"].edges
-        alpha_edges = asymm_data.axes["dijets_alpha"].edges
-        asym_centers = asymm_data.axes["dijets_asymmetry"].centers
+        pt_edges = asymm_da.axes["dijets_pt_avg"].edges
+        alpha_edges = asymm_da.axes["dijets_alpha"].edges
+        asym_centers = asymm_da.axes["dijets_asymmetry"].centers
 
         # Set plotting style
         plt.style.use(mplhep.style.CMS)
@@ -115,6 +146,9 @@ class PlotAsymmetries(
         pos_x = 0.05
         pos_y = 0.95
         offset = 0.05
+        x_lim = [-0.5, 0.5]
+        y_lim = [0.00005, 10]
+        range_quantile = [y_lim[0], y_lim[1] / 100]  # Adjust to y scale
 
         text_eta_bin = eta_bin(eta_lo, eta_hi)
         store_bin_eta = f"eta_{dot_to_p(eta_lo)}_{dot_to_p(eta_hi)}"
@@ -125,10 +159,15 @@ class PlotAsymmetries(
                     # TODO: status/debugging option for input to print current bin ?
                     # print(f"Start with pt {pt_lo} to {pt_hi} and alpha {a}")
 
-                    # TODO: Include errors
                     input_ = {
-                        "data": asymm_data[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].values(),
-                        "mc": asymm_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].values(),
+                        "content": {
+                            "da": asymm_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].values(),
+                            "mc": asymm_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].values(),
+                        },
+                        "error": {
+                            "da": np.sqrt(asymm_da[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].variances()),
+                            "mc": np.sqrt(asymm_mc[hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip, :].variances()),
+                        },
                         "asym": asym_centers,
                     }
 
@@ -145,8 +184,18 @@ class PlotAsymmetries(
                     add_text(ax, pos_x, pos_y, pt_bin(pt_lo, pt_hi), offset=offset)
                     add_text(ax, pos_x, pos_y, alpha_bin(a), offset=2 * offset)
 
-                    plt.xlim(-0.5, 0.5)
+                    plt.xlim(x_lim[0], x_lim[1])
+                    plt.ylim(y_lim[0], y_lim[1])
                     plt.legend(loc="upper right")
+
+                    q_da_lo = quant_da["low"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
+                    q_da_up = quant_da["up"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
+                    q_mc_lo = quant_mc["low"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
+                    q_mc_up = quant_mc["up"][hist.loc(self.LOOKUP_CATEGORY_ID[m]), ia, ip].value
+                    plt.plot([q_da_lo, q_da_lo], range_quantile, color=self.colors["da"], linestyle="--")
+                    plt.plot([q_da_up, q_da_up], range_quantile, color=self.colors["da"], linestyle="--")
+                    plt.plot([q_mc_lo, q_mc_lo], range_quantile, color=self.colors["mc"], linestyle="--")
+                    plt.plot([q_mc_up, q_mc_up], range_quantile, color=self.colors["mc"], linestyle="--")
 
                     # keep short lines
                     store_bin_pt = f"pt_{dot_to_p(pt_lo)}_{dot_to_p(pt_hi)}"
