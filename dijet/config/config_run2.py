@@ -79,7 +79,7 @@ def add_config(
         "qcd_ht700to1000_madgraph",
         "qcd_ht1000to1500_madgraph",
         "qcd_ht1500to2000_madgraph",
-        "qcd_ht2000_madgraph",
+        "qcd_ht2000toinf_madgraph",
     ]
     for dataset_name in dataset_names:
         dataset = cfg.add_dataset(campaign.get_dataset(dataset_name))

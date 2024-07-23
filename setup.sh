@@ -57,6 +57,7 @@ setup_dijet() {
     export DIJET_BASE="${this_dir}"
     export CF_BASE="${this_dir}/modules/columnflow"
     export CF_REPO_BASE="${DIJET_BASE}"
+    export CF_REPO_BASE_ALIAS="DIJET_BASE"
     export CF_SETUP_NAME="${setup_name}"
 
     # load cf setup helpers
