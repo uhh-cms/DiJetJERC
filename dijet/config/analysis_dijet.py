@@ -29,7 +29,7 @@ ana.x.versions = {}
 # (used in cf.HTCondorWorkflow)
 ana.x.bash_sandboxes = [
     "$CF_BASE/sandboxes/cf.sh",
-    "$CF_BASE/sandboxes/venv_columnar.sh",
+    "$DIJET_BASE/sandboxes/venv_columnar.sh",
 ]
 
 # files of cmssw sandboxes that might be required by remote tasks
