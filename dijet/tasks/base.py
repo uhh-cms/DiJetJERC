@@ -159,7 +159,8 @@ class HistogramsBaseTask(
         h = h[{
             "process": sum,
             # TODO: read rebinning factors from config
-            "dijets_alpha": hist.rebin(5),
+            # @dsavoiu: don't rebin alpha
+            #"dijets_alpha": hist.rebin(5),
             "dijets_asymmetry": hist.rebin(2),
         }]
 

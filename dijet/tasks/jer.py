@@ -63,7 +63,10 @@ class JER(HistogramsBaseTask):
         # get index on `category` axis corresponding to
         # the two computation methods
         categories = list(h_widths.axes["category"])
-        index_methods = {m: categories.index(self.LOOKUP_CATEGORY_ID[m]) for m in self.LOOKUP_CATEGORY_ID}
+        index_methods = {
+            m: categories.index(self.LOOKUP_CATEGORY_ID[m])
+            for m in self.LOOKUP_CATEGORY_ID
+        }
 
         # calcuate JER for standard method
         jer_sm_val = h_widths[index_methods["sm"], :, :].values() * np.sqrt(2)

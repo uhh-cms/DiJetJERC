@@ -13,7 +13,7 @@ np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
 
-from dijet.constants import pt, eta
+from dijet.constants import pt, eta, alpha
 
 
 def add_feature_variables(config: od.Config) -> None:
@@ -159,6 +159,14 @@ def add_variables(config: od.Config) -> None:
 
     config.add_variable(
         name="dijets_alpha",
+        expression="alpha",
+        #binning=(100, 0, 1),  # ?
+        binning=alpha,
+        x_title=r"$\alpha$",
+    )
+
+    config.add_variable(
+        name="dijets_alpha_fine",
         expression="alpha",
         binning=(100, 0, 1),
         x_title=r"$\alpha$",
