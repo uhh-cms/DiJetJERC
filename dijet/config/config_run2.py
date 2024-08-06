@@ -17,7 +17,7 @@ import order as od
 from columnflow.util import DotDict
 from columnflow.config_util import get_root_processes_from_campaign
 from dijet.config.categories import add_categories
-from dijet.config.variables import add_variables
+from dijet.config.variables import add_variables, add_uhh2_synch_variables
 from dijet.config.cutflow_variables import add_cutflow_variables
 from dijet.config.datasets import get_dataset_lfns
 from dijet.config.analysis_dijet import analysis_dijet
@@ -673,6 +673,7 @@ def add_config(
     # add variables
     add_variables(cfg)
     add_cutflow_variables(cfg)
+    add_uhh2_synch_variables(cfg)
 
     # only produce cutflow features when number of dataset_files is limited (used in selection module)
     cfg.x.do_cutflow_features = bool(limit_dataset_files) and limit_dataset_files <= 10

@@ -9,7 +9,7 @@ import order as od
 from copy import deepcopy
 
 from columnflow.util import maybe_import
-from columnflow.columnar_util import EMPTY_FLOAT
+from columnflow.columnar_util import EMPTY_FLOAT, Route
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
@@ -343,3 +343,202 @@ def add_variables(config: od.Config) -> None:
         binning=(100, 0, 2),
         x_title=r"response reference jet",
     )
+
+
+def add_uhh2_synch_variables(config: od.Config) -> None:
+    """
+    Add variables needed for synchronization with UHH2.
+    """
+    variables = {
+        "jet1_pt": {
+            "expression_cf": lambda x: Route("Jet.pt[:, 0]").apply(x, None),
+            "expression_uhh2": "uhh2.jet1_pt",
+            "inputs": {"Jet.*"},
+            "scale": "log",
+            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            "diff_binning": np.linspace(-200, 200, 101),
+            "label": r"Jet 1 $p_{T}$",
+        },
+        "jet2_pt": {
+            "expression_cf": lambda x: Route("Jet.pt[:, 1]").apply(x, None),
+            "expression_uhh2": "uhh2.jet2_pt",
+            "inputs": {"Jet.*"},
+            "scale": "log",
+            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            "diff_binning": np.linspace(-200, 200, 101),
+            "label": r"Jet 2 $p_{T}$",
+        },
+        "jet3_pt": {
+            "expression_cf": lambda x: Route("Jet.pt[:, 2]").apply(x, None),
+            "expression_uhh2": "uhh2.jet3_pt",
+            "inputs": {"Jet.*"},
+            "scale": "log",
+            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            "diff_binning": np.linspace(-200, 200, 101),
+            "label": r"Jet 3 $p_{T}$",
+        },
+        "asymmetry": {
+            "expression_cf": "dijets.asymmetry",
+            "expression_uhh2": "uhh2.asymmetry",
+            "binning": np.linspace(-1, 1, 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Asymmetry",
+        },
+        "asymmetry_signflip": {
+            "expression_cf": lambda x: -x.dijets.asymmetry,
+            "expression_uhh2": "uhh2.asymmetry",
+            "inputs": {"dijets.asymmetry"},
+            "binning": np.linspace(-1, 1, 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Asymmetry (sign-flipped)",
+        },
+        "pt_avg": {
+            "expression_cf": "dijets.pt_avg",
+            "expression_uhh2": "uhh2.pt_ave",
+            "scale": "log",
+            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Dijet $p_{T}^{avg}$",
+        },
+        "pt_avg_gen": {
+            "expression_cf": "dijets.pt_avg_gen",
+            "expression_uhh2": "uhh2.gen_pt_ave",
+            "scale": "log",
+            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Dijet gen $p_{T}^{avg}$",
+        },
+        "alpha": {
+            "expression_cf": "alpha",
+            "expression_uhh2": "uhh2.alpha",
+            "binning": np.linspace(-1, 1, 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"$\alpha$",
+        },
+        "reference_jet_abseta": {
+            "expression_cf": lambda x: abs(x.reference_jet.eta),
+            "expression_uhh2": lambda x: abs(x.uhh2.barreljet_eta),
+            "inputs": {"reference_jet.*", "uhh.*"},
+            "binning": np.linspace(0, 5, 50),
+            "diff_binning": np.linspace(-5, 5, 101),
+            "label": r"Reference jet $\eta$",
+        },
+        "reference_jet_eta": {
+            "expression_cf": "reference_jet.eta",
+            "expression_uhh2": "uhh2.barreljet_eta",
+            "binning": np.linspace(-5, 5, 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Reference jet $|\eta|$",
+        },
+        "reference_jet_phi": {
+            "expression_cf": "reference_jet.phi",
+            "expression_uhh2": "uhh2.barreljet_phi",
+            "binning": np.linspace(-3.2, 3.2, 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Reference jet $\phi$",
+        },
+        "reference_jet_pt": {
+            "expression_cf": "reference_jet.pt",
+            "expression_uhh2": "uhh2.barreljet_pt",
+            "scale": "log",
+            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            "diff_binning": np.linspace(-100, 100, 101),
+            "label": r"Reference jet $p_{T}$",
+        },
+        "reference_gen_jet_eta": {
+            "expression_cf": lambda x: ak.firsts(x["GenJet"][ak.singletons(x["reference_jet"]["genJetIdx"])].eta),
+            "expression_uhh2": "uhh2.barrelgenjet_eta",
+            "inputs": {"reference_jet.*", "GenJet.*"},
+            "binning": np.linspace(-5, 5, 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Reference gen jet $\eta$",
+        },
+        "reference_gen_jet_phi": {
+            "expression_cf": lambda x: ak.firsts(x["GenJet"][ak.singletons(x["reference_jet"]["genJetIdx"])].phi),
+            "expression_uhh2": "uhh2.barrelgenjet_phi",
+            "inputs": {"reference_jet.*", "GenJet.*"},
+            "binning": np.linspace(-3.2, 3.2, 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Reference gen jet $\phi$",
+        },
+        "reference_gen_jet_pt": {
+            "expression_cf": lambda x: ak.firsts(x["GenJet"][ak.singletons(x["reference_jet"]["genJetIdx"])].pt),
+            "expression_uhh2": "uhh2.barrelgenjet_pt",
+            "inputs": {"reference_jet.*", "GenJet.*"},
+            "scale": "log",
+            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            "diff_binning": np.linspace(-100, 100, 101),
+            "label": r"Reference gen jet $p_{T}$",
+        },
+        "probe_jet_abseta": {
+            "expression_cf": lambda x: abs(x.probe_jet.eta),
+            "expression_uhh2": lambda x: abs(x.uhh2.probejet_eta),
+            "inputs": {"probe_jet.*", "uhh.*"},
+            "binning": np.linspace(0, 5, 50),
+            "diff_binning": np.linspace(-5, 5, 101),
+            "label": r"Probe jet $|\eta|$",
+        },
+        "probe_jet_eta": {
+            "expression_cf": "probe_jet.eta",
+            "expression_uhh2": "uhh2.probejet_eta",
+            "binning": np.linspace(-5, 5, 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Probe jet $\eta$",
+        },
+        "probe_jet_phi": {
+            "expression_cf": "probe_jet.phi",
+            "expression_uhh2": "uhh2.probejet_phi",
+            "binning": np.linspace(-3.2, 3.2, 101),
+            "diff_binning": np.linspace(-2, 2, 101),
+            "label": r"Probe jet $\phi$",
+        },
+        "probe_jet_pt": {
+            "expression_cf": "probe_jet.pt",
+            "expression_uhh2": "uhh2.probejet_pt",
+            "scale": "log",
+            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            "diff_binning": np.linspace(-100, 100, 101),
+            "label": r"Probe jet $p_{T}$",
+        },
+    }
+
+    variable_groups = {
+        "synch": set(),
+    }
+    for var_basename, var_cfg in variables.items():
+        # add UHH2 and CF variables
+        for fw in ("uhh2", "cf"):
+            var_name = f"s_{var_basename}_{fw}"
+            var_binning = var_cfg["binning"]
+            if not isinstance(var_binning, tuple):
+                var_binning = list(var_binning)
+            config.add_variable(
+                name=var_name,
+                expression=var_cfg[f"expression_{fw}"],
+                binning=var_binning,
+                x_title=rf"{var_cfg['label']} ({fw.upper()})",
+                log_x=(var_cfg.get("scale", "linear") == "log"),
+                aux={
+                    "inputs": var_cfg.get("inputs", set()),
+                },
+            )
+            variable_groups["synch"].add(var_name)
+
+        # # add CF-UHH2 difference (TODO: figure out how to handle lambdas)
+        # config.add_variable(
+        #     name=f"s_{var_basename}_diff",
+        #     expression=lambda x: var_cfg[f"expression_{fw}"],
+        #     binning=var_cfg["diff_binning"],
+        #     x_title=rf"$\Delta$({var_cfg['label']}) ({fw.upper()})",
+        #     scale=var_cfg.get("scale", "linear"),
+        #     aux={
+        #         "inputs": var_cfg.get("inputs", set()),
+        #     },
+        # )
+
+    # add variable groups aux if not exists
+    if not config.has_aux("variable_groups"):
+        config.x.variable_groups = {}
+
+    # update variable groups aux
+    config.x.variable_groups.update(variable_groups)
