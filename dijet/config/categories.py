@@ -135,7 +135,7 @@ def add_categories(config: od.Config) -> None:
         return events, ak.fill_none(events.use_fe, False)
 
     cat = config.add_category(
-        name="sel_fe",
+        name="fe",
         id=int(10**cat_idx_lsd * 2),
         selection="sel_fe",
         label="fe",
