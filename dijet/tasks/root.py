@@ -57,15 +57,15 @@ class JERtoRoot(HistogramsBaseTask):
         h_jer = results_jer["jer"]
 
         # get pt bins (errors symmetrical for now)
-        pt_bins = h_jer.axes["dijets_pt_avg"].edges
-        pt_centers = h_jer.axes["dijets_pt_avg"].centers
+        pt_bins = h_jer.axes[self._vars.pt].edges
+        pt_centers = h_jer.axes[self._vars.pt].centers
         pt_error_lo = pt_centers - pt_bins[:-1]
         pt_error_hi = pt_bins[1:] - pt_centers
 
         # compute and store values for building `TGraphAsymmError`
         # in external script
         results_jers = {}
-        abseta_bins = h_jer.axes["probejet_abseta"].edges
+        abseta_bins = h_jer.axes[self._vars.abseta].edges
         for method in self.LOOKUP_CATEGORY_ID:
             for abseta_lo, abseta_hi in zip(
                 abseta_bins[:-1],
@@ -80,7 +80,7 @@ class JERtoRoot(HistogramsBaseTask):
                 h_jer_category_abseta = h_jer[
                     {
                         "category": hist.loc(self.LOOKUP_CATEGORY_ID[method]),
-                        "probejet_abseta": hist.loc(abseta_center),
+                        self._vars.abseta: hist.loc(abseta_center),
                     }
                 ]
 

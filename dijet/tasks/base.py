@@ -44,6 +44,14 @@ class HistogramsBaseTask(
     # Category ID for methods
     LOOKUP_CATEGORY_ID = {"sm": 1, "fe": 2}
 
+    # map simple keys to actual variable names (TODO: make configurable)
+    _vars = DotDict.wrap({
+        "asymmetry": "dijets_asymmetry",
+        "abseta": "probejet_abseta",
+        "alpha": "dijets_alpha",
+        "pt": "dijets_pt_avg",
+    })
+
     def get_datasets(self) -> tuple[list[str], bool]:
         """
         Select datasets belonging to the `process` of the current branch task.
@@ -160,8 +168,8 @@ class HistogramsBaseTask(
             "process": sum,
             # TODO: read rebinning factors from config
             # @dsavoiu: don't rebin alpha
-            #"dijets_alpha": hist.rebin(5),
-            "dijets_asymmetry": hist.rebin(2),
+            #self._vars.alpha: hist.rebin(5),
+            self._vars.asymmetry: hist.rebin(2),
         }]
 
         return h

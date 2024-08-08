@@ -72,18 +72,18 @@ class AlphaExtrapolation(
         h_nevts = self.load_integrals()
 
         # Get widths of asymmetries
-        asyms = h_asyms.axes["dijets_asymmetry"].centers
+        asyms = h_asyms.axes[self._vars.asymmetry].centers
 
         # Take mean value from normalized asymmetry
         axes_names = [a.name for a in h_asyms.axes]
-        assert axes_names[-1] == "dijets_asymmetry", "asymmetry axis must come last"
+        assert axes_names[-1] == self._vars.asymmetry, "asymmetry axis must come last"
         means = np.nansum(
             asyms * h_asyms.view().value,
             axis=-1,
             keepdims=True,
         )
         h_stds = h_asyms.copy()
-        h_stds = h_stds[{"dijets_asymmetry": sum}]
+        h_stds = h_stds[{self._vars.asymmetry: sum}]
 
         # Get stds
         h_stds.view().value = np.sqrt(
@@ -109,15 +109,15 @@ class AlphaExtrapolation(
 
         # Get max alpha for fit; usually 0.3
         amax = 0.3  # TODO: define in config
-        h_stds = h_stds[{"dijets_alpha": slice(0, hist.loc(amax))}]
-        h_nevts = h_nevts[{"dijets_alpha": slice(0, hist.loc(amax))}]
+        h_stds = h_stds[{self._vars.alpha: slice(0, hist.loc(amax))}]
+        h_nevts = h_nevts[{self._vars.alpha: slice(0, hist.loc(amax))}]
         # exclude 0, the first bin, from alpha edges
-        alphas = h_stds.axes["dijets_alpha"].edges[1:]
+        alphas = h_stds.axes[self._vars.alpha].edges[1:]
 
         # TODO: More efficient procedure than for loop?
         #       - Idea: Array with same shape but with tuple (width, error) as entry
-        n_eta = len(h_stds.axes["probejet_abseta"].centers)
-        n_pt = len(h_stds.axes["dijets_pt_avg"].centers)
+        n_eta = len(h_stds.axes[self._vars.abseta].centers)
+        n_pt = len(h_stds.axes[self._vars.pt].centers)
         n_methods = len(h_stds.axes["category"].centers)  # ony length
         inter = h_stds.copy().values()
         inter = inter[:, :2, :, :]  # keep first two entries
@@ -130,13 +130,13 @@ class AlphaExtrapolation(
         ):
             tmp = h_stds[{
                 "category": m,
-                "probejet_abseta": e,
-                "dijets_pt_avg": p,
+                self._vars.abseta: e,
+                self._vars.pt: p,
             }]
             tmp_evts = h_nevts[{
                 "category": m,
-                "probejet_abseta": e,
-                "dijets_pt_avg": p,
+                self._vars.abseta: e,
+                self._vars.pt: p,
             }]
             coeff, err = self.get_correlated_fit(wmax=alphas, std=tmp.values(), nevts=tmp_evts.values())
             inter[m, :, e, p] = [coeff[1], err[1]]
@@ -145,7 +145,7 @@ class AlphaExtrapolation(
         # NOTE: store fits into hist.
         h_intercepts = h_stds.copy()
         # Remove axis for alpha for histogram
-        h_intercepts = h_intercepts[{"dijets_alpha": sum}]
+        h_intercepts = h_intercepts[{self._vars.alpha: sum}]
         # y intercept of fit (x=0)
         h_intercepts.view().value = inter[:, 0, :, :]
         # Errors temporarly used; Later get:
