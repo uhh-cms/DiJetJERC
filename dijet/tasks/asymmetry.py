@@ -5,6 +5,7 @@ Custom tasks to derive JER SF.
 """
 
 import law
+import order as od
 
 from columnflow.tasks.framework.base import Requirements
 from columnflow.tasks.histograms import MergeHistograms
@@ -70,52 +71,73 @@ class Asymmetry(
     def output(self) -> dict[law.FileSystemTarget]:
         # TODO: Unstable for changes like data_jetmet_X
         #       Make independent like in config datasetname groups
+
+        # set target directory
         sample = self.extract_sample()
         target = self.target(f"{sample}", dir=True)
-        # declare the main target
+
+        # declare output files
         outp = {
-            "asym_cut": target.child("asym_cut.pickle", type="f"),
-            "asym": target.child("asym.pickle", type="f"),
-            "nevt": target.child("nevt.pickle", type="f"),
-            "quantiles": target.child("quantile.pickle", type="f"),
+            fname: target.child(f"{fname}.pickle", type="f")
+            for fname in ("asym", "asym_cut", "nevt", "quantile")
         }
+
+        # gen-level outputs (MC only)
+        _, isMC = self.get_datasets()
+        if isMC:
+            outp.update({
+                fname: target.child(f"{fname}_gen.pickle", type="f")
+                for fname in outp
+            })
+
         return outp
 
-    def run(self):
-        # TODO: Gen level for MC
-        #       Correlated fit (in jupyter)
+    def _run_impl(self, datasets: list[od.Dataset], is_gen: bool):
+        """
+        Implementation of asymmetry calculation.
+        """
+        # suffix to use when looking up output files
+        output_suffix = "_gen" if is_gen else ""
 
+        # dict storing either variables or their gen-level equivalents
+        resolve_var = lambda x: self._get_gen_variable(x) if is_gen else x
+        vars_ = {
+            "alpha": resolve_var(self.alpha_variable),
+            "asymmetry": resolve_var(self.asymmetry_variable),
+        }
+
+        # retrieve the correct multidimensional variables
+        assert len(self.variables) == len(self.gen_variables)  # sanity check
+        variable = self.gen_variables[0] if is_gen else self.variables[0]
+
+        # load hists and sum over all datasets
         h_all = []
-        datasets, isMC = self.get_datasets()
-
         for dataset in datasets:
-            for variable in self.variables:
-                h_in = self.reduce_histogram(
-                    self.load_histogram(dataset, variable),
-                    self.processes,
-                    self.shift,
-                )
-                # Store all hists in a list to sum over after reading
-                h_all.append(h_in)
+            h_in = self.reduce_histogram(
+                self.load_histogram(dataset, variable),
+                self.processes,
+                self.shift,
+            )
+            h_all.append(h_in)
         h_all = sum(h_all)
 
         axes_names = [a.name for a in h_all.axes]
         view = h_all.view()
 
         # replace histogram contents with cumulative sum over alpha bins
-        view.value = np.apply_along_axis(np.cumsum, axis=axes_names.index(self.alpha_variable), arr=view.value)
-        view.variance = np.apply_along_axis(np.cumsum, axis=axes_names.index(self.alpha_variable), arr=view.variance)
+        view.value = np.apply_along_axis(np.cumsum, axis=axes_names.index(vars_["alpha"]), arr=view.value)
+        view.variance = np.apply_along_axis(np.cumsum, axis=axes_names.index(vars_["alpha"]), arr=view.variance)
 
         # Get integral of asymmetries as array
         # Skip over-/underflow bins (i.e. TH1F -> ComputeIntegral for UHH2)
-        # h_all[{self.asymmetry_variable: sum}] includes such bins
-        integral = h_all.values().sum(axis=axes_names.index(self.asymmetry_variable), keepdims=True)
+        # h_all[{vars_["asymmetry"]: sum}] includes such bins
+        integral = h_all.values().sum(axis=axes_names.index(vars_["asymmetry"]), keepdims=True)
 
         # Store for width extrapolation
         h_nevts = h_all.copy()
-        h_nevts = h_nevts[{self.asymmetry_variable: sum}]
+        h_nevts = h_nevts[{vars_["asymmetry"]: sum}]
         h_nevts.view().value = np.squeeze(integral)
-        self.output()["nevt"].dump(h_nevts, formatter="pickle")
+        self.output()[f"nevt_{output_suffix}"].dump(h_nevts, formatter="pickle")
 
         # normalize histogram to integral over asymmetry
         view.value = view.value / integral
@@ -124,7 +146,7 @@ class Asymmetry(
         # Store asymmetries with gausstails for plotting
         # TODO: h_all is further adjusted in scope of this task
         #       retrospectivley changing this output as well?
-        self.output()["asym"].dump(h_all, formatter="pickle")
+        self.output()[f"asym_{output_suffix}"].dump(h_all, formatter="pickle")
 
         # Cut off non gaussian tails using quantiles
         # NOTE: My first aim was to use np.quantile like
@@ -155,13 +177,13 @@ class Asymmetry(
         # Store in histogram structure
         # NOTE: Not sure to rebin a hsitogram from (:,:,80) to (:,:,1)
         #       Remove bin completly with sum, since only one value is needed
-        asym_edges = h_all.axes[self.asymmetry_variable].edges  # One dim more then view.value
+        asym_edges = h_all.axes[vars_["asymmetry"]].edges  # One dim more then view.value
         asym_edges_lo = asym_edges[ind_lo]  # Get value for lower quantile
         asym_edges_up = asym_edges[ind_up + 1]  # Store in histogram structure
 
         # Store in histogram strcuture for plotting task
         # For the mask in the next step we need the shape (:,:,:,1) and can't remove the asymmetry axis completely.
-        h_asym_edges_lo = h_all.copy()[{self.asymmetry_variable: sum}]
+        h_asym_edges_lo = h_all.copy()[{vars_["asymmetry"]: sum}]
         h_asym_edges_up = h_asym_edges_lo.copy()
         h_asym_edges_lo.view().value = np.squeeze(asym_edges_lo)
         h_asym_edges_up.view().value = np.squeeze(asym_edges_up)
@@ -169,10 +191,10 @@ class Asymmetry(
             "low": h_asym_edges_lo,
             "up": h_asym_edges_up,
         }
-        self.output()["quantiles"].dump(h_quantiles, formatter="pickle")
+        self.output()[f"quantile_{output_suffix}"].dump(h_quantiles, formatter="pickle")
 
         # Create mask to filter data; Only bins above/below qunatile bins
-        asym_centers = h_all.axes[self.asymmetry_variable].centers  # Use centers to keep dim of view.value
+        asym_centers = h_all.axes[vars_["asymmetry"]].centers  # Use centers to keep dim of view.value
         asym_centers_reshaped = asym_centers.reshape(1, 1, 1, 1, -1)  # TODO: not hard-coded
         mask = (asym_centers_reshaped > asym_edges_lo) & (asym_centers_reshaped < asym_edges_up)
 
@@ -181,4 +203,18 @@ class Asymmetry(
         view.variance = np.where(mask, view.variance, np.nan)
 
         # Store in pickle file for plotting task
-        self.output()["asym_cut"].dump(h_all, formatter="pickle")
+        self.output()[f"asym_cut_{output_suffix}"].dump(h_all, formatter="pickle")
+
+
+    def run(self):
+        # TODO: Gen level for MC
+        #       Correlated fit (in jupyter)
+
+        datasets, isMC = self.get_datasets()
+
+        # process reco-level histograms
+        _run_impl(datasets, is_gen=False)
+
+        # process gen-level histograms (MC-only)
+        if isMC:
+            _run_impl(datasets, is_gen=True)
