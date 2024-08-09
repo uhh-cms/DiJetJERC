@@ -6,6 +6,9 @@ Custom base tasks.
 
 import luigi
 import law
+import order as od
+
+from functools import partial
 
 from columnflow.tasks.framework.base import BaseTask, ShiftTask
 from columnflow.tasks.framework.mixins import (
@@ -52,33 +55,44 @@ class DiJetVariablesMixin(
         brace_expand=True,
         parse_empty=True,
     )
+    levels = law.CSVParameter(
+        default=("reco", "gen"),
+        description="comma-separated list of 'reco', 'gen', or both, indicating whether to "
+        "use the regular (reconstruction-level) variables or the equivalent variable on "
+        "generator-level; if not given, only 'reco'-level variables are used",
+        choices={"reco", "gen"},
+        brace_expand=True,
+        parse_empty=True,
+    )
     variable_param_names = (
         "asymmetry_variable", "alpha_variable", "binning_variables",
     )
 
-    def _get_gen_variable(self, var_name: str):
+    @staticmethod
+    def _get_variable_for_level(config: od.Config, name: str, level: str):
         """
-        Get the equivalent gen-level variable for `var_name`.
+        Get name of variable corresponding to main variable *name*
+        of level *level*, where *level* can be either 'reco' or 'gen'.
         """
-        var_inst = self.config_inst.get_variable(var_name)
-        return var_inst.x("gen_variable", var_name)
+        if level == "reco":
+            # reco level is default -> return directly
+            return name
+        elif level == "gen":
+            # look up registered gen-level name in aux data
+            var_inst = config.get_variable(name)
+            return var_inst.x("gen_variable", name)
+        else:
+            raise ValueError(f"invalid level '{level}', expected one of: gen,reco")
 
-    @property
-    def gen_variables(self):
+    def iter_levels_variables(self):
         """
-        Return copy of `variables` parameter, substituting each component
-        of potentially multidimensional variables with their gen-level
-        equivalent.
+        Generator yielding tuples of the form (level, variable), with *level*
+        being either 'reco' for reconstruction-level or 'gen' for gen-level
+        variables.
         """
-        # transform variables
-        # apply reco-to-gen mapping to every and return gen variables
-        return law.util.make_tuple(
-            self.join_multi_variable([
-                self._get_gen_variable(var_name)
-                for var_name in var_names
-            ])
-            for var_names in self.variable_tuples.values()
-        )
+        assert len(self.levels) == len(self.variables)
+        for level, variable in zip(self.levels, self.variables):
+            yield level, variable
 
     @classmethod
     def resolve_param_values(cls, params):
@@ -95,7 +109,6 @@ class DiJetVariablesMixin(
             p not in params
             for p in (
                 "config_inst",
-                #"dataset_inst",
             ) + cls.variable_param_names
         ):
             return params
@@ -120,26 +133,34 @@ class DiJetVariablesMixin(
             if params[var_param_name] is None
         }
         if missing_param_names:
-            missing_param_names_str = ", ".join(sorted(missing_param_names))
             raise RuntimeError(
                 "could not find default values in config for DiJetVariablesMixin; "
                 "please define the following keys in your config:\n" + "\n".join(
                     f"default_{var_name}" for var_name in sorted(missing_param_names)
-                )
+                ),
             )
 
-        # single multi-dimensional variable containing all
-        # required variables
-        all_variables = [
-            params["alpha_variable"]
+        # construct multi-dimensional variables
+        multivar_elems = [
+            params["alpha_variable"],
         ] + list(
-            params["binning_variables"]
+            params["binning_variables"],
         ) + [
-            params["asymmetry_variable"]
+            params["asymmetry_variable"],
         ]
-        params["variables"] = law.util.make_tuple(
-            cls.join_multi_variable(all_variables),
-        )
+        multivars = []
+        for level in params["levels"]:
+            # required variables
+            multivar_elems_for_level = [
+                cls._get_variable_for_level(config_inst, e, level)
+                for e in multivar_elems
+            ]
+            multivars.append(
+                cls.join_multi_variable(multivar_elems_for_level),
+            )
+
+        # convert to tuple and register as parameter
+        params["variables"] = law.util.make_tuple(multivars)
 
         # set flag to prevent function from running again
         params["_dijet_vars_resolved"] = True
@@ -243,12 +264,24 @@ class HistogramsBaseTask(
             sample = "Run" + ("".join(sorted(runs)))
         return sample
 
-    def reduce_histogram(self, histogram, processes, shift):
+    def reduce_histogram(self, histogram, processes, shift, level):
         """
         Reduce away the `shift` and `process` axes of a multidimensional
         histogram by selecting a single shift and summing over the processes.
         """
         import hist
+
+        # dict storing either variables or their gen-level equivalents
+        # for convenient access
+        resolve_var = partial(
+            self._get_variable_for_level,
+            config=self.config_inst,
+            level=level,
+        )
+        vars_ = {
+            "alpha": resolve_var(name=self.alpha_variable),
+            "asymmetry": resolve_var(name=self.asymmetry_variable),
+        }
 
         def flatten_nested_list(nested_list):
             return [item for sublist in nested_list for item in sublist]
@@ -287,8 +320,8 @@ class HistogramsBaseTask(
             "process": sum,
             # TODO: read rebinning factors from config
             # @dsavoiu: might be better to use config binning for now
-            #self.alpha_variable: hist.rebin(5),
-            self.asymmetry_variable: hist.rebin(2),
+            # vars_["alpha"]: hist.rebin(5),
+            vars_["asymmetry"]: hist.rebin(2),
         }]
 
         return h

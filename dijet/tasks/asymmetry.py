@@ -7,6 +7,8 @@ Custom tasks to derive JER SF.
 import law
 import order as od
 
+from functools import partial
+
 from columnflow.tasks.framework.base import Requirements
 from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import maybe_import
@@ -42,10 +44,13 @@ class Asymmetry(
             # get dataset instance
             dataset_inst = self.config_inst.get_dataset(dataset)
 
-            # determine variables (including gen-level variables for MC)
-            all_variables = self.variables
-            if dataset_inst.is_mc:
-                all_variables += self.gen_variables
+            # variables to pass on to dependent task (including
+            # gen-level variables only for MC)
+            variables_for_histograms = [
+                variable
+                for level, variable in self.iter_levels_variables()
+                if level == "reco" or dataset_inst.is_mc
+            ]
 
             # register `MergeHistograms` as requirement,
             # setting `variables` by hand
@@ -53,7 +58,7 @@ class Asymmetry(
                 self,
                 dataset=dataset,
                 branch=-1,
-                variables=all_variables,
+                variables=variables_for_histograms,
                 _exclude={"branches"},
             )
 
@@ -68,6 +73,9 @@ class Asymmetry(
         histogram = self.input()[dataset]["collection"][0]["hists"].targets[variable].load(formatter="pickle")
         return histogram
 
+    def output_key(self, base_key, level: str):
+        return base_key if level == "reco" else f"{base_key}_{level}"
+
     def output(self) -> dict[law.FileSystemTarget]:
         # TODO: Unstable for changes like data_jetmet_X
         #       Make independent like in config datasetname groups
@@ -76,68 +84,80 @@ class Asymmetry(
         sample = self.extract_sample()
         target = self.target(f"{sample}", dir=True)
 
-        # declare output files
-        outp = {
-            fname: target.child(f"{fname}.pickle", type="f")
-            for fname in ("asym", "asym_cut", "nevt", "quantile")
-        }
-
-        # gen-level outputs (MC only)
+        # check if MC or data
         _, isMC = self.get_datasets()
-        if isMC:
-            outp.update({
-                fname: target.child(f"{fname}_gen.pickle", type="f")
-                for fname in outp
-            })
+
+        # declare output files
+        outp = {}
+        for level in self.levels:
+            # skip gen level in data
+            if not isMC and level == "gen":
+                continue
+
+            # register output files for level
+            for basename in ("asym", "asym_cut", "nevt", "quantile"):
+                key = self.output_key(basename, level)
+                outp[key] = target.child(f"{key}.pickle", type="f")
 
         return outp
 
-    def _run_impl(self, datasets: list[od.Dataset], is_gen: bool):
+    def _run_impl(self, datasets: list[od.Dataset], level: str, variable: str):
         """
         Implementation of asymmetry calculation.
         """
+        # check provided level
+        if level not in ("gen", "reco"):
+            raise ValueError(f"invalid level '{level}', expected one of: gen,reco")
+
         # suffix to use when looking up output files
-        output_suffix = "_gen" if is_gen else ""
+        output_suffix = "" if level == "reco" else f"_{level}"
 
         # dict storing either variables or their gen-level equivalents
-        resolve_var = lambda x: self._get_gen_variable(x) if is_gen else x
+        # for convenient access
+        resolve_var = partial(
+            self._get_variable_for_level,
+            config=self.config_inst,
+            level=level,
+        )
         vars_ = {
-            "alpha": resolve_var(self.alpha_variable),
-            "asymmetry": resolve_var(self.asymmetry_variable),
+            "alpha": resolve_var(name=self.alpha_variable),
+            "asymmetry": resolve_var(name=self.asymmetry_variable),
         }
-
-        # retrieve the correct multidimensional variables
-        assert len(self.variables) == len(self.gen_variables)  # sanity check
-        variable = self.gen_variables[0] if is_gen else self.variables[0]
 
         # load hists and sum over all datasets
         h_all = []
         for dataset in datasets:
-            h_in = self.reduce_histogram(
-                self.load_histogram(dataset, variable),
+            h_in = self.load_histogram(dataset, variable)
+            h_in_reduced = self.reduce_histogram(
+                h_in,
                 self.processes,
                 self.shift,
+                level,
             )
-            h_all.append(h_in)
+            h_all.append(h_in_reduced)
         h_all = sum(h_all)
 
         axes_names = [a.name for a in h_all.axes]
+        axes_indices = {
+            var_key: axes_names.index(var_name)
+            for var_key, var_name in vars_.items()
+        }
         view = h_all.view()
 
         # replace histogram contents with cumulative sum over alpha bins
-        view.value = np.apply_along_axis(np.cumsum, axis=axes_names.index(vars_["alpha"]), arr=view.value)
-        view.variance = np.apply_along_axis(np.cumsum, axis=axes_names.index(vars_["alpha"]), arr=view.variance)
+        view.value = np.apply_along_axis(np.cumsum, axis=axes_indices["alpha"], arr=view.value)
+        view.variance = np.apply_along_axis(np.cumsum, axis=axes_indices["alpha"], arr=view.variance)
 
         # Get integral of asymmetries as array
         # Skip over-/underflow bins (i.e. TH1F -> ComputeIntegral for UHH2)
         # h_all[{vars_["asymmetry"]: sum}] includes such bins
-        integral = h_all.values().sum(axis=axes_names.index(vars_["asymmetry"]), keepdims=True)
+        integral = h_all.values().sum(axis=axes_indices["asymmetry"], keepdims=True)
 
         # Store for width extrapolation
         h_nevts = h_all.copy()
         h_nevts = h_nevts[{vars_["asymmetry"]: sum}]
         h_nevts.view().value = np.squeeze(integral)
-        self.output()[f"nevt_{output_suffix}"].dump(h_nevts, formatter="pickle")
+        self.output()[self.output_key("nevt", level)].dump(h_nevts, formatter="pickle")
 
         # normalize histogram to integral over asymmetry
         view.value = view.value / integral
@@ -146,7 +166,7 @@ class Asymmetry(
         # Store asymmetries with gausstails for plotting
         # TODO: h_all is further adjusted in scope of this task
         #       retrospectivley changing this output as well?
-        self.output()[f"asym_{output_suffix}"].dump(h_all, formatter="pickle")
+        self.output()[self.output_key("asym", level)].dump(h_all, formatter="pickle")
 
         # Cut off non gaussian tails using quantiles
         # NOTE: My first aim was to use np.quantile like
@@ -191,7 +211,7 @@ class Asymmetry(
             "low": h_asym_edges_lo,
             "up": h_asym_edges_up,
         }
-        self.output()[f"quantile_{output_suffix}"].dump(h_quantiles, formatter="pickle")
+        self.output()[self.output_key("quantile", level)].dump(h_quantiles, formatter="pickle")
 
         # Create mask to filter data; Only bins above/below qunatile bins
         asym_centers = h_all.axes[vars_["asymmetry"]].centers  # Use centers to keep dim of view.value
@@ -203,7 +223,7 @@ class Asymmetry(
         view.variance = np.where(mask, view.variance, np.nan)
 
         # Store in pickle file for plotting task
-        self.output()[f"asym_cut_{output_suffix}"].dump(h_all, formatter="pickle")
+        self.output()[self.output_key("asym_cut", level)].dump(h_all, formatter="pickle")
 
 
     def run(self):
@@ -212,9 +232,8 @@ class Asymmetry(
 
         datasets, isMC = self.get_datasets()
 
-        # process reco-level histograms
-        _run_impl(datasets, is_gen=False)
-
-        # process gen-level histograms (MC-only)
-        if isMC:
-            _run_impl(datasets, is_gen=True)
+        # process histograms for all applicable levels
+        for level, variable in self.iter_levels_variables():
+            if level == "gen" and not isMC:
+                continue
+            self._run_impl(datasets, level=level, variable=variable)
