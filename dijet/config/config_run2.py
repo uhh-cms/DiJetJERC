@@ -109,6 +109,11 @@ def add_config(
     cfg.x.default_categories = ["incl"]
     cfg.x.default_variables = ["jet1_pt"]
 
+    # default dijet variables
+    cfg.x.default_alpha_variable = "dijets_alpha"
+    cfg.x.default_asymmetry_variable = "dijets_asymmetry"
+    cfg.x.default_binning_variables = ["probejet_abseta", "dijets_pt_avg"]
+
     # process groups for conveniently looping over certain processs
     # (used in wrapper_factory and during plotting)
     cfg.x.process_groups = {

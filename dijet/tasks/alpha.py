@@ -72,18 +72,18 @@ class AlphaExtrapolation(
         h_nevts = self.load_integrals()
 
         # Get widths of asymmetries
-        asyms = h_asyms.axes[self._vars.asymmetry].centers
+        asyms = h_asyms.axes[self.asymmetry_variable].centers
 
         # Take mean value from normalized asymmetry
         axes_names = [a.name for a in h_asyms.axes]
-        assert axes_names[-1] == self._vars.asymmetry, "asymmetry axis must come last"
+        assert axes_names[-1] == self.asymmetry_variable, "asymmetry axis must come last"
         means = np.nansum(
             asyms * h_asyms.view().value,
             axis=-1,
             keepdims=True,
         )
         h_stds = h_asyms.copy()
-        h_stds = h_stds[{self._vars.asymmetry: sum}]
+        h_stds = h_stds[{self.asymmetry_variable: sum}]
 
         # Get stds
         h_stds.view().value = np.sqrt(
@@ -109,54 +109,57 @@ class AlphaExtrapolation(
 
         # Get max alpha for fit; usually 0.3
         amax = 0.3  # TODO: define in config
-        h_stds = h_stds[{self._vars.alpha: slice(0, hist.loc(amax))}]
-        h_nevts = h_nevts[{self._vars.alpha: slice(0, hist.loc(amax))}]
+        h_stds = h_stds[{self.alpha_variable: slice(0, hist.loc(amax))}]
+        h_nevts = h_nevts[{self.alpha_variable: slice(0, hist.loc(amax))}]
         # exclude 0, the first bin, from alpha edges
-        alphas = h_stds.axes[self._vars.alpha].edges[1:]
+        alphas = h_stds.axes[self.alpha_variable].edges[1:]
 
         # TODO: More efficient procedure than for loop?
         #       - Idea: Array with same shape but with tuple (width, error) as entry
-        n_eta = len(h_stds.axes[self._vars.abseta].centers)
-        n_pt = len(h_stds.axes[self._vars.pt].centers)
+        n_bins = [
+            len(h_stds.axes[bv].centers)
+            for bv in self.binning_variables
+        ]
         n_methods = len(h_stds.axes["category"].centers)  # ony length
         inter = h_stds.copy().values()
-        inter = inter[:, :2, :, :]  # keep first two entries
+        inter = inter[:, :2, ...]  # keep first two entries
         slope = h_stds.copy().values()
-        slope = slope[:, :2, :, :]  # keep first two entries
-        for m, e, p in it.product(
+        slope = slope[:, :2, ...]  # keep first two entries
+        for m, *bv_indices, p in it.product(
             range(n_methods),
-            range(n_eta),
-            range(n_pt),
+            *[range(n) for n in n_bins]
         ):
-            tmp = h_stds[{
+            h_slice = {
                 "category": m,
-                self._vars.abseta: e,
-                self._vars.pt: p,
-            }]
-            tmp_evts = h_nevts[{
-                "category": m,
-                self._vars.abseta: e,
-                self._vars.pt: p,
-            }]
+            }
+            h_slice.update({
+                bv: bv_index
+                for bv, bv_index in zip(
+                    self.binning_variables,
+                    bv_indices,
+                )
+            })
+            tmp = h_stds[h_slice]
+            tmp_evts = h_nevts[h_slice]
             coeff, err = self.get_correlated_fit(wmax=alphas, std=tmp.values(), nevts=tmp_evts.values())
-            inter[m, :, e, p] = [coeff[1], err[1]]
-            slope[m, :, e, p] = [coeff[0], err[0]]
+            inter[m, :, *bv_indices] = [coeff[1], err[1]]
+            slope[m, :, *bv_indices] = [coeff[0], err[0]]
 
         # NOTE: store fits into hist.
         h_intercepts = h_stds.copy()
         # Remove axis for alpha for histogram
-        h_intercepts = h_intercepts[{self._vars.alpha: sum}]
+        h_intercepts = h_intercepts[{self.alpha_variable: sum}]
         # y intercept of fit (x=0)
-        h_intercepts.view().value = inter[:, 0, :, :]
+        h_intercepts.view().value = inter[:, 0, ...]
         # Errors temporarly used; Later get:
         # Error on fit from fit function (how?) or new method with three fits
-        h_intercepts.view().variance = inter[:, 1, :, :]
+        h_intercepts.view().variance = inter[:, 1, ...]
 
         h_slopes = h_intercepts.copy()
         # Slope of fit stored in index 1
-        h_slopes.view().value = slope[:, 0, :, :]
+        h_slopes.view().value = slope[:, 0, ...]
         # Only stored for plotting, no defined error
-        h_slopes.view().variance = slope[:, 1, :, :]
+        h_slopes.view().variance = slope[:, 1, ...]
 
         results_extrapolation = {
             "intercepts": h_intercepts,

@@ -35,16 +35,28 @@ class Asymmetry(
     )
 
     def requires(self):
-        return {
-            d: self.reqs.MergeHistograms.req(
+        reqs = {}
+
+        for dataset in self.datasets:
+            # get dataset instance
+            dataset_inst = self.config_inst.get_dataset(dataset)
+
+            # determine variables (including gen-level variables for MC)
+            all_variables = self.variables
+            if dataset_inst.is_mc:
+                all_variables += self.gen_variables
+
+            # register `MergeHistograms` as requirement,
+            # setting `variables` by hand
+            reqs[dataset] = self.reqs.MergeHistograms.req(
                 self,
-                dataset=d,
+                dataset=dataset,
                 branch=-1,
+                variables=all_variables,
                 _exclude={"branches"},
-                _prefer_cli={"variables"},
             )
-            for d in self.datasets
-        }
+
+        return reqs
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
@@ -91,17 +103,17 @@ class Asymmetry(
         view = h_all.view()
 
         # replace histogram contents with cumulative sum over alpha bins
-        view.value = np.apply_along_axis(np.cumsum, axis=axes_names.index(self._vars.alpha), arr=view.value)
-        view.variance = np.apply_along_axis(np.cumsum, axis=axes_names.index(self._vars.alpha), arr=view.variance)
+        view.value = np.apply_along_axis(np.cumsum, axis=axes_names.index(self.alpha_variable), arr=view.value)
+        view.variance = np.apply_along_axis(np.cumsum, axis=axes_names.index(self.alpha_variable), arr=view.variance)
 
         # Get integral of asymmetries as array
         # Skip over-/underflow bins (i.e. TH1F -> ComputeIntegral for UHH2)
-        # h_all[{self._vars.asymmetry: sum}] includes such bins
-        integral = h_all.values().sum(axis=axes_names.index(self._vars.asymmetry), keepdims=True)
+        # h_all[{self.asymmetry_variable: sum}] includes such bins
+        integral = h_all.values().sum(axis=axes_names.index(self.asymmetry_variable), keepdims=True)
 
         # Store for width extrapolation
         h_nevts = h_all.copy()
-        h_nevts = h_nevts[{self._vars.asymmetry: sum}]
+        h_nevts = h_nevts[{self.asymmetry_variable: sum}]
         h_nevts.view().value = np.squeeze(integral)
         self.output()["nevt"].dump(h_nevts, formatter="pickle")
 
@@ -143,13 +155,13 @@ class Asymmetry(
         # Store in histogram structure
         # NOTE: Not sure to rebin a hsitogram from (:,:,80) to (:,:,1)
         #       Remove bin completly with sum, since only one value is needed
-        asym_edges = h_all.axes[self._vars.asymmetry].edges  # One dim more then view.value
+        asym_edges = h_all.axes[self.asymmetry_variable].edges  # One dim more then view.value
         asym_edges_lo = asym_edges[ind_lo]  # Get value for lower quantile
         asym_edges_up = asym_edges[ind_up + 1]  # Store in histogram structure
 
         # Store in histogram strcuture for plotting task
         # For the mask in the next step we need the shape (:,:,:,1) and can't remove the asymmetry axis completely.
-        h_asym_edges_lo = h_all.copy()[{self._vars.asymmetry: sum}]
+        h_asym_edges_lo = h_all.copy()[{self.asymmetry_variable: sum}]
         h_asym_edges_up = h_asym_edges_lo.copy()
         h_asym_edges_lo.view().value = np.squeeze(asym_edges_lo)
         h_asym_edges_up.view().value = np.squeeze(asym_edges_up)
@@ -160,7 +172,7 @@ class Asymmetry(
         self.output()["quantiles"].dump(h_quantiles, formatter="pickle")
 
         # Create mask to filter data; Only bins above/below qunatile bins
-        asym_centers = h_all.axes[self._vars.asymmetry].centers  # Use centers to keep dim of view.value
+        asym_centers = h_all.axes[self.asymmetry_variable].centers  # Use centers to keep dim of view.value
         asym_centers_reshaped = asym_centers.reshape(1, 1, 1, 1, -1)  # TODO: not hard-coded
         mask = (asym_centers_reshaped > asym_edges_lo) & (asym_centers_reshaped < asym_edges_up)
 
