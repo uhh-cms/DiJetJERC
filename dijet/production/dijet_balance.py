@@ -93,6 +93,16 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
             valid_when=True,
         )
 
+        # gen-level asymmetry
+        asymmetry_gen = ak.mask(
+            np.divide(
+                (probe_jet_gen_jet.pt - reference_jet_gen_jet.pt),
+                2 * pt_avg_gen,
+            ),
+            mask=both_jets_valid_gen_match,
+            valid_when=True,
+        )
+
         # gen-level MPF
         mpf_gen = ak.mask(
             np.divide(
@@ -117,6 +127,7 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
         dijets.update({
             "response_reference": ak.fill_none(response_reference, EMPTY_FLOAT),
             "response_probe": ak.fill_none(response_probe, EMPTY_FLOAT),
+            "asymmetry_gen": ak.fill_none(asymmetry_gen, EMPTY_FLOAT),
             "mpf_gen": ak.fill_none(mpf_gen, EMPTY_FLOAT),
             "mpfx_gen": ak.fill_none(mpfx_gen, EMPTY_FLOAT),
             "pt_avg_gen": ak.fill_none(pt_avg_gen, EMPTY_FLOAT),
@@ -145,6 +156,7 @@ def dijet_balance_init(self: Producer) -> None:
         self.produces |= {
             "dijets.response_probe",
             "dijets.response_reference",
+            "dijets.asymmetry_gen",
             "dijets.mpf_gen",
             "dijets.mpfx_gen",
             "dijets.pt_avg_gen",
