@@ -6,24 +6,38 @@ Custom tasks to derive JER SF.
 
 import law
 
-from dijet.tasks.base import HistogramsBaseTask
 from columnflow.util import maybe_import
 from columnflow.tasks.framework.base import Requirements
 
+from dijet.tasks.base import HistogramsBaseTask
 from dijet.tasks.alpha import AlphaExtrapolation
 
 hist = maybe_import("hist")
 np = maybe_import("numpy")
 
 
-class JER(HistogramsBaseTask):
+class JER(
+    HistogramsBaseTask,
+):
     """
-    Task to perform alpha extrapolation.
-    Read in and plot asymmetry histograms.
-    Cut of non-gaussian tails and extrapolate sigma_A( alpha->0 ).
+    Task to calculate JER after alpha extrapolation.
+
+    Processing steps:
+    - read in extrapolated widths from `AlphaExtrapolation` task
+    - subtract gen-level widths (PLI) from reco (is data use gen-width from MC)
+    - calculate JER in using standard method (SM) and forward-extension (FE) methods
     """
 
+    # declare output as a nested sibling file collection
     output_collection_cls = law.NestedSiblingFileCollection
+    output_base_keys = ("jers",)
+    output_per_level = False
+
+    subtract_pli = law.OptionalBoolParameter(
+        description="if True, will subtract the gen-level asymmetry (a.k.a. particle-level "
+        "imbalance or PLI) from the extrapolated widths before deriving JER",
+        default=True,
+    )
 
     # upstream requirements
     reqs = Requirements(
@@ -31,34 +45,71 @@ class JER(HistogramsBaseTask):
     )
 
     def requires(self):
-        return self.reqs.AlphaExtrapolation.req(
+        deps = {}
+
+        # require extrapolation results
+        deps["reco"] = self.reqs.AlphaExtrapolation.req(
             self,
+            levels="reco",
         )
+
+        # if PLI subtraction requested, also require
+        # gen-level extrapolation results
+        if self.subtract_pli:
+            deps["gen"] = self.reqs.AlphaExtrapolation.req(
+                self,
+                levels="gen",
+                # set single process by hand and get first
+                # branch to ensure gen-level information is
+                # read for MC even when running on data
+                # TODO: kinda hacky, improve
+                processes=("qcd",),
+                branch=0,  # branches=[0] (?)
+            )
+
+        return deps
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        reqs["key"] = self.as_branch().requires()
+        reqs["key"] = self.requires_from_branch()
         return reqs
 
-    def load_extrapolation(self):
-        histogram = self.input()["extrapolation"].load(formatter="pickle")
+    def load_extrapolation(self, level: str):
+        key = self._io_key("extrapolation", level=level)
+        histogram = self.input()[level][key].load(formatter="pickle")
         return histogram
-
-    def output(self) -> dict[law.FileSystemTarget]:
-        # TODO: Into base and add argument alphas, jers, etc.
-        sample = self.extract_sample()
-        target = self.target(f"{sample}", dir=True)
-        outp = {
-            "jers": target.child("jers.pickle", type="f"),
-        }
-        return outp
 
     def run(self):
         # load extrapolation results
-        results_extrapolation = self.load_extrapolation()
+        results_extrapolation = self.load_extrapolation(level="reco")
 
         # get extrapolated distribution widths
         h_widths = results_extrapolation["intercepts"]
+
+        # subtract PLI if requested
+        if self.subtract_pli:
+            # getrieve gen-level results
+            results_extrapolation_gen = self.load_extrapolation(level="gen")
+            h_widths_gen = results_extrapolation_gen["intercepts"]
+
+            # subtract the gen-level results from the extrapolated widths
+            values = np.sqrt(np.maximum(
+                h_widths.values()**2 - h_widths_gen.values()**2,
+                0.0,
+            ))
+            # Gaussian error propagation
+            variances = np.nan_to_num(
+                (
+                    h_widths.variances() * h_widths.values()**2 +
+                    h_widths_gen.variances() * h_widths_gen.values()**2
+                ) / values,
+                nan=0.0,
+            )
+
+            # save subtracted values back in h_widths
+            v_widths = h_widths.view()
+            v_widths.value = values
+            v_widths.variance = variances
 
         # get index on `category` axis corresponding to
         # the two computation methods

@@ -5,12 +5,15 @@ Custom tasks to derive JER SF.
 """
 
 import law
+import order as od
 
-from columnflow.tasks.framework.base import Requirements
+from functools import partial
+
 from columnflow.util import maybe_import
+from columnflow.tasks.framework.base import Requirements
 
-from dijet.tasks.asymmetry import Asymmetry
 from dijet.tasks.base import HistogramsBaseTask
+from dijet.tasks.asymmetry import Asymmetry
 from dijet.tasks.correlated_fit import CorrelatedFit
 
 hist = maybe_import("hist")
@@ -26,10 +29,17 @@ class AlphaExtrapolation(
     Task to perform alpha extrapolation.
     Read in and plot asymmetry histograms.
     Extrapolate sigma_A( alpha->0 ).
+
+    Processing steps:
+    - read in prepared asymmetry distributions from `Asymmetry` task
+    - extract asymmetry widths
+    - perform extrapolation of widths to alpha=0 via linear fit including
+      correlations
     """
 
-    # Add nested sibling directories to output path
+    # declare output as a nested sibling file collection
     output_collection_cls = law.NestedSiblingFileCollection
+    output_base_keys = ("widths", "extrapolation")
 
     # upstream requirements
     reqs = Requirements(
@@ -41,49 +51,61 @@ class AlphaExtrapolation(
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        reqs["key"] = self.as_branch().requires()
+        reqs["key"] = self.requires_from_branch()
         return reqs
 
-    def load_asymmetries(self):
-        histogram = self.input()["asym"].load(formatter="pickle")
+    def load_asymmetries(self, level: str):
+        histogram = self.single_input("asym", level=level).load(formatter="pickle")
         return histogram
 
-    def load_integrals(self):
-        histogram = self.input()["nevt"].load(formatter="pickle")
+    def load_integrals(self, level: str):
+        histogram = self.single_input("nevt", level=level).load(formatter="pickle")
         return histogram
 
-    def output(self) -> dict[law.FileSystemTarget]:
-        # TODO: Unstable for changes like data_jetmet_X
-        #       Make independent like in config datasetname groups
-        sample = self.extract_sample()
-        target = self.target(f"{sample}", dir=True)
-        # declare the main target
-        outp = {
-            "widths": target.child("widths.pickle", type="f"),
-            "extrapolation": target.child("extrapolation.pickle", type="f"),
+    def _run_impl(self, datasets: list[od.Dataset], level: str, variable: str):
+        """
+        Implementation of width extrapolation from asymmetry distributions.
+        """
+        # check provided level
+        if level not in ("gen", "reco"):
+            raise ValueError(f"invalid level '{level}', expected one of: gen,reco")
+
+        # dict storing either variables or their gen-level equivalents
+        # for convenient access
+        resolve_var = partial(
+            self._get_variable_for_level,
+            config=self.config_inst,
+            level=level,
+        )
+        vars_ = {
+            "alpha": resolve_var(name=self.alpha_variable),
+            "asymmetry": resolve_var(name=self.asymmetry_variable),
+            "binning": [
+                resolve_var(name=bv)
+                for bv in self.binning_variables
+            ],
         }
-        return outp
 
-    def run(self):
-        # TODO: Gen level for MC
-        #       Correlated fit (in jupyter)
+        #
+        # start main processing
+        #
 
-        h_asyms = self.load_asymmetries()
-        h_nevts = self.load_integrals()
+        h_asyms = self.load_asymmetries(level=level)
+        h_nevts = self.load_integrals(level=level)
 
         # Get widths of asymmetries
-        asyms = h_asyms.axes[self.asymmetry_variable].centers
+        asyms = h_asyms.axes[vars_["asymmetry"]].centers
 
         # Take mean value from normalized asymmetry
         axes_names = [a.name for a in h_asyms.axes]
-        assert axes_names[-1] == self.asymmetry_variable, "asymmetry axis must come last"
+        assert axes_names[-1] == vars_["asymmetry"], "asymmetry axis must come last"
         means = np.nansum(
             asyms * h_asyms.view().value,
             axis=-1,
             keepdims=True,
         )
         h_stds = h_asyms.copy()
-        h_stds = h_stds[{self.asymmetry_variable: sum}]
+        h_stds = h_stds[{vars_["asymmetry"]: sum}]
 
         # Get stds
         h_stds.view().value = np.sqrt(
@@ -105,29 +127,29 @@ class AlphaExtrapolation(
         results_widths = {
             "widths": h_stds,
         }
-        self.output()["widths"].dump(results_widths, formatter="pickle")
+        self.single_output("widths", level=level).dump(results_widths, formatter="pickle")
 
         # Get max alpha for fit; usually 0.3
         amax = 0.3  # TODO: define in config
-        h_stds = h_stds[{self.alpha_variable: slice(0, hist.loc(amax))}]
-        h_nevts = h_nevts[{self.alpha_variable: slice(0, hist.loc(amax))}]
+        h_stds = h_stds[{vars_["alpha"]: slice(0, hist.loc(amax))}]
+        h_nevts = h_nevts[{vars_["alpha"]: slice(0, hist.loc(amax))}]
         # exclude 0, the first bin, from alpha edges
-        alphas = h_stds.axes[self.alpha_variable].edges[1:]
+        alphas = h_stds.axes[vars_["alpha"]].edges[1:]
 
         # TODO: More efficient procedure than for loop?
         #       - Idea: Array with same shape but with tuple (width, error) as entry
         n_bins = [
             len(h_stds.axes[bv].centers)
-            for bv in self.binning_variables
+            for bv in vars_["binning"]
         ]
         n_methods = len(h_stds.axes["category"].centers)  # ony length
         inter = h_stds.copy().values()
         inter = inter[:, :2, ...]  # keep first two entries
         slope = h_stds.copy().values()
         slope = slope[:, :2, ...]  # keep first two entries
-        for m, *bv_indices, p in it.product(
+        for m, *bv_indices in it.product(
             range(n_methods),
-            *[range(n) for n in n_bins]
+            *[range(n) for n in n_bins],
         ):
             h_slice = {
                 "category": m,
@@ -135,20 +157,20 @@ class AlphaExtrapolation(
             h_slice.update({
                 bv: bv_index
                 for bv, bv_index in zip(
-                    self.binning_variables,
+                    vars_["binning"],
                     bv_indices,
                 )
             })
             tmp = h_stds[h_slice]
             tmp_evts = h_nevts[h_slice]
             coeff, err = self.get_correlated_fit(wmax=alphas, std=tmp.values(), nevts=tmp_evts.values())
-            inter[m, :, *bv_indices] = [coeff[1], err[1]]
-            slope[m, :, *bv_indices] = [coeff[0], err[0]]
+            inter[(m, slice(None), *bv_indices)] = [coeff[1], err[1]]
+            slope[(m, slice(None), *bv_indices)] = [coeff[0], err[0]]
 
         # NOTE: store fits into hist.
         h_intercepts = h_stds.copy()
         # Remove axis for alpha for histogram
-        h_intercepts = h_intercepts[{self.alpha_variable: sum}]
+        h_intercepts = h_intercepts[{vars_["alpha"]: sum}]
         # y intercept of fit (x=0)
         h_intercepts.view().value = inter[:, 0, ...]
         # Errors temporarly used; Later get:
@@ -161,8 +183,22 @@ class AlphaExtrapolation(
         # Only stored for plotting, no defined error
         h_slopes.view().variance = slope[:, 1, ...]
 
+        # store y-intercepts and slopes from linear fit
+        # in identically-structured histograms
         results_extrapolation = {
             "intercepts": h_intercepts,
             "slopes": h_slopes,
         }
-        self.output()["extrapolation"].dump(results_extrapolation, formatter="pickle")
+        self.single_output("extrapolation", level=level).dump(results_extrapolation, formatter="pickle")
+
+    def run(self):
+        # TODO: Gen level for MC
+        #       Correlated fit (in jupyter)
+
+        datasets, isMC = self.get_datasets()
+
+        # process histograms for all applicable levels
+        for level, variable in self.iter_levels_variables():
+            if level == "gen" and not isMC:
+                continue
+            self._run_impl(datasets, level=level, variable=variable)

@@ -25,12 +25,16 @@ class Asymmetry(
 ):
     """
     Task to prepare asymmetries for width extrapolation.
-    Read in and plot asymmetry histograms.
-    Cut off non-gaussian tails.
+
+    Processing steps:
+    - read in multidimensional histograms containing asymmetry distributions
+    - compute quantiles and cut off non-gaussian tails
+    - compute number of events per bin
     """
 
-    # Add nested sibling directories to output path
+    # declare output as a nested sibling file collection
     output_collection_cls = law.NestedSiblingFileCollection
+    output_base_keys = ("asym", "asym_cut", "nevt", "quantile")
 
     # upstream requirements
     reqs = Requirements(
@@ -73,34 +77,6 @@ class Asymmetry(
         histogram = self.input()[dataset]["collection"][0]["hists"].targets[variable].load(formatter="pickle")
         return histogram
 
-    def output_key(self, base_key, level: str):
-        return base_key if level == "reco" else f"{base_key}_{level}"
-
-    def output(self) -> dict[law.FileSystemTarget]:
-        # TODO: Unstable for changes like data_jetmet_X
-        #       Make independent like in config datasetname groups
-
-        # set target directory
-        sample = self.extract_sample()
-        target = self.target(f"{sample}", dir=True)
-
-        # check if MC or data
-        _, isMC = self.get_datasets()
-
-        # declare output files
-        outp = {}
-        for level in self.levels:
-            # skip gen level in data
-            if not isMC and level == "gen":
-                continue
-
-            # register output files for level
-            for basename in ("asym", "asym_cut", "nevt", "quantile"):
-                key = self.output_key(basename, level)
-                outp[key] = target.child(f"{key}.pickle", type="f")
-
-        return outp
-
     def _run_impl(self, datasets: list[od.Dataset], level: str, variable: str):
         """
         Implementation of asymmetry calculation.
@@ -108,9 +84,6 @@ class Asymmetry(
         # check provided level
         if level not in ("gen", "reco"):
             raise ValueError(f"invalid level '{level}', expected one of: gen,reco")
-
-        # suffix to use when looking up output files
-        output_suffix = "" if level == "reco" else f"_{level}"
 
         # dict storing either variables or their gen-level equivalents
         # for convenient access
@@ -123,6 +96,10 @@ class Asymmetry(
             "alpha": resolve_var(name=self.alpha_variable),
             "asymmetry": resolve_var(name=self.asymmetry_variable),
         }
+
+        #
+        # start main processing
+        #
 
         # load hists and sum over all datasets
         h_all = []
@@ -157,7 +134,7 @@ class Asymmetry(
         h_nevts = h_all.copy()
         h_nevts = h_nevts[{vars_["asymmetry"]: sum}]
         h_nevts.view().value = np.squeeze(integral)
-        self.output()[self.output_key("nevt", level)].dump(h_nevts, formatter="pickle")
+        self.single_output("nevt", level=level).dump(h_nevts, formatter="pickle")
 
         # normalize histogram to integral over asymmetry
         view.value = view.value / integral
@@ -166,7 +143,7 @@ class Asymmetry(
         # Store asymmetries with gausstails for plotting
         # TODO: h_all is further adjusted in scope of this task
         #       retrospectivley changing this output as well?
-        self.output()[self.output_key("asym", level)].dump(h_all, formatter="pickle")
+        self.single_output("asym", level=level).dump(h_all, formatter="pickle")
 
         # Cut off non gaussian tails using quantiles
         # NOTE: My first aim was to use np.quantile like
@@ -211,7 +188,7 @@ class Asymmetry(
             "low": h_asym_edges_lo,
             "up": h_asym_edges_up,
         }
-        self.output()[self.output_key("quantile", level)].dump(h_quantiles, formatter="pickle")
+        self.single_output("quantile", level=level).dump(h_quantiles, formatter="pickle")
 
         # Create mask to filter data; Only bins above/below qunatile bins
         asym_centers = h_all.axes[vars_["asymmetry"]].centers  # Use centers to keep dim of view.value
@@ -223,8 +200,7 @@ class Asymmetry(
         view.variance = np.where(mask, view.variance, np.nan)
 
         # Store in pickle file for plotting task
-        self.output()[self.output_key("asym_cut", level)].dump(h_all, formatter="pickle")
-
+        self.single_output("asym_cut", level=level).dump(h_all, formatter="pickle")
 
     def run(self):
         # TODO: Gen level for MC

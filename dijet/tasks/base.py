@@ -55,6 +55,10 @@ class DiJetVariablesMixin(
         brace_expand=True,
         parse_empty=True,
     )
+    variable_param_names = (
+        "asymmetry_variable", "alpha_variable", "binning_variables",
+    )
+
     levels = law.CSVParameter(
         default=("reco", "gen"),
         description="comma-separated list of 'reco', 'gen', or both, indicating whether to "
@@ -63,9 +67,6 @@ class DiJetVariablesMixin(
         choices={"reco", "gen"},
         brace_expand=True,
         parse_empty=True,
-    )
-    variable_param_names = (
-        "asymmetry_variable", "alpha_variable", "binning_variables",
     )
 
     @staticmethod
@@ -188,9 +189,48 @@ class HistogramsBaseTask(
 
     # Add nested sibling directories to output path
     output_collection_cls = law.NestedSiblingFileCollection
+    output_per_level = True  # if True, declared output paths will not depend on level
+    output_base_keys = ()
 
     # Category ID for methods
     LOOKUP_CATEGORY_ID = {"sm": 1, "fe": 2}
+
+    @staticmethod
+    def _io_key(base_key, level: str):
+        return base_key if level == "reco" else f"{base_key}_{level}"
+
+    def single_input(self, base_key, level: str):
+        return self.input()[self._io_key(base_key, level)]
+
+    def single_output(self, base_key, level: str):
+        if self.output_per_level:
+            return self.output()[self._io_key(base_key, level)]
+        else:
+            # TODO: refactor output as dict with levels as keys
+            return self.output()[base_key]
+
+    def output(self) -> dict[law.FileSystemTarget]:
+        # set target directory
+        sample = self.extract_sample()
+        target = self.target(f"{sample}", dir=True)
+
+        # check if MC or data
+        _, isMC = self.get_datasets()
+
+        # declare output files
+        outp = {}
+        output_levels = ["reco"] if not self.output_per_level else self.levels
+        for level in output_levels:
+            # skip gen level in data
+            if not isMC and level == "gen":
+                continue
+
+            # register output files for level
+            for basename in self.output_base_keys:
+                key = self._io_key(basename, level) if self.output_per_level else basename  # noqa
+                outp[key] = target.child(f"{key}.pickle", type="f")
+
+        return outp
 
     def get_datasets(self) -> tuple[list[str], bool]:
         """
@@ -255,6 +295,8 @@ class HistogramsBaseTask(
     def extract_sample(self):
         datasets, isMC = self.get_datasets()
         # Define output name
+        # TODO: Unstable for changes like data_jetmet_X
+        #       Make independent like in config datasetname groups
         if isMC:
             sample = "QCDHT"
         else:

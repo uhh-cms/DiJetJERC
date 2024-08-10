@@ -37,7 +37,7 @@ class JERtoRoot(HistogramsBaseTask):
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
-        reqs["key"] = self.as_branch().requires()
+        reqs["key"] = self.requires_from_branch()
         return reqs
 
     def load_jer(self):
