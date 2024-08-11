@@ -15,7 +15,10 @@ from dijet.tasks.jer import JER
 np = maybe_import("numpy")
 
 
-class SF(HistogramsBaseTask):
+class SF(
+    HistogramsBaseTask,
+    law.LocalWorkflow,
+):
     """
     Task to derive the JER SFs from the ratio of JERs in data and MC.
 

@@ -22,6 +22,7 @@ np = maybe_import("numpy")
 
 class Asymmetry(
     HistogramsBaseTask,
+    law.LocalWorkflow,
 ):
     """
     Task to prepare asymmetries for width extrapolation.

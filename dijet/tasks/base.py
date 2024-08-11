@@ -11,7 +11,7 @@ from functools import partial
 from columnflow.tasks.framework.base import BaseTask, ShiftTask
 from columnflow.tasks.framework.mixins import (
     CalibratorsMixin, SelectorMixin, ProducersMixin,
-    DatasetsProcessesMixin, CategoriesMixin,
+    CategoriesMixin,
 )
 from columnflow.config_util import get_datasets_from_process
 from columnflow.util import dev_sandbox, DotDict
@@ -32,7 +32,6 @@ class HistogramsBaseTask(
     SelectorMixin,
     CalibratorsMixin,
     ShiftTask,
-    law.LocalWorkflow,
 ):
     """
     Base task to load histogram and reduce them to used information.

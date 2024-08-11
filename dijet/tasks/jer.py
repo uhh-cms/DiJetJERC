@@ -18,6 +18,7 @@ np = maybe_import("numpy")
 
 class JER(
     HistogramsBaseTask,
+    law.LocalWorkflow,
 ):
     """
     Task to calculate JER after alpha extrapolation.

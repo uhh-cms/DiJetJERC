@@ -24,6 +24,7 @@ it = maybe_import("itertools")
 class AlphaExtrapolation(
     HistogramsBaseTask,
     CorrelatedFit,
+    law.LocalWorkflow,
 ):
     """
     Task to perform alpha extrapolation.

@@ -11,7 +11,10 @@ from dijet.tasks.jer import JER
 hist = maybe_import("hist")
 
 
-class JERtoRoot(HistogramsBaseTask):
+class JERtoRoot(
+    HistogramsBaseTask,
+    law.LocalWorkflow,
+):
     """
     Task to convert JER output to rootfiles.
     It is not yet possible to write TGraphs via uproot.
