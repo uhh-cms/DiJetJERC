@@ -16,7 +16,7 @@ from columnflow.tasks.framework.mixins import (
 from columnflow.config_util import get_datasets_from_process
 from columnflow.util import dev_sandbox, DotDict
 
-from dijet.tasks.mixins import DiJetVariablesMixin
+from dijet.tasks.mixins import DiJetVariablesMixin, DiJetSamplesMixin
 
 
 class DiJetTask(BaseTask):
@@ -25,7 +25,7 @@ class DiJetTask(BaseTask):
 
 class HistogramsBaseTask(
     DiJetTask,
-    DatasetsProcessesMixin,
+    DiJetSamplesMixin,
     CategoriesMixin,
     DiJetVariablesMixin,
     ProducersMixin,
@@ -46,6 +46,10 @@ class HistogramsBaseTask(
     output_per_level = True  # if True, declared output paths will not depend on level
     output_base_keys = ()
 
+    # ways of creating the branch map
+    branching_types = ("separate", "merged")
+    branching_type = None  # set in derived tasks
+
     # Category ID for methods
     LOOKUP_CATEGORY_ID = {"sm": 1, "fe": 2}
 
@@ -64,106 +68,104 @@ class HistogramsBaseTask(
             return self.output()[base_key]
 
     def output(self) -> dict[law.FileSystemTarget]:
-        # set target directory
-        sample = self.extract_sample()
-        target = self.target(f"{sample}", dir=True)
-
-        # check if MC or data
-        _, isMC = self.get_datasets()
-
         # declare output files
         outp = {}
         output_levels = ["reco"] if not self.output_per_level else self.levels
         for level in output_levels:
             # skip gen level in data
-            if not isMC and level == "gen":
+            if not self.branch_data.is_mc and level == "gen":
                 continue
 
             # register output files for level
             for basename in self.output_base_keys:
                 key = self._io_key(basename, level) if self.output_per_level else basename  # noqa
-                outp[key] = target.child(f"{key}.pickle", type="f")
+                outp[key] = self.target(f"{key}.pickle", type="f")
 
         return outp
 
-    def get_datasets(self) -> tuple[list[str], bool]:
-        """
-        Select datasets belonging to the `process` of the current branch task.
-        Returns a list of the dataset names and a flag indicating if they are
-        data or MC.
-        """
-        # all datasets in config that are mapped to a process
-        dataset_insts_from_process = get_datasets_from_process(
-            self.config_inst,
-            self.branch_data.process,
-            only_first=False,
-        )
-
-        # check that at least one config dataset matched
-        if not dataset_insts_from_process:
-            raise RuntimeError(
-                "no single dataset found in config matching "
-                f"process `{self.branch_data.process}`",
-            )
-
-        # filter to contain only user-supplied datasets
-        datasets_from_process = [d.name for d in dataset_insts_from_process]
-        datasets_filtered = set(self.datasets).intersection(datasets_from_process)
-
-        # check that at least one user-supplied dataset matched
-        if not datasets_filtered:
-            raise RuntimeError(
-                "no single user-supplied dataset matched "
-                f"process `{self.branch_data.process}`",
-            )
-
-        # set MC flag if any of the filtered datasets
-        datasets_filtered_is_mc = set(
-            self.config_inst.get_dataset(d).is_mc
-            for d in datasets_filtered
-        )
-        if len(datasets_filtered_is_mc) > 1:
-            raise RuntimeError(
-                "filtered datasets have mismatched `is_mc` flags",
-            )
-
-        # return filtered datasets and is_mc flag
-        return (
-            datasets_filtered,
-            list(datasets_filtered_is_mc)[0],
-        )
-
     def create_branch_map(self):
         """
-        Workflow has one branch for each process supplied via `processes`.
+        Branching map for workflow. Depends on the *branching_type* class
+        variable: if *separate*, the workflow will have one branch for each
+        sample, if *merged*, there will be a single branch covering all samples.
         """
-        return [
-            DotDict({"process": process})
-            for process in sorted(self.processes)
-        ]
+        # check branching type
+        if self.branching_type is None:
+            branching_types_str = ",".join(self.branching_types)
+            raise ValueError(
+                f"missing branching type for task '{self.task_family}', "
+                f"derived tasks must implement `branching_type` class "
+                f"variable; valid choices are: {branching_types_str}",
+            )
+        elif self.branching_type not in self.branching_types:
+            branching_types_str = ",".join(self.branching_types)
+            raise ValueError(
+                f"invalid branching type '{self.branching_type}', "
+                f"valid choices are: {branching_types_str}",
+            )
 
-    def store_parts(self):
+        branches = []
+        for sample in sorted(self.samples):
+            datasets = self.get_datasets(self.config_inst, [sample])
+
+            # check if datasets in the sample are MC or data and set flag
+            sample_is_mc = set(
+                self.config_inst.get_dataset(d).is_mc
+                for d in datasets
+            )
+
+            # raise exception if sample contains both data and MC
+            if len(sample_is_mc) > 1:
+                datasets_str = ",".join(datasets)
+                raise RuntimeError(
+                    f"datasets for sample `{sample}` have mismatched "
+                    "`is_mc` flags: {datasets_str}",
+                )
+
+            branches.append(DotDict.wrap({
+                "sample": sample,
+                "datasets": datasets,
+                "is_mc": list(sample_is_mc)[0],
+            }))
+
+        if self.branching_type == "separate":
+            # return branch map directly
+            return branches
+
+        elif self.branching_type == "merged":
+            # return only data branch
+            # TODO: don't hardcode data sample name
+            # TODO: 'samples' instead of 'sample' in the branch data
+            return [b for b in branches if b.sample == "data"]
+
+        else:
+            assert False, "internal error"
+
+        return branches
+
+    def store_parts(self) -> law.util.InsertableDict[str, str]:
+        """
+        Add dijet-specific parts to the output path:
+        - *sample*: the sample being processed; if *branching_type* is
+          'merged', this will be a representation of all sample names
+        """
         parts = super().store_parts()
+
+        if self.branching_type == "separate":
+            parts.insert_after("version", "sample", f"{self.branch_data.sample}")
+
+        elif self.branching_type == "merged":
+            parts.insert_after("version", "sample", f"{self.samples_repr}")
+
+        else:
+            assert False, "internal error"
+
         return parts
 
-    def extract_sample(self):
-        datasets, isMC = self.get_datasets()
-        # Define output name
-        # TODO: Unstable for changes like data_jetmet_X
-        #       Make independent like in config datasetname groups
-        if isMC:
-            sample = "QCDHT"
-        else:
-            runs = []
-            for dataset in datasets:
-                runs.append(dataset.replace("data_jetht_", "").upper())
-            sample = "Run" + ("".join(sorted(runs)))
-        return sample
-
-    def reduce_histogram(self, histogram, processes, shift, level):
+    def reduce_histogram(self, histogram, shift, level):
         """
         Reduce away the `shift` and `process` axes of a multidimensional
-        histogram by selecting a single shift and summing over the processes.
+        histogram by selecting a single shift and summing over all processes.
         """
         import hist
 
@@ -182,16 +184,6 @@ class HistogramsBaseTask(
         def flatten_nested_list(nested_list):
             return [item for sublist in nested_list for item in sublist]
 
-        # transform into list if necessary
-        processes = law.util.make_list(processes)
-
-        # get all sub processes
-        process_insts = list(map(self.config_inst.get_process, processes))
-        sub_process_insts = set(flatten_nested_list([
-            [sub for sub, _, _ in proc.walk_processes(include_self=True)]
-            for proc in process_insts
-        ]))
-
         # get shift instance
         shift_inst = self.config_inst.get_shift(shift)
         if shift_inst.id not in histogram.axes["shift"]:
@@ -200,20 +192,10 @@ class HistogramsBaseTask(
         # work on a copy
         h = histogram.copy()
 
-        # axis selections
-        h = h[{
-            "process": [
-                hist.loc(p.id)
-                for p in sub_process_insts
-                if p.id in h.axes["process"]
-            ],
-            "shift": hist.loc(shift_inst.id),
-        }]
-
-        # TODO: Sum over shift ? Be careful to only take one shift -> Error if more ?
         # axis reductions
         h = h[{
             "process": sum,
+            "shift": hist.loc(shift_inst.id),
             # TODO: read rebinning factors from config
             # @dsavoiu: might be better to use config binning for now
             # vars_["alpha"]: hist.rebin(5),

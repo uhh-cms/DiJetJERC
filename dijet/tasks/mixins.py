@@ -9,7 +9,8 @@ import luigi
 import law
 import order as od
 
-from columnflow.tasks.framework.mixins import VariablesMixin
+from columnflow.tasks.framework.base import ConfigTask
+from columnflow.tasks.framework.mixins import DatasetsProcessesMixin, VariablesMixin
 
 
 class DiJetVariablesMixin(
@@ -156,3 +157,125 @@ class DiJetVariablesMixin(
         params["_dijet_vars_resolved"] = True
 
         return params
+
+
+class DiJetSamplesMixin(ConfigTask):
+    """
+    Custom mixin for dijet samples/datasets. A 'sample' in the context of the dijet
+    analysis is a collection of standard 'columnflow' datasets to be treated as
+    a single unit. For instance, a "qcd_ht" sample could comprise all/several HT bins
+    of the QCD multijet MC datasets, which in columflow would correspond to all
+    datasets with names mathing 'qcd_ht*'. In that sense, 'samples' function similarly
+    to 'dataset_groups' in standard columnflow.
+
+    Samples (along with corresponding datasets and other metadata) must be specified
+    in the configuration under the aux key 'samples'. An example is given below:
+
+    .. code-block:: python
+
+        cfg.x.samples = {
+            "data": {
+                "datasets": "data_*",
+                "color": "k",
+            },
+            "qcdht": {
+                "datasets": "qcd_*",
+                "color": "indianred",
+            },
+        }
+    """
+
+    # make `datasets` parameter private -> value computed based on other variable parameters
+    datasets = DatasetsProcessesMixin.datasets.copy()
+    datasets.visibility = luigi.parameter.ParameterVisibility.PRIVATE
+
+    samples = law.CSVParameter(
+        default=(),
+        description="comma-separated sample names; for each sample, a mapping to a corresponding "
+        "list of datasets must be defined in the auxiliary data of the config under the key "
+        "'samples'; mapped datasets can also be patterns or keys of a mapping defined in the "
+        "'dataset_groups' auxiliary data of the config; when empty, uses all samples registered in the "
+        "config; empty default",
+        brace_expand=True,
+        parse_empty=True,
+    )
+
+    allow_empty_datasets = False
+
+    @classmethod
+    def resolve_param_values(cls, params):
+        # note: implementation similar to `DatasetsProcessesMixin`,
+        # but without setting `processes` and resolving the `datasets`
+        # based on the `samples` dictionary in the config
+        params = super().resolve_param_values(params)
+
+        if "config_inst" not in params:
+            return params
+        config_inst = params["config_inst"]
+
+        # resolve datasets for samples
+        if "samples" in params:
+            config_samples = config_inst.x("samples", {})
+
+            # resolve datasets
+            datasets = cls.get_datasets(config_inst, params["samples"], allow_empty=False)
+
+            # complain when no datasets were found
+            if not datasets and not cls.allow_empty_datasets:
+                raise ValueError(f"no datasets found matching samples {params['samples']}")
+
+            params["datasets"] = tuple(datasets)
+            params["dataset_insts"] = [config_inst.get_dataset(d) for d in params["datasets"]]
+
+        return params
+
+    @classmethod
+    def get_datasets(cls, config: od.Config, samples: list[str], allow_empty: bool = True):
+        """
+        Resolve `samples` to actual `datasets`.
+        """
+        # get list of datasets for sample
+        all_samples = {
+            sample: sample_cfg.get("datasets", [])
+            for sample, sample_cfg in config.x("samples", {}).items()
+        }
+
+        all_datasets = []
+        empty_samples = set()
+        for sample in samples:
+            sample_datasets = all_samples.get(sample, [])
+
+            # resolve patterns/dataset groups
+            sample_datasets = cls.find_config_objects(
+                sample_datasets,
+                config,
+                od.Dataset,
+                config.x("dataset_groups", {}),
+            )
+
+            # keep track of empty samples
+            if not sample_datasets:
+                empty_samples.add(sample)
+
+            # add to list of returned datasets
+            all_datasets.extend(sample_datasets)
+
+        # raise exception when sample is not registered or
+        # has no datasets
+        if empty_samples and not allow_empty:
+            empty_samples_str = ",".join(sorted(empty_samples))
+            raise ValueError(f"no datasets found matching samples: {empty_samples_str}")
+
+        return all_datasets
+
+    @staticmethod
+    def get_samples_repr(samples: list[str]):
+        if len(samples) <= 2:
+            return "_".join(samples)
+
+        return f"{len(samples)}_{law.util.create_hash(sorted(samples))}"
+
+    @property
+    def samples_repr(self):
+        return self.get_samples_repr(self.samples)
+

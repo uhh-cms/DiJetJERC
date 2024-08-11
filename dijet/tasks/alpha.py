@@ -41,6 +41,9 @@ class AlphaExtrapolation(
     output_collection_cls = law.NestedSiblingFileCollection
     output_base_keys = ("widths", "extrapolation")
 
+    # how to create the branch map
+    branching_type = "separate"
+
     # upstream requirements
     reqs = Requirements(
         Asymmetry=Asymmetry,
@@ -192,13 +195,8 @@ class AlphaExtrapolation(
         self.single_output("extrapolation", level=level).dump(results_extrapolation, formatter="pickle")
 
     def run(self):
-        # TODO: Gen level for MC
-        #       Correlated fit (in jupyter)
-
-        datasets, isMC = self.get_datasets()
-
         # process histograms for all applicable levels
         for level, variable in self.iter_levels_variables():
-            if level == "gen" and not isMC:
+            if level == "gen" and not self.branch_data.is_mc:
                 continue
-            self._run_impl(datasets, level=level, variable=variable)
+            self._run_impl(self.branch_data.datasets, level=level, variable=variable)

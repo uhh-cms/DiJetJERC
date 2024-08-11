@@ -132,6 +132,19 @@ def add_config(
         "mc": ["qcd_*"],
     }
 
+    # sample definition (dijet-analysis specific)
+    # named groups of datasets used as a unit for JER SF derivation
+    cfg.x.samples = {
+        "data": {
+            "datasets": "data_*",
+            "color": "k",
+        },
+        "qcdht": {
+            "datasets": "qcd_*",
+            "color": "indianred",
+        },
+    }
+
     # category groups for conveniently looping over certain categories
     # (used during plotting)
     cfg.x.category_groups = {

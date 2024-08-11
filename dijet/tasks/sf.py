@@ -30,6 +30,9 @@ class SF(HistogramsBaseTask):
     output_base_keys = ("sfs",)
     output_per_level = False
 
+    # how to create the branch map
+    branching_type = "merged"
+
     # upstream requirements
     reqs = Requirements(
         JER=JER,
@@ -40,20 +43,21 @@ class SF(HistogramsBaseTask):
         Workflow has exactly one branch, corresponding to the 'data' process
         for which scale factors should be computed.
         """
-        return [
-            DotDict({"process": "data"}),
-        ]
+        branch_map = super().create_branch_map()
+        # TODO: don't hardcode data sample name
+        return [b for b in branch_map if b.sample == "data"]
 
     def requires(self):
         # require JERs for both data and MC
+        # TODO: don't hardcode sample names
         return {
             "data": self.reqs.JER.req_different_branching(
                 self,
-                processes=("data",),
+                samples=("data",),
             ),
             "mc": self.reqs.JER.req_different_branching(
                 self,
-                processes=("qcd",),
+                samples=("qcdht",),
             ),
         }
 

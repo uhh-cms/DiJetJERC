@@ -33,6 +33,9 @@ class JER(
     output_base_keys = ("jers",)
     output_per_level = False
 
+    # how to create the branch map
+    branching_type = "separate"
+
     subtract_pli = law.OptionalBoolParameter(
         description="if True, will subtract the gen-level asymmetry (a.k.a. particle-level "
         "imbalance or PLI) from the extrapolated widths before deriving JER",
@@ -62,8 +65,8 @@ class JER(
                 # set single process by hand and get first
                 # branch to ensure gen-level information is
                 # read for MC even when running on data
-                # TODO: kinda hacky, improve
-                processes=("qcd",),
+                # TODO: no hard coding MC sample
+                samples=("qcdht",),
                 branch=0,  # branches=[0] (?)
             )
 

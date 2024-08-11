@@ -21,6 +21,9 @@ class JERtoRoot(HistogramsBaseTask):
 
     output_collection_cls = law.NestedSiblingFileCollection
 
+    # how to create the branch map
+    branching_type = JER.branching_type
+
     # upstream requirements
     reqs = Requirements(
         JER=JER,
@@ -45,10 +48,8 @@ class JERtoRoot(HistogramsBaseTask):
         return histogram
 
     def output(self) -> dict[law.FileSystemTarget]:
-        sample = self.extract_sample()
-        target = self.target(f"{sample}", dir=True)
         outp = {
-            "jers": target.child("jers.pickle", type="f"),
+            "jers": self.target("jers.pickle", type="f"),
         }
         return outp
 
