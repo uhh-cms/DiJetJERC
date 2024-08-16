@@ -3,6 +3,7 @@
 """
 Custom tasks to derive JER SF.
 """
+from __future__ import annotations
 
 import law
 
@@ -29,13 +30,12 @@ class JER(
     - calculate JER in using standard method (SM) and forward-extension (FE) methods
     """
 
-    # declare output as a nested sibling file collection
+    # declare output collection type and keys
     output_collection_cls = law.NestedSiblingFileCollection
     output_base_keys = ("jers",)
-    output_per_level = False
 
     # how to create the branch map
-    branching_type = "separate"
+    branching_type = "with_mc"
 
     subtract_pli = law.OptionalBoolParameter(
         description="if True, will subtract the gen-level asymmetry (a.k.a. particle-level "
@@ -48,27 +48,43 @@ class JER(
         AlphaExtrapolation=AlphaExtrapolation,
     )
 
+    #
+    # methods required by law
+    #
+
+    def output(self):
+        """
+        Organize output as a (nested) dictionary. Output files will be in a single
+        directory, which is determined by `store_parts`.
+        """
+        return {
+            key: {
+                self.branch_data.sample: self.target(f"{key}.pickle"),
+            }
+            for key in self.output_base_keys
+        }
+
     def requires(self):
         deps = {}
 
         # require extrapolation results
-        deps["reco"] = self.reqs.AlphaExtrapolation.req(
-            self,
-            levels="reco",
-        )
+        deps["reco"] = self.reqs.AlphaExtrapolation.req(self)
 
         # if PLI subtraction requested, also require
-        # gen-level extrapolation results
+        # gen-level extrapolation results in MC
         if self.subtract_pli:
-            deps["gen"] = self.reqs.AlphaExtrapolation.req(
+            mc_samples = [
+                b.sample for b in self.branch_map.values()
+                if b.is_mc
+            ] if self.is_workflow() else [
+                self.branch_data.mc_sample,
+            ]
+            assert len(mc_samples) == 1, "internal error"
+            deps["gen"] = self.reqs.AlphaExtrapolation.req_different_branching(
                 self,
+                samples=mc_samples[0],
                 levels="gen",
-                # set single process by hand and get first
-                # branch to ensure gen-level information is
-                # read for MC even when running on data
-                # TODO: no hard coding MC sample
-                samples=("qcdht",),
-                branch=0,  # branches=[0] (?)
+                branch=0,
             )
 
         return deps
@@ -78,22 +94,40 @@ class JER(
         reqs["key"] = self.requires_from_branch()
         return reqs
 
-    def load_extrapolation(self, level: str):
-        key = self._io_key("extrapolation", level=level)
-        histogram = self.input()[level][key].load(formatter="pickle")
-        return histogram
+    #
+    # helper methods for handling task inputs/outputs
+    #
+
+    def load_input(self, key: str, level: str, sample: str | None = None):
+        sample = sample or self.branch_data.sample
+        return self.input()[level][key][sample][level].load(formatter="pickle")
+
+    def dump_output(self, key: str, obj: object):
+        if key not in self.output_base_keys:
+            raise ValueError(
+                f"output key '{key}' not registered in "
+                f"`{self.task_family}.output_base_keys`",
+            )
+        self.output()[key][self.branch_data.sample].dump(obj, formatter="pickle")
+
+    #
+    # task implementation
+    #
 
     def run(self):
+        sample = self.branch_data.sample
+        print(f"computing JER for {sample = }")
+
         # load extrapolation results
-        results_extrapolation = self.load_extrapolation(level="reco")
+        results_extrapolation = self.load_input("extrapolation", level="reco")
 
         # get extrapolated distribution widths
         h_widths = results_extrapolation["intercepts"]
 
         # subtract PLI if requested
         if self.subtract_pli:
-            # getrieve gen-level results
-            results_extrapolation_gen = self.load_extrapolation(level="gen")
+            # retrieve gen-level results
+            results_extrapolation_gen = self.load_input("extrapolation", level="gen", sample=self.branch_data.mc_sample)
             h_widths_gen = results_extrapolation_gen["intercepts"]
 
             # subtract the gen-level results from the extrapolated widths
@@ -153,4 +187,4 @@ class JER(
         results_jers = {
             "jer": h_jer,
         }
-        self.output()["jers"].dump(results_jers, formatter="pickle")
+        self.dump_output("jers", results_jers)

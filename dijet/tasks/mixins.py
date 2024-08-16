@@ -4,6 +4,9 @@
 Custom mixins for adding parameters/methods specific to
 dijet analysis.
 """
+from __future__ import annotations
+
+from functools import partial
 
 import luigi
 import law
@@ -29,12 +32,12 @@ class DiJetVariablesMixin(
 
     asymmetry_variable = luigi.Parameter(
         description="variable used to quantify the dijet response (e.g. 'dijets_asymmetry'); "
-        "if not given, uses default response variable specified in config; empty default",
+        "if not given, uses default asymmetry variable specified in config; empty default",
         default=None,
     )
     alpha_variable = luigi.Parameter(
         description="variable used to quantify the third jet activity (e.g. 'dijets_alpha'); "
-        "if not given, uses default response variable specified in config; empty default",
+        "if not given, uses default alpha variable specified in config; empty default",
         default=None,
     )
     binning_variables = law.CSVParameter(
@@ -75,14 +78,44 @@ class DiJetVariablesMixin(
         else:
             raise ValueError(f"invalid level '{level}', expected one of: gen,reco")
 
-    def iter_levels_variables(self):
+    def _make_var_lookup(self, level: str):
+        """
+        Return a dictionary storing either variables or their gen-level equivalents
+        depending on the *level*. Provided for convenient and efficient access to the
+        actual variable names
+        """
+        resolve_var = partial(
+            self._get_variable_for_level,
+            config=self.config_inst,
+            level=level,
+        )
+        return {
+            "alpha": resolve_var(name=self.alpha_variable),
+            "asymmetry": resolve_var(name=self.asymmetry_variable),
+            "binning": {
+                bv: resolve_var(name=bv)
+                for bv in self.binning_variables
+            },
+        }
+
+    def get_level_index(self, level: str):
+        if level not in self.levels:
+            raise ValueError(
+                f"unknown level '{level}', valid: {','.join(self.levels)}",
+            )
+        return self.levels.index(level)
+
+    def iter_levels_variables(self, levels: list[str] | None = None):
         """
         Generator yielding tuples of the form (level, variable), with *level*
         being either 'reco' for reconstruction-level or 'gen' for gen-level
-        variables.
+        variables. An *levels* argument can be provided to restrict the levels
+        (e.g. gen-level in MC).
         """
         assert len(self.levels) == len(self.variables)
         for level, variable in zip(self.levels, self.variables):
+            if levels and level not in levels:
+                continue
             yield level, variable
 
     @classmethod
@@ -215,8 +248,6 @@ class DiJetSamplesMixin(ConfigTask):
 
         # resolve datasets for samples
         if "samples" in params:
-            config_samples = config_inst.x("samples", {})
-
             # resolve datasets
             datasets = cls.get_datasets(config_inst, params["samples"], allow_empty=False)
 
@@ -279,3 +310,9 @@ class DiJetSamplesMixin(ConfigTask):
     def samples_repr(self):
         return self.get_samples_repr(self.samples)
 
+    def get_sample_index(self, sample: str):
+        if sample not in self.samples:
+            raise ValueError(
+                f"unknown sample '{sample}', valid: {','.join(self.samples)}",
+            )
+        return self.samples.index(sample)

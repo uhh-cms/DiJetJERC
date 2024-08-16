@@ -7,7 +7,7 @@ Custom tasks to derive JER SF.
 import law
 
 from dijet.tasks.base import HistogramsBaseTask
-from columnflow.util import maybe_import, DotDict
+from columnflow.util import maybe_import
 from columnflow.tasks.framework.base import Requirements
 
 from dijet.tasks.jer import JER
@@ -28,10 +28,9 @@ class SF(
     - TODO: add fits (constant, NSC)
     """
 
-    # declare output as a nested sibling file collection
+    # declare output collection type and keys
     output_collection_cls = law.NestedSiblingFileCollection
     output_base_keys = ("sfs",)
-    output_per_level = False
 
     # how to create the branch map
     branching_type = "merged"
@@ -41,47 +40,68 @@ class SF(
         JER=JER,
     )
 
-    def create_branch_map(self):
+    #
+    # methods required by law
+    #
+
+    def output(self):
         """
-        Workflow has exactly one branch, corresponding to the 'data' process
-        for which scale factors should be computed.
+        Organize output as a (nested) dictionary. Output files will be in a single
+        directory, which is determined by `store_parts`.
         """
-        branch_map = super().create_branch_map()
-        # TODO: don't hardcode data sample name
-        return [b for b in branch_map if b.sample == "data"]
+        return {
+            key: self.target(f"{key}.pickle")
+            for key in self.output_base_keys
+        }
 
     def requires(self):
-        # require JERs for both data and MC
-        # TODO: don't hardcode sample names
-        return {
-            "data": self.reqs.JER.req_different_branching(
-                self,
-                samples=("data",),
-            ),
-            "mc": self.reqs.JER.req_different_branching(
-                self,
-                samples=("qcdht",),
-            ),
-        }
-
-    def load_jers(self):
-        """
-        Load JERs from inputs in data and MC
-        """
-        return {
-            key: self.input()[key]["jers"].load(formatter="pickle")["jer"]  # noqa
-            for key in ("data", "mc")
-        }
+        return self.reqs.JER.req_different_branching(self, branch=-1)
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
         reqs["key"] = self.requires_from_branch()
         return reqs
 
+    #
+    # helper methods for handling task inputs/outputs
+    #
+
+    def load_input(self, key: str, sample: str):
+        coll_keys = [
+            coll_key
+            for coll_key, coll in self.input()["collection"].targets.items()
+            if sample in coll[key]
+        ]
+        if len(coll_keys) != 1:
+            raise RuntimeError(
+                f"found {len(coll_keys)} input collections corresponding to "
+                f"sample '{sample}', expected 1",
+            )
+        return self.input()["collection"][coll_keys[0]][key][sample].load(formatter="pickle")
+
+    def dump_output(self, key: str, obj: object):
+        if key not in self.output_base_keys:
+            raise ValueError(
+                f"output key '{key}' not registered in "
+                f"`{self.task_family}.output_base_keys`",
+            )
+        self.output()[key].dump(obj, formatter="pickle")
+
+    #
+    # task implementation
+    #
 
     def run(self):
+        print(
+            f"computing SF for samples {self.branch_data.mc_sample!r} (MC), "
+            f"{self.branch_data.data_sample!r} (data)",
+        )
+
         # load JERs results
-        jers = self.load_jers()
+        jers = {
+            "data": self.load_input("jers", sample=self.branch_data.data_sample)["jer"],
+            "mc": self.load_input("jers", sample=self.branch_data.mc_sample)["jer"],
+        }
 
         # views
         v_jers = {}

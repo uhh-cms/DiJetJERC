@@ -3,6 +3,7 @@
 """
 Custom base tasks.
 """
+from __future__ import annotations
 
 import law
 
@@ -13,7 +14,6 @@ from columnflow.tasks.framework.mixins import (
     CalibratorsMixin, SelectorMixin, ProducersMixin,
     CategoriesMixin,
 )
-from columnflow.config_util import get_datasets_from_process
 from columnflow.util import dev_sandbox, DotDict
 
 from dijet.tasks.mixins import DiJetVariablesMixin, DiJetSamplesMixin
@@ -40,47 +40,36 @@ class HistogramsBaseTask(
     """
     sandbox = dev_sandbox(law.config.get("analysis", "default_columnar_sandbox"))
 
-    # Add nested sibling directories to output path
+    # declare output as a nested sibling file collection
     output_collection_cls = law.NestedSiblingFileCollection
-    output_per_level = True  # if True, declared output paths will not depend on level
     output_base_keys = ()
 
     # ways of creating the branch map
-    branching_types = ("separate", "merged")
+    branching_types = ("separate", "with_mc", "merged")
     branching_type = None  # set in derived tasks
 
     # Category ID for methods
     LOOKUP_CATEGORY_ID = {"sm": 1, "fe": 2}
 
-    @staticmethod
-    def _io_key(base_key, level: str):
-        return base_key if level == "reco" else f"{base_key}_{level}"
-
-    def single_input(self, base_key, level: str):
-        return self.input()[self._io_key(base_key, level)]
-
-    def single_output(self, base_key, level: str):
-        if self.output_per_level:
-            return self.output()[self._io_key(base_key, level)]
+    @property
+    def valid_levels(self):
+        """List of levels that are valid for the branch task (i.e. no 'gen' level for data)."""
+        # no unique sample information if called in a workflow context
+        # -> return list of levels directly
+        if self.is_workflow():
+            return self.levels
         else:
-            # TODO: refactor output as dict with levels as keys
-            return self.output()[base_key]
+            return [level for level in self.levels if self.branch_data.is_mc or level != "gen"]
 
-    def output(self) -> dict[law.FileSystemTarget]:
-        # declare output files
-        outp = {}
-        output_levels = ["reco"] if not self.output_per_level else self.levels
-        for level in output_levels:
-            # skip gen level in data
-            if not self.branch_data.is_mc and level == "gen":
-                continue
-
-            # register output files for level
-            for basename in self.output_base_keys:
-                key = self._io_key(basename, level) if self.output_per_level else basename  # noqa
-                outp[key] = self.target(f"{key}.pickle", type="f")
-
-        return outp
+    def iter_levels_variables(self, levels: list[str] | None = None):
+        """
+        Generator yielding tuples of the form (level, variable), with *level*
+        being either 'reco' for reconstruction-level or 'gen' for gen-level
+        variables. An *levels* argument can be provided to restrict the levels
+        (e.g. gen-level in MC).
+        """
+        levels_ = levels or self.valid_levels
+        yield from super().iter_levels_variables(levels=levels_)
 
     def create_branch_map(self):
         """
@@ -118,7 +107,7 @@ class HistogramsBaseTask(
                 datasets_str = ",".join(datasets)
                 raise RuntimeError(
                     f"datasets for sample `{sample}` have mismatched "
-                    "`is_mc` flags: {datasets_str}",
+                    f"`is_mc` flags: {datasets_str}",
                 )
 
             branches.append(DotDict.wrap({
@@ -131,14 +120,47 @@ class HistogramsBaseTask(
             # return branch map directly
             return branches
 
+        elif self.branching_type == "with_mc":
+            # like 'separate', but check that there is exactly one
+            # MC dataset and add it to the branch data
+            mc_branches = [b for b in branches if b.is_mc]
+            if len(mc_branches) != 1:
+                raise ValueError(
+                    f"expected exactly 1 MC branch, got {len(mc_branches)}",
+                )
+
+            for b in branches:
+                b["mc_sample"] = mc_branches[0]["sample"]
+
+            return branches
+
         elif self.branching_type == "merged":
-            # return only data branch
-            # TODO: don't hardcode data sample name
-            # TODO: 'samples' instead of 'sample' in the branch data
-            return [b for b in branches if b.sample == "data"]
+            # return only one branch representing the merging of exactly
+            # one data and one MC sample
+            data_branches = [b for b in branches if not b.is_mc]
+            if len(data_branches) != 1:
+                raise ValueError(
+                    f"expected exactly 1 data branch, got {len(data_branches)}",
+                )
+
+            mc_branches = [b for b in branches if b.is_mc]
+            if len(mc_branches) != 1:
+                raise ValueError(
+                    f"expected exactly 1 MC branch, got {len(mc_branches)}",
+                )
+
+            return [
+                DotDict.wrap({
+                    "data_sample": data_branches[0]["sample"],
+                    "mc_sample": mc_branches[0]["sample"],
+                    "datasets": data_branches[0]["datasets"] + mc_branches[0]["datasets"],
+                }),
+            ]
 
         else:
-            assert False, "internal error"
+            raise NotImplementedError(
+                f"internal error: branching type {self.branching_type} not implemented",
+            )
 
         return branches
 
@@ -150,11 +172,19 @@ class HistogramsBaseTask(
         """
         parts = super().store_parts()
 
-        if self.branching_type == "separate":
-            parts.insert_after("version", "sample", f"{self.branch_data.sample}")
+        if self.branching_type in ("separate", "with_mc"):
+            parts.insert_after(
+                "version",
+                "sample",
+                f"{self.branch_data.sample}",
+            )
 
         elif self.branching_type == "merged":
-            parts.insert_after("version", "sample", f"{self.samples_repr}")
+            parts.insert_after(
+                "version",
+                "sample",
+                f"{self.branch_data.data_sample}__{self.branch_data.mc_sample}",
+            )
 
         else:
             assert False, "internal error"

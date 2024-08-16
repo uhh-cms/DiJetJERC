@@ -7,8 +7,6 @@ Custom tasks to derive JER SF.
 import law
 import order as od
 
-from functools import partial
-
 from columnflow.util import maybe_import
 from columnflow.tasks.framework.base import Requirements
 
@@ -38,7 +36,7 @@ class AlphaExtrapolation(
       correlations
     """
 
-    # declare output as a nested sibling file collection
+    # declare output collection type and keys
     output_collection_cls = law.NestedSiblingFileCollection
     output_base_keys = ("widths", "extrapolation")
 
@@ -50,7 +48,16 @@ class AlphaExtrapolation(
         Asymmetry=Asymmetry,
     )
 
+    #
+    # methods required by law
+    #
+
+    def output(self):
+        """Output has same structure as `Asymmetry` task."""
+        return self.reqs.Asymmetry.output(self)
+
     def requires(self):
+        """Require `Asymmetry` task."""
         return self.reqs.Asymmetry.req(self)
 
     def workflow_requires(self):
@@ -58,13 +65,24 @@ class AlphaExtrapolation(
         reqs["key"] = self.requires_from_branch()
         return reqs
 
-    def load_asymmetries(self, level: str):
-        histogram = self.single_input("asym", level=level).load(formatter="pickle")
-        return histogram
+    #
+    # helper methods for handling task inputs/outputs
+    #
 
-    def load_integrals(self, level: str):
-        histogram = self.single_input("nevt", level=level).load(formatter="pickle")
-        return histogram
+    def load_input(self, key: str, level: str):
+        return self.input()[key][self.branch_data.sample][level].load(formatter="pickle")
+
+    def dump_output(self, key: str, level: str, obj: object):
+        if key not in self.output_base_keys:
+            raise ValueError(
+                f"output key '{key}' not registered in "
+                f"`{self.task_family}.output_base_keys`",
+            )
+        self.output()[key][self.branch_data.sample][level].dump(obj, formatter="pickle")
+
+    #
+    # task implementation
+    #
 
     def _run_impl(self, datasets: list[od.Dataset], level: str, variable: str):
         """
@@ -76,26 +94,14 @@ class AlphaExtrapolation(
 
         # dict storing either variables or their gen-level equivalents
         # for convenient access
-        resolve_var = partial(
-            self._get_variable_for_level,
-            config=self.config_inst,
-            level=level,
-        )
-        vars_ = {
-            "alpha": resolve_var(name=self.alpha_variable),
-            "asymmetry": resolve_var(name=self.asymmetry_variable),
-            "binning": [
-                resolve_var(name=bv)
-                for bv in self.binning_variables
-            ],
-        }
+        vars_ = self._make_var_lookup(level=level)
 
         #
         # start main processing
         #
 
-        h_asyms = self.load_asymmetries(level=level)
-        h_nevts = self.load_integrals(level=level)
+        h_asyms = self.load_input("asym", level=level)
+        h_nevts = self.load_input("nevt", level=level)
 
         # Get widths of asymmetries
         asyms = h_asyms.axes[vars_["asymmetry"]].centers
@@ -131,7 +137,7 @@ class AlphaExtrapolation(
         results_widths = {
             "widths": h_stds,
         }
-        self.single_output("widths", level=level).dump(results_widths, formatter="pickle")
+        self.dump_output("widths", level=level, obj=results_widths)
 
         # Get max alpha for fit; usually 0.3
         amax = 0.3  # TODO: define in config
@@ -144,7 +150,7 @@ class AlphaExtrapolation(
         #       - Idea: Array with same shape but with tuple (width, error) as entry
         n_bins = [
             len(h_stds.axes[bv].centers)
-            for bv in vars_["binning"]
+            for bv in vars_["binning"].values()
         ]
         n_methods = len(h_stds.axes["category"].centers)  # ony length
         inter = h_stds.copy().values()
@@ -161,7 +167,7 @@ class AlphaExtrapolation(
             h_slice.update({
                 bv: bv_index
                 for bv, bv_index in zip(
-                    vars_["binning"],
+                    vars_["binning"].values(),
                     bv_indices,
                 )
             })
@@ -193,11 +199,11 @@ class AlphaExtrapolation(
             "intercepts": h_intercepts,
             "slopes": h_slopes,
         }
-        self.single_output("extrapolation", level=level).dump(results_extrapolation, formatter="pickle")
+        self.dump_output("extrapolation", level=level, obj=results_extrapolation)
 
     def run(self):
         # process histograms for all applicable levels
+        sample = self.branch_data.sample
         for level, variable in self.iter_levels_variables():
-            if level == "gen" and not self.branch_data.is_mc:
-                continue
+            print(f"performing alpha extrapolation for {sample = }, {level = }, {variable = }")
             self._run_impl(self.branch_data.datasets, level=level, variable=variable)

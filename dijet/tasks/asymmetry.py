@@ -7,8 +7,6 @@ Custom tasks to derive JER SF.
 import law
 import order as od
 
-from functools import partial
-
 from columnflow.tasks.framework.base import Requirements
 from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import maybe_import
@@ -33,7 +31,7 @@ class Asymmetry(
     - compute number of events per bin
     """
 
-    # declare output as a nested sibling file collection
+    # declare output collection type and keys
     output_collection_cls = law.NestedSiblingFileCollection
     output_base_keys = ("asym", "asym_cut", "nevt", "quantile")
 
@@ -45,29 +43,51 @@ class Asymmetry(
         MergeHistograms=MergeHistograms,
     )
 
+    #
+    # methods required by law
+    #
+
+    def output(self):
+        """
+        Organize output as a (nested) dictionary. Output files will be in a single
+        directory, which is determined by `store_parts`.
+        """
+        return {
+            key: {
+                self.branch_data.sample: {
+                    level: self.target(f"{key}_{level}.pickle")
+                    for level in self.valid_levels
+                },
+            }
+            for key in self.output_base_keys
+        }
+
     def requires(self):
         reqs = {}
 
         for dataset in self.datasets:
             # get dataset instance
             dataset_inst = self.config_inst.get_dataset(dataset)
+            valid_levels = ["reco"]
+            if dataset_inst.is_mc:
+                valid_levels.append("gen")
 
             # variables to pass on to dependent task (including
             # gen-level variables only for MC)
             variables_for_histograms = [
                 variable
-                for level, variable in self.iter_levels_variables()
-                if level == "reco" or dataset_inst.is_mc
+                for level, variable in self.iter_levels_variables(
+                    levels=valid_levels,
+                )
             ]
 
             # register `MergeHistograms` as requirement,
             # setting `variables` by hand
-            reqs[dataset] = self.reqs.MergeHistograms.req(
+            reqs[dataset] = self.reqs.MergeHistograms.req_different_branching(
                 self,
                 dataset=dataset,
                 branch=-1,
                 variables=variables_for_histograms,
-                _exclude={"branches"},
             )
 
         return reqs
@@ -77,9 +97,29 @@ class Asymmetry(
         reqs["merged_hists"] = self.requires_from_branch()
         return reqs
 
-    def load_histogram(self, dataset, variable):
+    #
+    # helper methods for handling task inputs/outputs
+    #
+
+    def load_histogram(self, dataset: str, variable: str):
+        """
+        Load histogram for a single `dataset` and `variable`
+        from `MergeHistograms` outputs.
+        """
         histogram = self.input()[dataset]["collection"][0]["hists"].targets[variable].load(formatter="pickle")
         return histogram
+
+    def dump_output(self, key: str, level: str, obj: object):
+        if key not in self.output_base_keys:
+            raise ValueError(
+                f"output key '{key}' not registered in "
+                f"`{self.task_family}.output_base_keys`",
+            )
+        self.output()[key][self.branch_data.sample][level].dump(obj, formatter="pickle")
+
+    #
+    # task implementation
+    #
 
     def _run_impl(self, datasets: list[od.Dataset], level: str, variable: str):
         """
@@ -91,15 +131,7 @@ class Asymmetry(
 
         # dict storing either variables or their gen-level equivalents
         # for convenient access
-        resolve_var = partial(
-            self._get_variable_for_level,
-            config=self.config_inst,
-            level=level,
-        )
-        vars_ = {
-            "alpha": resolve_var(name=self.alpha_variable),
-            "asymmetry": resolve_var(name=self.asymmetry_variable),
-        }
+        vars_ = self._make_var_lookup(level=level)
 
         #
         # start main processing
@@ -119,8 +151,8 @@ class Asymmetry(
 
         axes_names = [a.name for a in h_all.axes]
         axes_indices = {
-            var_key: axes_names.index(var_name)
-            for var_key, var_name in vars_.items()
+            var_key: axes_names.index(vars_[var_key])
+            for var_key in ("alpha", "asymmetry")
         }
         view = h_all.view()
 
@@ -137,7 +169,7 @@ class Asymmetry(
         h_nevts = h_all.copy()
         h_nevts = h_nevts[{vars_["asymmetry"]: sum}]
         h_nevts.view().value = np.squeeze(integral)
-        self.single_output("nevt", level=level).dump(h_nevts, formatter="pickle")
+        self.dump_output("nevt", level=level, obj=h_nevts)
 
         # normalize histogram to integral over asymmetry
         view.value = view.value / integral
@@ -146,7 +178,7 @@ class Asymmetry(
         # Store asymmetries with gausstails for plotting
         # TODO: h_all is further adjusted in scope of this task
         #       retrospectivley changing this output as well?
-        self.single_output("asym", level=level).dump(h_all, formatter="pickle")
+        self.dump_output("asym", level=level, obj=h_all)
 
         # Cut off non gaussian tails using quantiles
         # NOTE: My first aim was to use np.quantile like
@@ -191,7 +223,7 @@ class Asymmetry(
             "low": h_asym_edges_lo,
             "up": h_asym_edges_up,
         }
-        self.single_output("quantile", level=level).dump(h_quantiles, formatter="pickle")
+        self.dump_output("quantile", level=level, obj=h_quantiles)
 
         # Create mask to filter data; Only bins above/below qunatile bins
         asym_centers = h_all.axes[vars_["asymmetry"]].centers  # Use centers to keep dim of view.value
@@ -203,11 +235,11 @@ class Asymmetry(
         view.variance = np.where(mask, view.variance, np.nan)
 
         # Store in pickle file for plotting task
-        self.single_output("asym_cut", level=level).dump(h_all, formatter="pickle")
+        self.dump_output("asym_cut", level=level, obj=h_all)
 
     def run(self):
         # process histograms for all applicable levels
+        sample = self.branch_data.sample
         for level, variable in self.iter_levels_variables():
-            if level == "gen" and not self.branch_data.is_mc:
-                continue
+            print(f"computing asymmetries for {sample = !r}, {level = !r}, {variable = !r}")
             self._run_impl(self.branch_data.datasets, level=level, variable=variable)
