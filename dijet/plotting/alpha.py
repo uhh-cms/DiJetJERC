@@ -164,8 +164,8 @@ class PlotWidth(
             # initialize figure and axes
             fig, ax = plt.subplots()
             mplhep.cms.label(
-                lumi=41.48,  # TODO: from self.config_inst.x.luminosity?
-                com=13,
+                lumi=round(0.001 * self.config_inst.x.luminosity.get("nominal"), 2),  # /pb -> /fb
+                com=f"{self.config_inst.campaign.ecm:g}",
                 ax=ax,
                 llabel="Private Work",
                 data=True,
