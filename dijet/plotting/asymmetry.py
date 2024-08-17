@@ -235,24 +235,30 @@ class PlotAsymmetries(
             # annotations
             #
 
-            # curry function for convenience
-            annotate = partial(annotate_corner, ax=ax, loc="upper left")
+            # texts to display on plot
+            annotation_texts = [
+                # category label
+                self.config_inst.get_category(m).label,
+                # alpha bin
+                get_bin_label(self.alpha_variable_inst, (0, alpha_up)),
+                # eta bin
+                get_bin_label(self.binning_variable_insts["probejet_abseta"], (eta_lo, eta_hi)),
+            ]
 
-            # alpha bin
-            bin_label = get_bin_label(self.alpha_variable_inst, (0, alpha_up))
-            annotate(text=bin_label, xy_offset=(20, -20))
-
-            # eta bin
-            bin_label = get_bin_label(self.binning_variable_insts["probejet_abseta"], (eta_lo, eta_hi))
-            annotate(text=bin_label, xy_offset=(20, -20 - 30))
-
-            # other binning variables
+            # texts for other binning variables
             for i, bv_bin in enumerate(bv_bins):
                 bin_edges = (bv_bin["dn"], bv_bin["up"])
                 bin_label = get_bin_label(self.binning_variable_insts[bv_bin["var_name"]], bin_edges)
+                annotation_texts.append(bin_label)
+
+            # curry function for convenience
+            annotate = partial(annotate_corner, ax=ax, loc="upper left")
+
+            # add annotations to plot
+            for i, text in enumerate(annotation_texts):
                 annotate(
-                    text=bin_label,
-                    xy_offset=(20, -20 - 30 * (i + 2)),
+                    text=text,
+                    xy_offset=(20, -20 - 30 * i),
                 )
 
             # figure adjustments

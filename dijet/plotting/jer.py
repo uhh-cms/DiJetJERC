@@ -133,7 +133,6 @@ class PlotJERs(
         ref_object = next(_iter_flat(inputs["jers"]))
 
         # binning information from inputs
-        ### alpha_edges = ref_object.axes[vars_["alpha"]].edges  # noqa
         binning_variable_edges = {
             bv: ref_object.axes[bv_resolved].edges
             for bv, bv_resolved in vars_["binning"].items()
@@ -150,10 +149,8 @@ class PlotJERs(
 
         # loop through bins and do plotting
         plt.style.use(mplhep.style.CMS)
-        ### for m, (ia, alpha_up), *bv_bins in itertools.product(  # noqa
         for m, *bv_bins in itertools.product(
             self.LOOKUP_CATEGORY_ID,
-            ### enumerate(alpha_edges[1:]),  # noqa
             *[iter_bins(bv_edges, var_name=bv) for bv, bv_edges in binning_variable_edges.items()],
         ):
             # initialize figure and axes
@@ -170,7 +167,6 @@ class PlotJERs(
             bin_selector = {}
             bin_selector = {
                 "category": hist.loc(self.LOOKUP_CATEGORY_ID[m]),
-                ### vars_["alpha"]: hist.loc(alpha_up - 0.001),  # noqa
                 vars_["binning"]["probejet_abseta"]: hist.loc(eta_midp),
             }
             for bv_bin in bv_bins:
@@ -209,24 +205,28 @@ class PlotJERs(
             # annotations
             #
 
-            # curry function for convenience
-            annotate = partial(annotate_corner, ax=ax, loc="upper left")
+            # texts to display on plot
+            annotation_texts = [
+                # category label
+                self.config_inst.get_category(m).label,
+                # eta bin
+                get_bin_label(self.binning_variable_insts["probejet_abseta"], (eta_lo, eta_hi)),
+            ]
 
-            ### # alpha bin  # noqa
-            ### bin_label = get_bin_label(self.alpha_variable_inst, (0, alpha_up))  # noqa
-            ### annotate(text=bin_label, xy_offset=(20, -20))  # noqa
-
-            # eta bin
-            bin_label = get_bin_label(self.binning_variable_insts["probejet_abseta"], (eta_lo, eta_hi))
-            annotate(text=bin_label, xy_offset=(20, -20 - 30))
-
-            # other binning variables
+            # texts for other binning variables
             for i, bv_bin in enumerate(bv_bins):
                 bin_edges = (bv_bin["dn"], bv_bin["up"])
                 bin_label = get_bin_label(self.binning_variable_insts[bv_bin["var_name"]], bin_edges)
+                annotation_texts.append(bin_label)
+
+            # curry function for convenience
+            annotate = partial(annotate_corner, ax=ax, loc="upper left")
+
+            # add annotations to plot
+            for i, text in enumerate(annotation_texts):
                 annotate(
-                    text=bin_label,
-                    xy_offset=(20, -20 - 30 * (i + 2)),
+                    text=text,
+                    xy_offset=(20, -20 - 30 * i),
                 )
 
             # figure adjustments
@@ -247,8 +247,6 @@ class PlotJERs(
                 "jers",
                 # method
                 m,
-                ### # alpha  # noqa
-                ### get_bin_slug(self.alpha_variable_inst, (0, alpha_up)),  # noqa
                 # abseta bin
                 get_bin_slug(self.binning_variable_insts["probejet_abseta"], (eta_lo, eta_hi)),
             ]

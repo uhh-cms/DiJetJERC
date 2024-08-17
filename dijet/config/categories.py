@@ -113,7 +113,7 @@ def add_categories(config: od.Config) -> None:
             name="sm",
             id=int(10**cat_idx_lsd),
             selection="sel_sm",
-            label="sm",
+            label="Standard Method",
         ),
     )
 
@@ -138,6 +138,6 @@ def add_categories(config: od.Config) -> None:
         name="fe",
         id=int(10**cat_idx_lsd * 2),
         selection="sel_fe",
-        label="fe",
+        label="Forward Extension",
     )
     method_categories.append(cat)
