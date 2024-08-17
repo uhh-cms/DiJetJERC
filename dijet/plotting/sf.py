@@ -45,6 +45,17 @@ class PlotSFs(
     # plot file names will start with this
     output_prefix = "sfs"
 
+    # plot configuration (e.g. axes limits/labels/scales)
+    plot_settings = {
+        "legend_kwargs": dict(loc="upper right"),
+        "xlabel": lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["binning"]["dijets_pt_avg"]).get_full_x_title(),  # noqa
+        "xlim": (49, 2100),
+        "xscale": "log",
+        "ylabel": "Jet energy resolution scale factor",
+        # "ylim": (0.8, 20),
+        "yscale": "linear",
+    }
+
     #
     # helper methods for handling task inputs/outputs
     #
@@ -204,16 +215,10 @@ class PlotSFs(
                 )
 
             # figure adjustments
-            # pt_edges = ref_object.axes["dijets_pt_avg"].edges
-            # ax.set_xlim(pt_edges[0], pt_edges[-1])
-            ax.set_xscale("log")
-            ax.set_xlim(49, 2100)
-            # ax.set_ylim(0.8, 20)
-            ax.legend(loc="upper right")
-            ax.set_xlabel(
-                self.config_inst.get_variable(vars_["binning"]["dijets_pt_avg"]).get_full_x_title(),
-            )
-            ax.set_ylabel(r"Jet energy resolution scale factor")
+            self.apply_plot_settings(ax=ax, context={"vars": vars_})
+
+            # legend
+            ax.legend(**self.plot_settings.get("legend_kwargs", {}))
 
             # compute plot filename
             fname_parts = [

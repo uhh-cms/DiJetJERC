@@ -36,6 +36,10 @@ class PlottingBaseTask(
         description="comma-separated list of file extensions to produce; default: pdf",
     )
 
+    # plot configuration (e.g. axes limits/labels/scales)
+    # set in derived tasks
+    plot_settings = None
+
     #
     # methods required by law
     #
@@ -100,3 +104,25 @@ class PlottingBaseTask(
             target = self.output()["plots"].child(f"{basename}.{ext}", type="f")
             target.dump(fig, formatter="mpl")
             print(f"saved plot: {target.path}")
+
+    #
+    # other methods
+    #
+
+    def apply_plot_settings(self, ax, context=None):
+        if self.plot_settings is None:
+            return
+
+        # apply properties to the axes
+        for axis in ("x", "y"):
+            for prop in ("label", "lim", "scale"):
+                key = f"{axis}{prop}"
+                value = self.plot_settings.get(key, None)
+
+                # resolve callables
+                if callable(value):
+                    value = value(self, context or {})
+
+                # call axes method
+                if value is not None:
+                    getattr(ax, f"set_{key}")(value)

@@ -45,6 +45,17 @@ class PlotWidth(
     # plot file names will start with this
     output_prefix = "extp"
 
+    # plot configuration (e.g. axes limits/labels/scales)
+    plot_settings = {
+        "legend_kwargs": dict(loc="lower right"),
+        "xlabel": r"$\alpha_{max}$",
+        "xlim": (0, 0.3),
+        "xscale": "linear",
+        "ylabel": "Asymmetry width",
+        "ylim": (0, 0.25),
+        "yscale": "linear",
+    }
+
     #
     # helper methods for handling task inputs/outputs
     #
@@ -237,15 +248,10 @@ class PlotWidth(
                 )
 
             # figure adjustments
-            ax.set_xlim(0.0, alpha_edges[-1] + 0.05)
-            ax.set_ylim(0, 0.25)
-            ax.legend(loc="lower right")
-            ax.set_xlabel(
-                # TODO: make configurable
-                # self.config_inst.get_variable(vars_["reco"]["alpha"]).x_title,
-                r"$\alpha_{max}$",
-            )
-            ax.set_ylabel(r"Asymmetry width")
+            self.apply_plot_settings(ax=ax, context={"vars": vars_})
+
+            # legend
+            ax.legend(**self.plot_settings.get("legend_kwargs", {}))
 
             # compute plot filename
             fname_parts = [

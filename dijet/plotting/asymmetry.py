@@ -45,6 +45,17 @@ class PlotAsymmetries(
     # plot file names will start with this
     output_prefix = "asym"
 
+    # plot configuration (e.g. axes limits/labels/scales)
+    plot_settings = {
+        "legend_kwargs": dict(loc="upper right"),
+        "xlabel": lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["reco"]["asymmetry"]).x_title,
+        "xlim": (-0.5, 0.5),
+        "xscale": "linear",
+        "ylabel": r"$\Delta$N/N",
+        "ylim": (5e-5, 10),
+        "yscale": "log",
+    }
+
     #
     # helper methods for handling task inputs/outputs
     #
@@ -233,14 +244,10 @@ class PlotAsymmetries(
                 )
 
             # figure adjustments
-            ax.set_xlim(-0.5, 0.5)
-            ax.set_ylim(5e-5, 10)
-            ax.set_yscale("log")
-            ax.legend(loc="upper right")
-            ax.set_xlabel(
-                self.config_inst.get_variable(vars_["reco"]["asymmetry"]).x_title,
-            )
-            ax.set_ylabel(r"$\Delta$N/N")
+            self.apply_plot_settings(ax=ax, context={"vars": vars_})
+
+            # legend
+            ax.legend(**self.plot_settings.get("legend_kwargs", {}))
 
             # compute plot filename
             fname_parts = [
