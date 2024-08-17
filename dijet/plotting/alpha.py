@@ -39,6 +39,12 @@ class PlotWidth(
     # upstream workflow
     input_task_cls = AlphaExtrapolation
 
+    # keys for looking up input task results
+    input_keys = ("widths", "extrapolation")
+
+    # plot file names will start with this
+    output_prefix = "extp"
+
     #
     # helper methods for handling task inputs/outputs
     #
@@ -109,7 +115,7 @@ class PlotWidth(
                 }
                 for sample in self.samples
             }
-            for key in ("widths", "extrapolation")
+            for key in self.input_keys
         }
 
         # dict storing either variables or their gen-level equivalents
@@ -193,7 +199,7 @@ class PlotWidth(
                 h_in = inputs["widths"][sample][level]["widths"]
                 h_sliced = h_in[bin_selectors[level]]
 
-                # plot asymmetry distribution
+                # look up plotting kwargs under samples
                 plot_kwargs = dict(
                     self.config_inst.x("samples", {})
                     .get(sample, {}).get("plot_kwargs", {}),
@@ -279,7 +285,7 @@ class PlotWidth(
             # compute plot filename
             fname_parts = [
                 # base name
-                "extp",
+                self.output_prefix,
                 # method
                 m,
                 # abseta bin

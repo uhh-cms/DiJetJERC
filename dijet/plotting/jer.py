@@ -39,6 +39,12 @@ class PlotJERs(
     # upstream workflow
     input_task_cls = JER
 
+    # keys for looking up input task results
+    input_keys = ("jers",)
+
+    # plot file names will start with this
+    output_prefix = "jers"
+
     #
     # helper methods for handling task inputs/outputs
     #
@@ -105,7 +111,7 @@ class PlotJERs(
                 sample: self.load_input(key, sample=sample)
                 for sample in self.samples
             }
-            for key in ("jers",)
+            for key in self.input_keys
         }
 
         # dict storing either variables or their gen-level equivalents
@@ -244,7 +250,7 @@ class PlotJERs(
             # compute plot filename
             fname_parts = [
                 # base name
-                "jers",
+                self.output_prefix,
                 # method
                 m,
                 # abseta bin

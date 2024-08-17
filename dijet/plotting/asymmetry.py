@@ -39,6 +39,12 @@ class PlotAsymmetries(
     # upstream workflow
     input_task_cls = Asymmetry
 
+    # keys for looking up input task results
+    input_keys = ("asym", "quantile")
+
+    # plot file names will start with this
+    output_prefix = "asym"
+
     #
     # helper methods for handling task inputs/outputs
     #
@@ -109,7 +115,7 @@ class PlotAsymmetries(
                 }
                 for sample in self.samples
             }
-            for key in ("asym", "quantile")
+            for key in self.input_keys
         }
 
         # dict storing either variables or their gen-level equivalents
@@ -191,7 +197,7 @@ class PlotAsymmetries(
                 if sample == "data" and level != "reco":
                     continue
 
-                # get input histogram
+                # get input histogram for asymmetries
                 h_in = inputs["asym"][sample][level]
                 h_sliced = h_in[bin_selectors[level]]
 
@@ -274,7 +280,7 @@ class PlotAsymmetries(
             # compute plot filename
             fname_parts = [
                 # base name
-                "asym",
+                self.output_prefix,
                 # method
                 m,
                 # alpha

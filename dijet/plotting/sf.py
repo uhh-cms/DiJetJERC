@@ -39,6 +39,12 @@ class PlotSFs(
     # upstream workflow
     input_task_cls = SF
 
+    # keys for looking up input task results
+    input_keys = ("sfs",)
+
+    # plot file names will start with this
+    output_prefix = "sfs"
+
     #
     # helper methods for handling task inputs/outputs
     #
@@ -100,7 +106,7 @@ class PlotSFs(
         # load inputs (asymmetries and quantiles)
         raw_inputs = {
             key: self.load_input(key)
-            for key in ("sfs",)
+            for key in self.input_keys
         }
 
         # dict storing either variables or their gen-level equivalents
@@ -247,7 +253,7 @@ class PlotSFs(
             # compute plot filename
             fname_parts = [
                 # base name
-                "sfs",
+                self.output_prefix,
                 # method
                 m,
                 # abseta bin
