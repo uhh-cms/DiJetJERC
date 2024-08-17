@@ -13,7 +13,7 @@ from columnflow.util import maybe_import
 
 from dijet.tasks.jer import JER
 from dijet.plotting.base import PlottingBaseTask
-from dijet.plotting.util import annotate_corner, get_bin_slug, get_bin_label
+from dijet.plotting.util import annotate_corner, get_bin_slug, get_bin_label, plot_xy
 
 hist = maybe_import("hist")
 np = maybe_import("numpy")
@@ -65,44 +65,6 @@ class PlotJERs(
     #
     # task implementation
     #
-
-    @staticmethod
-    def _plot_shim(x, y, xerr=None, yerr=None, method=None, ax=None, **kwargs):
-        """
-        Draw one series of xy values.
-        """
-        if ax is None:
-            fig, ax = plt.subplots()
-        else:
-            fig, ax = plt.gcf(), plt.gca()
-
-        method = method or "errorbar"
-
-        method_func = getattr(ax, method, None)
-        if method_func is None:
-            raise ValueError(f"invalid plot method '{method}'")
-
-        if method == "bar":
-            kwargs.update(
-                align="center",
-                width=2 * xerr,
-                yerr=yerr,
-            )
-        elif method == "step":
-            kwargs.pop("xerr", None)
-            kwargs.pop("yerr", None)
-            kwargs.pop("edgecolor", None)
-        else:
-            kwargs["xerr"] = xerr
-            kwargs["yerr"] = yerr
-
-        method_func(
-            x.flatten(),
-            y.flatten(),
-            **kwargs,
-        )
-
-        return fig, ax
 
     def run(self):
         # load inputs (asymmetries and quantiles)
@@ -199,7 +161,7 @@ class PlotJERs(
                 )
 
                 # plot JER
-                self._plot_shim(
+                plot_xy(
                     h_sliced.axes[vars_["binning"]["dijets_pt_avg"]].centers,
                     h_sliced.values(),
                     yerr=np.sqrt(h_sliced.variances()),

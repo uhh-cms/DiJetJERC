@@ -78,3 +78,53 @@ def annotate_corner(ax, text, loc="upper left", xy_offset=None, ha=None, va=None
         horizontalalignment=ha,
         verticalalignment=va,
     )
+
+
+def plot_xy(x, y, xerr=None, yerr=None, method=None, ax=None, **kwargs):
+    """
+    Base function for drawing a series of xy values, possibly including
+    uncertainties. *method* needs to be a valid method implemented by
+    matplotlib *Axes* objects. *kwargs* can be supplied to the method.
+    In general these  need to be supported by the method, but some
+    adapting of known *kwargs* is done.
+    """
+    import matplotlib.pyplot as plt
+
+    # set figure and axes, creating them if no `ax` is supplied
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig, ax = plt.gcf(), plt.gca()
+
+    # handle argument default values
+    method = method or "errorbar"
+
+    # resolve method function
+    method_func = getattr(ax, method, None)
+    if method_func is None:
+        raise ValueError(f"invalid plot method '{method}'")
+
+    # adapt kwargs to work with method
+    if method == "bar":
+        kwargs.update(
+            align="center",
+            width=2 * xerr,
+            yerr=yerr,
+        )
+    elif method == "step":
+        kwargs.pop("xerr", None)
+        kwargs.pop("yerr", None)
+        kwargs.pop("edgecolor", None)
+    else:
+        kwargs["xerr"] = xerr
+        kwargs["yerr"] = yerr
+
+    # call method
+    artist = method_func(
+        x.flatten(),
+        y.flatten(),
+        **kwargs,
+    )
+
+    # return figure, axes and artist
+    return fig, ax, artist
