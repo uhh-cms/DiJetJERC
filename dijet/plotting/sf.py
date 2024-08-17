@@ -60,22 +60,25 @@ class PlotSFs(
             )
         return self.input()["collection"][coll_keys[0]][key].load(formatter="pickle")
 
+    def load_inputs(self):
+        return {
+            key: self.load_input(key)
+            for key in self.input_keys
+        }
+
     #
     # task implementation
     #
 
     def run(self):
-        # load inputs (asymmetries and quantiles)
-        raw_inputs = {
-            key: self.load_input(key)
-            for key in self.input_keys
-        }
+        # load all inputs
+        raw_inputs = self.load_inputs()
 
         # dict storing either variables or their gen-level equivalents
         # for convenient access
         vars_ = self._make_var_lookup(level="reco")
 
-        # prepare inputs (apply slicing, clean nans)
+        # prepare inputs (clean nans)
         def _prepare_input(histogram):
             # map `nan` values to zero
             v = histogram.view()
