@@ -26,10 +26,15 @@ class PlottingBaseTask(
     found in columnflow/tasks/histograms.py
     """
 
-    default_plot_extensions = ("pdf", "png")
-
     # upstream workflow
     input_task_cls = None  # set this in derived tasks
+
+    # parameters
+    file_types = law.CSVParameter(
+        default=("pdf",),
+        significant=True,
+        description="comma-separated list of file extensions to produce; default: pdf",
+    )
 
     #
     # methods required by law
@@ -91,8 +96,7 @@ class PlottingBaseTask(
     #
 
     def save_plot(self, basename: str, fig: object, extensions: tuple[str] | list[str] | None = None):
-        extensions = extensions or self.default_plot_extensions
-        for ext in extensions:
+        for ext in self.file_types:
             target = self.output()["plots"].child(f"{basename}.{ext}", type="f")
             target.dump(fig, formatter="mpl")
             print(f"saved plot: {target.path}")
