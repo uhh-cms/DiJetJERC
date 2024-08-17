@@ -153,8 +153,8 @@ class JER(
         # the two computation methods
         categories = list(h_widths.axes["category"])
         index_methods = {
-            m: categories.index(self.LOOKUP_CATEGORY_ID[m])
-            for m in self.LOOKUP_CATEGORY_ID
+            m: categories.index(self.config_inst.get_category(m).id)
+            for m in self.method_categories
         }
 
         # calcuate JER for standard method

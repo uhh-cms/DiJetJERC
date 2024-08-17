@@ -158,7 +158,7 @@ class PlotAsymmetries(
         # loop through bins and do plotting
         plt.style.use(mplhep.style.CMS)
         for m, (ia, alpha_up), *bv_bins in itertools.product(
-            self.LOOKUP_CATEGORY_ID,
+            self.method_categories,
             enumerate(alpha_edges[1:]),
             *[iter_bins(bv_edges, var_name=bv) for bv, bv_edges in binning_variable_edges.items()],
         ):
@@ -176,7 +176,7 @@ class PlotAsymmetries(
             bin_selectors = {}
             for level in self.levels:
                 bin_selectors[level] = {
-                    "category": hist.loc(self.LOOKUP_CATEGORY_ID[m]),
+                    "category": hist.loc(self.config_inst.get_category(m).id),
                     vars_[level]["alpha"]: hist.loc(alpha_up - 0.001),
                     vars_[level]["binning"]["probejet_abseta"]: hist.loc(eta_midp),
                 }

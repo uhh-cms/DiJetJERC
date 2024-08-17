@@ -70,7 +70,7 @@ class JERtoRoot(
         # in external script
         results_jers = {}
         abseta_bins = h_jer.axes[self._vars.abseta].edges
-        for method in self.LOOKUP_CATEGORY_ID:
+        for method in self.method_categories:
             for abseta_lo, abseta_hi in zip(
                 abseta_bins[:-1],
                 abseta_bins[1:],
@@ -83,7 +83,7 @@ class JERtoRoot(
                 abseta_center = (abseta_lo + abseta_hi) / 2
                 h_jer_category_abseta = h_jer[
                     {
-                        "category": hist.loc(self.LOOKUP_CATEGORY_ID[method]),
+                        "category": hist.loc(self.config_inst.get_category(method).id),
                         self._vars.abseta: hist.loc(abseta_center),
                     }
                 ]

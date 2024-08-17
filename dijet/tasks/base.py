@@ -48,8 +48,8 @@ class HistogramsBaseTask(
     branching_types = ("separate", "with_mc", "merged")
     branching_type = None  # set in derived tasks
 
-    # Category ID for methods
-    LOOKUP_CATEGORY_ID = {"sm": 1, "fe": 2}
+    # names of categories used for methods
+    method_categories = ("sm", "fe")  # hard-coded for now
 
     @property
     def valid_levels(self):

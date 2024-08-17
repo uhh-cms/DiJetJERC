@@ -145,7 +145,7 @@ class PlotSFs(
         # loop through bins and do plotting
         plt.style.use(mplhep.style.CMS)
         for m, *bv_bins in itertools.product(
-            self.LOOKUP_CATEGORY_ID,
+            self.method_categories,
             *[iter_bins(bv_edges, var_name=bv) for bv, bv_edges in binning_variable_edges.items()],
         ):
             # initialize figure and axes
@@ -161,7 +161,7 @@ class PlotSFs(
             # selector to get current bin
             bin_selector = {}
             bin_selector = {
-                "category": hist.loc(self.LOOKUP_CATEGORY_ID[m]),
+                "category": hist.loc(self.config_inst.get_category(m).id),
                 vars_["binning"]["probejet_abseta"]: hist.loc(eta_midp),
             }
             for bv_bin in bv_bins:
