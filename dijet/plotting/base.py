@@ -1,76 +1,98 @@
 # coding: utf-8
-
 """
-Custom base tasks for plotting workflow steps from JER SF measurement.
+Custom base task for plotting workflow steps from JER SF measurement.
 """
+from __future__ import annotations
 
 import law
 
+from columnflow.util import DotDict
+from columnflow.tasks.framework.remote import RemoteWorkflow
 
-from columnflow.tasks.framework.base import ShiftTask
-from columnflow.tasks.framework.mixins import (
-    CalibratorsMixin, SelectorMixin, ProducersMixin,
-    VariablesMixin, DatasetsProcessesMixin, CategoriesMixin,
-)
-from columnflow.config_util import get_datasets_from_process
-from columnflow.util import dev_sandbox
-from dijet.tasks.base import DiJetTask
+from dijet.tasks.base import HistogramsBaseTask
+
+from dijet.constants import eta
+from dijet.plotting.util import get_bin_slug
 
 
 class PlottingBaseTask(
-    DiJetTask,
-    DatasetsProcessesMixin,
-    CategoriesMixin,
-    VariablesMixin,
-    ProducersMixin,
-    SelectorMixin,
-    CalibratorsMixin,
-    ShiftTask,
+    HistogramsBaseTask,
+    law.LocalWorkflow,
+    RemoteWorkflow,
 ):
     """
     Base task to plot histogram from each step of the JER SF workflow.
     An example implementation of how to handle the inputs in a run method can be
     found in columnflow/tasks/histograms.py
     """
-    sandbox = dev_sandbox(law.config.get("analysis", "default_columnar_sandbox"))
 
-    # Add nested sibling directories to output path
-    output_collection_cls = law.NestedSiblingFileCollection
+    default_plot_extensions = ("pdf", "png")
 
-    # Category ID for methods
-    LOOKUP_CATEGORY_ID = {"sm": 1, "fe": 2}
+    # upstream workflow
+    input_task_cls = None  # set this in derived tasks
 
-    def get_datasets(self) -> tuple[list[str], bool]:
+    #
+    # methods required by law
+    #
+
+    @classmethod
+    @property
+    def reqs(cls):
+        reqs = super().reqs
+
+        if cls.input_task_cls is not None:
+            reqs[cls.input_task_cls] = cls.input_task_cls
+
+        return reqs
+
+    def create_branch_map(self):
         """
-        Select datasets belonging to the `process` of the current branch task.
-        Returns a list of the dataset with requested Runs for data.
+        Workflow extends branch map of input task, creating one branch
+        per entry in the input task branch map per each eta bin (eta).
         """
+        # TODO: way to specify which variables to handle via branch
+        # map and which to loop over in `run` method
+        # TODO: don't hardcode eta bins, use dynamic workflow condition
+        # to read in bins from task inputs
+        input_branches = super().create_branch_map()
 
-        dataset_insts_from_process_data = get_datasets_from_process(
-            self.config_inst,
-            "data",
-            only_first=False,
-        )
+        branches = []
+        for ib in input_branches:
+            branches.extend([
+                DotDict.wrap(dict(ib, **{
+                    "eta": (eta_lo, eta_hi),
+                }))
+                for eta_lo, eta_hi in zip(eta[:-1], eta[1:])
+            ])
 
-        # filter to contain only user-supplied datasets from data
-        datasets_from_process_data = [d.name for d in dataset_insts_from_process_data]
-        datasets_data_filtered = set(self.datasets).intersection(datasets_from_process_data)
-        # check that at least one user-supplied dataset matched
-        if not datasets_data_filtered:
-            raise RuntimeError(
-                "no single user-supplied dataset for data matched "
-                f"process `{dataset_insts_from_process_data}`",
-            )
+        return branches
 
-        # return filtered datasets
-        return list(datasets_data_filtered)
+    def output(self) -> dict[law.FileSystemTarget]:
+        """
+        Organize output as a (nested) dictionary. Output files will be in a single
+        directory, which is determined by `store_parts`.
+        """
+        eta_bin_slug = get_bin_slug(self.binning_variable_insts["probejet_abseta"], self.branch_data.eta)
+        return {
+            "dummy": self.target(f"{eta_bin_slug}/DUMMY"),
+            "plots": self.target(f"{eta_bin_slug}", dir=True),
+        }
 
-    def extract_sample(self):
-        datasets = self.get_datasets()
-        runs = [dataset.replace("data_jetht_", "").upper() for dataset in datasets]
-        sample = "Run" + ("".join(sorted(runs)))
-        return sample
+    def requires(self):
+        return self.reqs[self.input_task_cls].req_different_branching(self, branch=-1)
 
-    def store_parts(self):
-        parts = super().store_parts()
-        return parts
+    def workflow_requires(self):
+        reqs = super().workflow_requires()
+        reqs["key"] = self.requires_from_branch()
+        return reqs
+
+    #
+    # helper methods for handling task inputs/outputs
+    #
+
+    def save_plot(self, basename: str, fig: object, extensions: tuple[str] | list[str] | None = None):
+        extensions = extensions or self.default_plot_extensions
+        for ext in extensions:
+            target = self.output()["plots"].child(f"{basename}.{ext}", type="f")
+            target.dump(fig, formatter="mpl")
+            print(f"saved plot: {target.path}")

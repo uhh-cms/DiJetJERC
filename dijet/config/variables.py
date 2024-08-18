@@ -204,6 +204,23 @@ def add_variables(config: od.Config) -> None:
         # gen_name="dijets_alpha_gen",
         # gen_expression="alpha_gen",
         # gen_x_title=r"$\alpha$ (gen)",
+        aux={
+            # options for formatting plain-text string used to
+            # represent variable and bin (e.g. in filenames)
+            "slug_name": "alpha_lt",
+            "bin_slug_format": lambda value: f"{value:1.3f}".replace(".", "p"),
+            "bin_slug_func": lambda self, bin_edges: "_".join([
+                self.x.slug_name,
+                self.x.bin_slug_format(bin_edges[1]),
+            ]),
+            # options for formatting label used in plots to indicate
+            # represent variable and bin
+            "bin_label_format": lambda value: f"{value:g}",
+            "bin_label_func": lambda self, bin_edges: " < ".join([
+                self.x_title,
+                self.x.bin_label_format(bin_edges[1]),
+            ]),
+        },
     )
 
     # same as above, but with full range (0-1) and finer binning
@@ -216,6 +233,23 @@ def add_variables(config: od.Config) -> None:
         # gen_name="dijets_alpha_gen_fine",
         # gen_expression="alpha_gen",
         # gen_x_title=r"$\alpha$ (gen)",
+        aux={
+            # options for formatting plain-text string used to
+            # represent variable and bin (e.g. in filenames)
+            "slug_name": "alpha_lt",
+            "bin_slug_format": lambda value: f"{value:1.3f}".replace(".", "p"),
+            "bin_slug_func": lambda self, bin_edges: "_".join([
+                self.x.slug_name,
+                self.x.bin_slug_format(bin_edges[1]),
+            ]),
+            # options for formatting label used in plots to indicate
+            # represent variable and bin
+            "bin_label_format": lambda value: f"{value:g}",
+            "bin_label_func": lambda self, bin_edges: " < ".join([
+                self.x_title,
+                self.x.bin_label_format(bin_edges[1]),
+            ]),
+        },
     )
 
     #
@@ -265,6 +299,11 @@ def add_variables(config: od.Config) -> None:
         gen_name="dijets_pt_avg_gen",
         gen_expression="dijets.pt_avg_gen",
         gen_x_title=r"$p_{T}^{avg}$ (gen)",
+        aux={
+            "slug_name": "pt",
+            "bin_slug_format": lambda value: f"{int(value):d}",
+            "bin_label_format": lambda value: f"{int(value):d}",
+        },
     )
 
     # eta bin is always defined by probe jet
@@ -277,6 +316,9 @@ def add_variables(config: od.Config) -> None:
         x_title=r"$|\eta|$",
         aux={
             "inputs": {"probe_jet.eta"},
+            "slug_name": "abseta",
+            "bin_slug_format": lambda value: f"{value:1.3f}".replace(".", "p"),
+            "bin_label_format": lambda value: f"{value:g}",
         },
         gen_name="probejet_abseta_gen",
         # use `genJetIdx` to get matched gen jet

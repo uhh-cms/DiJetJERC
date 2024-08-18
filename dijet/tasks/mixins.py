@@ -62,6 +62,17 @@ class DiJetVariablesMixin(
         parse_empty=True,
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # store `od.Variable`` instances of variables
+        self.alpha_variable_inst = self.config_inst.get_variable(self.alpha_variable)
+        self.asymmetry_variable_inst = self.config_inst.get_variable(self.asymmetry_variable)
+        self.binning_variable_insts = {
+            v: self.config_inst.get_variable(v)
+            for v in self.binning_variables
+        }
+
     @staticmethod
     def _get_variable_for_level(config: od.Config, name: str, level: str):
         """

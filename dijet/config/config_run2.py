@@ -22,6 +22,8 @@ from dijet.config.cutflow_variables import add_cutflow_variables
 from dijet.config.datasets import get_dataset_lfns
 from dijet.config.analysis_dijet import analysis_dijet
 
+from dijet.plotting.asymmetry import PlotAsymmetries
+from dijet.plotting.alpha import PlotWidth
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -137,11 +139,46 @@ def add_config(
     cfg.x.samples = {
         "data": {
             "datasets": "data_*",
-            "color": "k",
+            "label": "Data",
+            "plot_kwargs": {
+                "__default__": {
+                    "method": "errorbar",
+                    "fmt": "s",
+                    "marker": "s",
+                    "fillstyle": "full",
+                    "color": "k",
+                    "label": "Data",
+                },
+                PlotAsymmetries: {
+                    "method": "errorbar",
+                    "fmt": "o",
+                    "marker": "o",
+                    "fillstyle": "full",
+                    "color": "k",
+                    "label": "Data",
+                },
+            },
         },
         "qcdht": {
-            "datasets": "qcd_*",
-            "color": "indianred",
+            "datasets": "qcd_ht*",
+            "label": "MC",
+            "plot_kwargs": {
+                "__default__": {
+                    "method": "errorbar",
+                    "fmt": "o",
+                    "marker": "o",
+                    "fillstyle": "none",
+                    "color": "indianred",
+                    "label": "MC",
+                },
+                PlotAsymmetries: {
+                    "method": "bar",
+                    "alpha": 0.6,
+                    "color": "indianred",
+                    "edgecolor": "none",
+                    "label": "MC",
+                },
+            },
         },
     }
 
