@@ -6,6 +6,8 @@ Definition of variables.
 
 import order as od
 
+from copy import deepcopy
+
 from columnflow.util import maybe_import
 from columnflow.columnar_util import EMPTY_FLOAT
 
@@ -129,25 +131,146 @@ def add_variables(config: od.Config) -> None:
     # dijet-related variables
     #
 
-    config.add_variable(
+    def add_dijet_variable(**kwargs):
+        """
+        Helper function to add a dijet-related variable, optionally also
+        adding a corresponding gen-level variable. if `gen_name` is given.
+
+        If `gen_name` is given, a gen-level variable with an identical binning
+        is also added. The optional arguments `gen_expression`, `gen_aux` and
+        `gen_x_title` can be used to set the corresponding properties of the
+        gen-level variable.
+
+        If a gen-level variable is added, entries `gen_variable` and
+        `reco_variable` will be created in the aux data of the main and
+        gen-level variable, respectively, containing the name of the
+        corresponding variable.
+        """
+
+        # pop gen-related kwargs
+        gen_name = kwargs.pop("gen_name", None)
+        gen_expression = kwargs.pop("gen_expression", None)
+        gen_aux = kwargs.pop("gen_aux", None)
+        gen_x_title = kwargs.pop("gen_x_title", None)
+
+        # kwargs to pass to add_variable
+        var_kwargs = deepcopy(kwargs)
+
+        # handle gen-level variable
+        if gen_name is not None:
+            # construct default gen-level x axis title if none provided
+            if gen_x_title is None:
+                x_title = kwargs.get("x_title", None)
+                if x_title is not None:
+                    gen_x_title = f"{x_title} (gen)"
+
+            # add gen-level variable name to reco variable aux
+            var_kwargs.setdefault("aux", {})["gen_variable"] = gen_name
+
+            # kwargs to pass to add_variable for gen-level variable
+            gen_var_kwargs = dict(
+                kwargs,
+                name=gen_name,
+                expression=gen_expression,
+                x_title=gen_x_title,
+            )
+
+            # add reco variable to the aux data
+            gen_var_kwargs.setdefault("aux", {})["reco_variable"] = kwargs["name"]
+
+            if gen_aux:
+                gen_var_kwargs.setdefault("aux", {}).update(gen_aux)
+
+        # warn if gen_expression but no gen_name
+        elif gen_expression is not None:
+            print(
+                f"[WARNING] `gen_expression` provided for variable "
+                f"'{kwargs['name']}', but no `gen_name` -> no gen-level "
+                "variable will be added",
+            )
+
+        # add the variables to the config
+        config.add_variable(**var_kwargs)
+        if gen_name is not None:
+            config.add_variable(**gen_var_kwargs)
+
+    # alpha variable for additional jet activity
+    add_dijet_variable(
+        name="dijets_alpha",
+        expression="alpha",
+        binning=alpha,
+        x_title=r"$\alpha$",
+        # TODO: implement if needed
+        # gen_name="dijets_alpha_gen",
+        # gen_expression="alpha_gen",
+        # gen_x_title=r"$\alpha$ (gen)",
+    )
+
+    # same as above, but with full range (0-1) and finer binning
+    add_dijet_variable(
+        name="dijets_alpha_fine",
+        expression="alpha",
+        binning=(100, 0, 1),
+        x_title=r"$\alpha$",
+        # TODO: implement if needed
+        # gen_name="dijets_alpha_gen_fine",
+        # gen_expression="alpha_gen",
+        # gen_x_title=r"$\alpha$ (gen)",
+    )
+
+    #
+    # variables for response distributions:
+    #
+
+    # pT asymmetry between probe and reference jets
+    add_dijet_variable(
         name="dijets_asymmetry",
         expression="dijets.asymmetry",
         binning=(160, -0.8, 0.8),
-        x_title=r"A",
+        x_title=r"Asymmetry",
+        gen_name="dijets_asymmetry_gen",
+        gen_expression="dijets.asymmetry_gen",
+        gen_x_title=r"Asymmetry (gen)",
     )
 
-    config.add_variable(
+    # MPF response
+    add_dijet_variable(
+        name="dijets_mpf",
+        expression="dijets.mpf",
+        binning=(100, -1, 1),
+        x_title=r"MPF",
+        gen_name="dijets_mpf_gen",
+        gen_expression="dijets.mpf_gen",
+        gen_x_title=r"MPF (gen)",
+    )
+
+    # MPFx response
+    add_dijet_variable(
+        name="dijets_mpfx",
+        expression="dijets.mpfx",
+        binning=(100, -1, 1),
+        x_title=r"MPFx",
+        gen_name="dijets_mpfx_gen",
+        gen_expression="dijets.mpfx_gen",
+        gen_x_title=r"MPFx (gen)",
+    )
+
+    # average pT of probe and reference jets
+    add_dijet_variable(
         name="dijets_pt_avg",
         expression="dijets.pt_avg",
         binning=pt,
         x_title=r"$p_{T}^{avg}$",
         unit="GeV",
+        gen_name="dijets_pt_avg_gen",
+        gen_expression="dijets.pt_avg_gen",
+        gen_x_title=r"$p_{T}^{avg}$ (gen)",
     )
 
     # eta bin is always defined by probe jet
     # SM: Both jets in eta bin
     # FE: Probejet in eta bin
-    config.add_variable(
+    add_dijet_variable(
         name="probejet_abseta",
         expression=lambda events: abs(events.probe_jet.eta),
         binning=eta,
@@ -155,36 +278,16 @@ def add_variables(config: od.Config) -> None:
         aux={
             "inputs": {"probe_jet.eta"},
         },
+        gen_name="probejet_abseta_gen",
+        # use `genJetIdx` to get matched gen jet
+        gen_expression=lambda events: abs(ak.firsts(events["GenJet"][ak.singletons(events["probe_jet"]["genJetIdx"])].eta)),  # noqa
+        gen_x_title=r"$|\eta|$ (gen)",
+        gen_aux={
+            "inputs": {"GenJet.*", "probe_jet.genJetIdx"},
+        },
     )
 
-    config.add_variable(
-        name="dijets_alpha",
-        expression="alpha",
-        #binning=(100, 0, 1),  # ?
-        binning=alpha,
-        x_title=r"$\alpha$",
-    )
-
-    config.add_variable(
-        name="dijets_alpha_fine",
-        expression="alpha",
-        binning=(100, 0, 1),
-        x_title=r"$\alpha$",
-    )
-
-    config.add_variable(
-        name="dijets_mpf",
-        expression="dijets.mpf",
-        binning=(100, -1, 1),
-        x_title=r"MPF",
-    )
-
-    config.add_variable(
-        name="dijets_mpfx",
-        expression="dijets.mpfx",
-        binning=(100, -1, 1),
-        x_title=r"MPFx",
-    )
+    # per-event gen/reco ratios
 
     config.add_variable(
         name="dijets_response_probe",
@@ -197,26 +300,4 @@ def add_variables(config: od.Config) -> None:
         expression="dijets.response_reference",
         binning=(100, 0, 2),
         x_title=r"response reference jet",
-    )
-
-    config.add_variable(
-        name="dijets_mpf_gen",
-        expression="dijets.mpf_gen",
-        binning=(100, -0.025, 0.025),
-        x_title=r"MPF gen",
-    )
-
-    config.add_variable(
-        name="dijets_mpfx_gen",
-        expression="dijets.mpfx_gen",
-        binning=(100, -0.025, 0.025),
-        x_title=r"MPFx gen",
-    )
-
-    config.add_variable(
-        name="dijets_pt_avg_gen",
-        expression="dijets.pt_avg_gen",
-        binning=pt,
-        x_title=r"$p_{T}^{avg, gen}$",
-        unit="GeV",
     )
