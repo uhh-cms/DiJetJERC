@@ -25,7 +25,7 @@ from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
 from dijet.selection.jet import jet_selection
 from dijet.selection.dijet import dijet_selection
-from dijet.selection.lepton_selection import lepton_selection
+from dijet.selection.lepton import lepton_selection
 from dijet.selection.trigger import trigger_selection
 from dijet.selection.cutflow_features import cutflow_features
 from dijet.selection.stats import dijet_increment_stats
