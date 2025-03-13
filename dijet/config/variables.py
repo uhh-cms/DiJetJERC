@@ -227,7 +227,7 @@ def add_variables(config: od.Config) -> None:
     add_dijet_variable(
         name="dijets_alpha_fine",
         expression="alpha",
-        binning=(100, 0, 1),
+        binning=(220, -1.1, 1.1),
         x_title=r"$\alpha$",
         # TODO: implement if needed
         # gen_name="dijets_alpha_gen_fine",
@@ -252,6 +252,33 @@ def add_variables(config: od.Config) -> None:
         },
     )
 
+    add_dijet_variable(
+        name="dijets_alpha_alt",
+        expression="dijets.alpha",
+        binning=(220, -1.1, 1.1),
+        x_title=r"$\alpha$",
+        # TODO: implement if needed
+        # gen_name="dijets_alpha_gen",
+        # gen_expression="alpha_gen",
+        # gen_x_title=r"$\alpha$ (gen)",
+        aux={
+            # options for formatting plain-text string used to
+            # represent variable and bin (e.g. in filenames)
+            "slug_name": "alpha_lt",
+            "bin_slug_format": lambda value: f"{value:1.3f}".replace(".", "p"),
+            "bin_slug_func": lambda self, bin_edges: "_".join([
+                self.x.slug_name,
+                self.x.bin_slug_format(bin_edges[1]),
+            ]),
+            # options for formatting label used in plots to indicate
+            # represent variable and bin
+            "bin_label_format": lambda value: f"{value:g}",
+            "bin_label_func": lambda self, bin_edges: " < ".join([
+                self.x_title,
+                self.x.bin_label_format(bin_edges[1]),
+            ]),
+        },
+    )
     #
     # variables for response distributions:
     #
@@ -260,7 +287,7 @@ def add_variables(config: od.Config) -> None:
     add_dijet_variable(
         name="dijets_asymmetry",
         expression="dijets.asymmetry",
-        binning=(160, -0.8, 0.8),
+        binning=(200, -1, 1),
         x_title=r"Asymmetry",
         gen_name="dijets_asymmetry_gen",
         gen_expression="dijets.asymmetry_gen",
@@ -271,7 +298,7 @@ def add_variables(config: od.Config) -> None:
     add_dijet_variable(
         name="dijets_mpf",
         expression="dijets.mpf",
-        binning=(100, -1, 1),
+        binning=(200, -1, 1),
         x_title=r"MPF",
         gen_name="dijets_mpf_gen",
         gen_expression="dijets.mpf_gen",
@@ -293,7 +320,7 @@ def add_variables(config: od.Config) -> None:
     add_dijet_variable(
         name="dijets_pt_avg",
         expression="dijets.pt_avg",
-        binning=pt,
+        binning=(100, 0, 1000),
         x_title=r"$p_{T}^{avg}$",
         unit="GeV",
         gen_name="dijets_pt_avg_gen",
@@ -354,8 +381,8 @@ def add_uhh2_synch_variables(config: od.Config) -> None:
             "expression_cf": lambda x: Route("Jet.pt[:, 0]").apply(x, None),
             "expression_uhh2": "uhh2.jet1_pt",
             "inputs": {"Jet.*"},
-            "scale": "log",
-            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            # "scale": "log",
+            "binning": np.linspace(0,1000, 100),
             "diff_binning": np.linspace(-200, 200, 101),
             "label": r"Jet 1 $p_{T}$",
         },
@@ -363,8 +390,8 @@ def add_uhh2_synch_variables(config: od.Config) -> None:
             "expression_cf": lambda x: Route("Jet.pt[:, 1]").apply(x, None),
             "expression_uhh2": "uhh2.jet2_pt",
             "inputs": {"Jet.*"},
-            "scale": "log",
-            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            # "scale": "log",
+            "binning": np.linspace(0,1000, 100),
             "diff_binning": np.linspace(-200, 200, 101),
             "label": r"Jet 2 $p_{T}$",
         },
@@ -372,15 +399,15 @@ def add_uhh2_synch_variables(config: od.Config) -> None:
             "expression_cf": lambda x: Route("Jet.pt[:, 2]").apply(x, None),
             "expression_uhh2": "uhh2.jet3_pt",
             "inputs": {"Jet.*"},
-            "scale": "log",
-            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            # "scale": "log",
+            "binning": np.linspace(0,1000, 100),
             "diff_binning": np.linspace(-200, 200, 101),
             "label": r"Jet 3 $p_{T}$",
         },
         "asymmetry": {
             "expression_cf": "dijets.asymmetry",
             "expression_uhh2": "uhh2.asymmetry",
-            "binning": np.linspace(-1, 1, 101),
+            "binning": np.linspace(-1, 1, 200),
             "diff_binning": np.linspace(-2, 2, 101),
             "label": r"Asymmetry",
         },
@@ -388,15 +415,15 @@ def add_uhh2_synch_variables(config: od.Config) -> None:
             "expression_cf": lambda x: -x.dijets.asymmetry,
             "expression_uhh2": "uhh2.asymmetry",
             "inputs": {"dijets.asymmetry"},
-            "binning": np.linspace(-1, 1, 101),
+            "binning": np.linspace(-1, 1, 200),
             "diff_binning": np.linspace(-2, 2, 101),
             "label": r"Asymmetry (sign-flipped)",
         },
         "pt_avg": {
             "expression_cf": "dijets.pt_avg",
             "expression_uhh2": "uhh2.pt_ave",
-            "scale": "log",
-            "binning": np.logspace(np.log10(5), np.log10(500), 101),
+            # "scale": "log",
+            "binning": np.linspace(0,1000, 100),
             "diff_binning": np.linspace(-2, 2, 101),
             "label": r"Dijet $p_{T}^{avg}$",
         },
@@ -411,10 +438,17 @@ def add_uhh2_synch_variables(config: od.Config) -> None:
         "alpha": {
             "expression_cf": "alpha",
             "expression_uhh2": "uhh2.alpha",
-            "binning": np.linspace(-1, 1, 101),
+            "binning": np.linspace(-1.1, 1.1, 220),
             "diff_binning": np.linspace(-2, 2, 101),
             "label": r"$\alpha$",
         },
+        # "dijets_alpha": {
+        #     "expression_cf": "dijets_alpha",
+        #     "expression_uhh2": "uhh2.alpha",
+        #     "binning": np.linspace(-1, 1, 101),
+        #     "diff_binning": np.linspace(-2, 2, 101),
+        #     "label": r"$\alpha$",
+        # },
         "reference_jet_abseta": {
             "expression_cf": lambda x: abs(x.reference_jet.eta),
             "expression_uhh2": lambda x: abs(x.uhh2.barreljet_eta),
