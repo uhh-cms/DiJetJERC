@@ -25,7 +25,7 @@ Creates column 'Dijet', which includes the most relevant properties of the JetME
         jet_assignment,
     },
     produces={
-        "dijets.pt_avg", "dijets.asymmetry", "dijets.mpf", "dijets.mpfx","dijets.alpha",
+        "dijets.pt_avg", "dijets.asymmetry", "dijets.mpf", "dijets.mpfx", "dijets.alpha",
     },
 )
 def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
