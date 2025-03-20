@@ -24,8 +24,7 @@ def lepton_selection(
     # lepton selection based on old UHH2 framework
     # https://github.com/UHH2/DiJetJERC/blob/ff98eebbd44931beb016c36327ab174fdf11a83f/src/AnalysisModule_DiJetTrg.cxx#L703
     # IDs in JME Nano https://cms-nanoaod-integration.web.cern.ch/integration/master-106X/mc102X_doc.html
-    events = attach_coffea_behavior(events, collections={"Muon": { "type_name": "Muon","skip_fields": "*Idx*G",}})
-    # from IPython import embed; embed()
+    # mask for muons
     muo_mask = (
         (events.Muon['pt'] > 15) &
         (abs(events.Muon['eta']) < 2.4) &
