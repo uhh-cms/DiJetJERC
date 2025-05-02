@@ -100,7 +100,7 @@ class AlphaExtrapolation(
         # start main processing
         #
 
-        h_asyms = self.load_input("asym", level=level)
+        h_asyms = self.load_input("asym_cut", level=level)
         h_nevts = self.load_input("nevt", level=level)
 
         # Get widths of asymmetries

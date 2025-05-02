@@ -231,8 +231,8 @@ class Asymmetry(
         mask = (asym_centers_reshaped > asym_edges_lo) & (asym_centers_reshaped < asym_edges_up)
 
         # Filter non gaussian tailes
-        view.value = np.where(mask, view.value, np.nan)
-        view.variance = np.where(mask, view.variance, np.nan)
+        view.value = np.where(mask, view.value, 0)
+        view.variance = np.where(mask, view.variance, 0)
 
         # Store in pickle file for plotting task
         self.dump_output("asym_cut", level=level, obj=h_all)
