@@ -273,14 +273,16 @@ def add_config(
     # https://twiki.cern.ch/twiki/bin/view/CMS/JECDataMC?rev=201
     jerc_postfix = "APV" if year == 2016 and campaign.x.vfp == "post" else ""
     cfg.x.jec = DotDict.wrap({
-        "campaign": f"Summer19UL{year2}{jerc_postfix}",
-        "version": {2016: "V7", 2017: "V5", 2018: "V5"}[year],
-        "jet_type": "AK4PFchs",
-        "levels": ["L1FastJet", "L2Relative", "L2L3Residual", "L3Absolute"],
-        "levels_for_type1_met": ["L1FastJet"],
-        "uncertainty_sources": [
-            "Total",
-        ],
+            "Jet": {
+            "campaign": f"Summer19UL{year2}{jerc_postfix}",
+            "version": {2016: "V7", 2017: "V5", 2018: "V5"}[year],
+            "jet_type": "AK4PFchs",
+            "levels": ["L1FastJet", "L2Relative", "L2L3Residual", "L3Absolute"],
+            "levels_for_type1_met": ["L1FastJet"],
+            "uncertainty_sources": [
+                "Total",
+            ],
+        },
     })
 
     # JER
@@ -437,7 +439,7 @@ def add_config(
 
     with open(os.path.join(thisdir, "jec_sources.yaml"), "r") as f:
         all_jec_sources = yaml.load(f, yaml.Loader)["names"]
-    for jec_source in cfg.x.jec["uncertainty_sources"]:
+    for jec_source in cfg.x.jec["Jet"]["uncertainty_sources"]:
         idx = all_jec_sources.index(jec_source)
         cfg.add_shift(name=f"jec_{jec_source}_up", id=5000 + 2 * idx, type="shape")
         cfg.add_shift(name=f"jec_{jec_source}_down", id=5001 + 2 * idx, type="shape")
