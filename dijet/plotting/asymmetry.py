@@ -189,7 +189,7 @@ class PlotAsymmetries(
                 )
                 # adjust for gen-level
                 if level == "gen":
-                    plot_kwargs.update({
+                    plot_kwargs = dict(plots_kwargs, **{
                         "color": "forestgreen",
                         "label": "MC (gen)",
                         "method": "step",

@@ -187,7 +187,7 @@ class PlotWidth(
                 )
                 # adjust for gen-level
                 if level == "gen":
-                    plot_kwargs.update({
+                    plot_kwargs = dict(plot_kwargs, **{
                         "color": "forestgreen",
                         "label": "MC (gen)",
                         "marker": "d",
