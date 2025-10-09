@@ -289,10 +289,10 @@ class DiJetSamplesMixin(ConfigTask):
 
             # resolve patterns/dataset groups
             sample_datasets = cls.find_config_objects(
-                sample_datasets,
-                config,
-                od.Dataset,
-                config.x("dataset_groups", {}),
+                names=sample_datasets,
+                container=config,
+                object_cls=od.Dataset,
+                groups_str="dataset_groups",
             )
 
             # keep track of empty samples
