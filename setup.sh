@@ -27,13 +27,26 @@ setup_dijet() {
     #   DIJET_SETUP
     #       A flag that is set to 1 after the setup was successful.
 
+    #
+    # load cf setup helpers
+    #
+
+    local shell_is_zsh="$( [ -z "${ZSH_VERSION}" ] && echo "false" || echo "true" )"
+    local this_file="$( ${shell_is_zsh} && echo "${(%):-%x}" || echo "${BASH_SOURCE[0]}" )"
+    local this_dir="$( cd "$( dirname "${this_file}" )" && pwd )"
+    local cf_base="${this_dir}/modules/columnflow"
+    CF_SKIP_SETUP="true" source "${cf_base}/setup.sh" "" || return "$?"
+
+    #
     # prevent repeated setups
-    if [ "${DIJET_SETUP}" = "1" ]; then
-        >&2 echo "the DiJet analysis was already succesfully setup"
+    #
+
+    cf_export_bool DIJET_SETUP
+    if ${DIJET_SETUP} && ! ${CF_ON_SLURM}; then
+        >&2 echo "the DiJet analysis was already succesfully set up"
         >&2 echo "re-running the setup requires a new shell"
         return "1"
     fi
-
 
     #
     # prepare local variables
@@ -47,6 +60,11 @@ setup_dijet() {
     local setup_is_default="false"
     [ "${setup_name}" = "default" ] && setup_is_default="true"
 
+    # zsh options
+    if ${shell_is_zsh}; then
+        emulate -L bash
+        setopt globdots
+    fi
 
     #
     # global variables
@@ -55,37 +73,21 @@ setup_dijet() {
 
     # start exporting variables
     export DIJET_BASE="${this_dir}"
-    export CF_BASE="${this_dir}/modules/columnflow"
+    export CF_BASE="${cf_base}"
     export CF_REPO_BASE="${DIJET_BASE}"
     export CF_REPO_BASE_ALIAS="DIJET_BASE"
     export CF_SETUP_NAME="${setup_name}"
 
-    # load cf setup helpers
-    CF_SKIP_SETUP="1" source "${CF_BASE}/setup.sh" "" || return "$?"
-
     # interactive setup
-    if [ "${CF_REMOTE_JOB}" != "1" ]; then
+    if ! ${CF_REMOTE_ENV}; then
         cf_setup_interactive_body() {
+            # pre-export the CF_FLAVOR which will be cms
+            export CF_FLAVOR="cms"
+
+            # query common variables
+            cf_setup_interactive_common_variables
+
             # start querying for variables
-            query CF_CERN_USER "CERN username" "$( whoami )"
-            export_and_save CF_CERN_USER_FIRSTCHAR "\${CF_CERN_USER:0:1}"
-            query CF_DATA "Local data directory" "\$DIJET_BASE/data" "./data"
-            query CF_STORE_NAME "Relative path used in store paths (see next queries)" "dijet_store"
-            query CF_STORE_LOCAL "Default local output store" "\$CF_DATA/\$CF_STORE_NAME"
-            query CF_WLCG_CACHE_ROOT "Local directory for caching remote files" "" "''"
-            export_and_save CF_WLCG_USE_CACHE "$( [ -z "${CF_WLCG_CACHE_ROOT}" ] && echo false || echo true )"
-            export_and_save CF_WLCG_CACHE_CLEANUP "${CF_WLCG_CACHE_CLEANUP:-false}"
-            query CF_SOFTWARE_BASE "Local directory for installing software" "\$CF_DATA/software"
-            query CF_JOB_BASE "Local directory for storing job files" "\$CF_DATA/jobs"
-            query CF_VOMS "Virtual-organization" "cms"
-            query CF_LOCAL_SCHEDULER "Use a local scheduler for law tasks" "True"
-            if [ "${CF_LOCAL_SCHEDULER}" != "True" ]; then
-                query CF_SCHEDULER_HOST "Address of a central scheduler for law tasks" "naf-cms15.desy.de"
-                query CF_SCHEDULER_PORT "Port of a central scheduler for law tasks" "8082"
-            else
-                export_and_save CF_SCHEDULER_HOST "127.0.0.1"
-                export_and_save CF_SCHEDULER_PORT "8082"
-            fi
             query DIJET_BUNDLE_CMSSW "Install and bundle CMSSW sandboxes for job submission?" "True"
         }
         cf_setup_interactive "${CF_SETUP_NAME}" "${DIJET_BASE}/.setups/${CF_SETUP_NAME}.sh" || return "$?"
@@ -95,15 +97,12 @@ setup_dijet() {
     export CF_CONDA_BASE="${CF_CONDA_BASE:-${CF_SOFTWARE_BASE}/conda}"
     export CF_VENV_BASE="${CF_VENV_BASE:-${CF_SOFTWARE_BASE}/venvs}"
     export CF_CMSSW_BASE="${CF_CMSSW_BASE:-${CF_SOFTWARE_BASE}/cmssw}"
-    export CF_CI_JOB="$( [ "${GITHUB_ACTIONS}" = "true" ] && echo 1 || echo 0 )"
-
 
     #
     # common variables
     #
 
     cf_setup_common_variables || return "$?"
-
 
     #
     # minimal local software setup
@@ -123,7 +122,6 @@ setup_dijet() {
         done
     fi
 
-
     #
     # law setup
     #
@@ -139,8 +137,17 @@ setup_dijet() {
         law index -q
     fi
 
+    #
+    # additional common cf setup steps
+    #
+
+    cf_setup_post_install || return "$?"
+
+    #
     # finalize
-    export DIJET_SETUP="1"
+    #
+
+    export DIJET_SETUP="true"
 }
 
 main() {
@@ -158,6 +165,6 @@ main() {
 }
 
 # entry point
-if [ "${DIJET_SKIP_SETUP}" != "1" ]; then
+if [ "${DIJET_SKIP_SETUP}" != "true" ]; then
     main "$@"
 fi
