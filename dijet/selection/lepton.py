@@ -26,14 +26,14 @@ def lepton_selection(
     # IDs in JME Nano https://cms-nanoaod-integration.web.cern.ch/integration/master-106X/mc102X_doc.html
     # mask for muons
     muo_mask = (
-        (events.Muon.pt > 15) &
-        (abs(events.Muon.eta) < 2.4) &
+        (events.Muon["pt"] > 15) &
+        (abs(events.Muon["eta"]) < 2.4) &
         (events.Muon.tightId)
     )
     # mask for electrons
     ele_mask = (
-        (events.Electron.pt > 15) &
-        (abs(events.Electron.eta) < 2.4) &
+        (events.Electron["pt"] > 15) &
+        (abs(events.Electron["eta"]) < 2.4) &
         (events.Electron.mvaFall17V2noIso_WPL)
     )
 
@@ -43,8 +43,8 @@ def lepton_selection(
     # select only events with no leptons
     lep_sel = (events.cutflow.n_ele == 0) & (events.cutflow.n_muo == 0)
 
-    ele_indices = masked_sorted_indices(ele_mask, events.Electron.pt)
-    muo_indices = masked_sorted_indices(muo_mask, events.Muon.pt)
+    ele_indices = masked_sorted_indices(ele_mask, events.Electron["pt"])
+    muo_indices = masked_sorted_indices(muo_mask, events.Muon["pt"])
 
     ele_mask = ak.fill_none(ele_mask, False)
     muo_mask = ak.fill_none(muo_mask, False)
