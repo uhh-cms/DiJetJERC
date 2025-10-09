@@ -43,8 +43,12 @@ ID of the combined category.
 import law
 
 from columnflow.util import maybe_import
+# from columnflow.config_util import create_category_combinations
+
 from columnflow.categorization import Categorizer, categorizer
 from dijet.production.jet_assignment import jet_assignment
+
+from dijet.util import call_once_on_config
 
 import order as od
 
@@ -75,15 +79,30 @@ def skip_fn(categories: dict[str, od.Category]):
     return False  # don't skip
 
 
+@call_once_on_config()
 def add_categories(config: od.Config) -> None:
     """
     Adds categories to a *config*, that are typically produced in `SelectEvents`.
     """
     # inclusive category
+
+    @categorizer(
+        uses={"event"},
+        cls_name="catid_incl",
+    )
+    def catid_incl(
+        self: Categorizer, events: ak.Array,
+        **kwargs,
+    ) -> ak.Array:
+        """
+        Select all events
+        """
+        return events, ak.ones_like(events.event) > 0
+
     config.add_category(
         name="incl",
         id=0,
-        selection="sel_incl",
+        selection="catid_incl",
         label="inclusive",
     )
 
@@ -96,9 +115,9 @@ def add_categories(config: od.Config) -> None:
 
     @categorizer(
         uses={jet_assignment},
-        cls_name="sel_sm",
+        cls_name="catid_sm",
     )
-    def sel_sm(
+    def catid_sm(
         self: Categorizer, events: ak.Array,
         **kwargs,
     ) -> ak.Array:
@@ -112,16 +131,16 @@ def add_categories(config: od.Config) -> None:
         config.add_category(
             name="sm",
             id=int(10**cat_idx_lsd),
-            selection="sel_sm",
+            selection="catid_sm",
             label="Standard Method",
         ),
     )
 
     @categorizer(
         uses={jet_assignment},
-        cls_name="sel_fe",
+        cls_name="catid_fe",
     )
-    def sel_fe(
+    def catid_fe(
         self: Categorizer, events: ak.Array,
         **kwargs,
     ) -> ak.Array:
@@ -137,7 +156,7 @@ def add_categories(config: od.Config) -> None:
     cat = config.add_category(
         name="fe",
         id=int(10**cat_idx_lsd * 2),
-        selection="sel_fe",
+        selection="catid_fe",
         label="Forward Extension",
     )
     method_categories.append(cat)
