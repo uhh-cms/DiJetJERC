@@ -6,11 +6,11 @@ Column production methods related to higher-level features.
 
 
 from columnflow.production import Producer, producer
+from columnflow.production.categories import category_ids
 from columnflow.production.cms.mc_weight import mc_weight
 from columnflow.util import maybe_import
 from columnflow.columnar_util import EMPTY_FLOAT, Route, set_ak_column
 
-from dijet.production.categories import category_ids
 from dijet.production.dijet_balance import dijet_balance
 
 np = maybe_import("numpy")
