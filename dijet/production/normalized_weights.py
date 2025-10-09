@@ -8,8 +8,10 @@ from typing import Iterable, Callable
 
 import law
 
+from law.util import InsertableDict
+
 from columnflow.production import Producer, producer
-from columnflow.util import maybe_import, safe_div, InsertableDict
+from columnflow.util import maybe_import, safe_div
 from columnflow.columnar_util import set_ak_column
 
 ak = maybe_import("awkward")

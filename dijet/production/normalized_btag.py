@@ -6,9 +6,11 @@ Producers for phase-space normalized btag scale factor weights.
 
 from __future__ import annotations
 
+from law.util import InsertableDict
+
 from columnflow.production import Producer, producer
 from columnflow.production.cms.btag import btag_weights
-from columnflow.util import maybe_import, safe_div, InsertableDict
+from columnflow.util import maybe_import, safe_div
 from columnflow.columnar_util import set_ak_column
 
 np = maybe_import("numpy")
