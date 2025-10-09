@@ -64,18 +64,18 @@ import cmsdb.campaigns.run2_2017_JMEnano_v9
 campaign_run2_2017_JMEnano_v9 = cmsdb.campaigns.run2_2017_JMEnano_v9.campaign_run2_2017_JMEnano_v9
 
 # default config
-config_2017 = add_config(
+cfg_run2_2017_JMEnano_v9 = add_config(
     analysis_dijet,
     campaign_run2_2017_JMEnano_v9.copy(),
-    config_name="config_2017",
+    config_name="run2_2017_JMEnano_v9",
     config_id=2,
 )
 
 # config with limited number of files
-config_2017_limited = add_config(
+cfg_run2_2017_JMEnano_v9_limited = add_config(
     analysis_dijet,
     campaign_run2_2017_JMEnano_v9.copy(),
-    config_name="config_2017_limited",
+    config_name="run2_2017_JMEnano_v9_limited",
     config_id=12,
     limit_dataset_files=1,
 )
