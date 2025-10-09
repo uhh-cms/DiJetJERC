@@ -157,7 +157,7 @@ class PlotWidth(
             bin_selectors = {}
             for level in self.levels:
                 bin_selectors[level] = {
-                    "category": hist.loc(self.config_inst.get_category(m).id),
+                    "category": hist.loc(self.config_inst.get_category(m).name),
                     vars_[level]["binning"]["probejet_abseta"]: hist.loc(eta_midp),
                 }
                 for bv_bin in bv_bins:

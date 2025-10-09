@@ -158,7 +158,7 @@ class PlotAsymmetries(
             bin_selectors = {}
             for level in self.levels:
                 bin_selectors[level] = {
-                    "category": hist.loc(self.config_inst.get_category(m).id),
+                    "category": hist.loc(self.config_inst.get_category(m).name),
                     vars_[level]["alpha"]: hist.loc(alpha_up - 0.001),
                     vars_[level]["binning"]["probejet_abseta"]: hist.loc(eta_midp),
                 }

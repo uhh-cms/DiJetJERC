@@ -143,7 +143,7 @@ class PlotSFs(
             # selector to get current bin
             bin_selector = {}
             bin_selector = {
-                "category": hist.loc(self.config_inst.get_category(m).id),
+                "category": hist.loc(self.config_inst.get_category(m).name),
                 vars_["binning"]["probejet_abseta"]: hist.loc(eta_midp),
             }
             for bv_bin in bv_bins:

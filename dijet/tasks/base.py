@@ -222,7 +222,7 @@ class HistogramsBaseTask(
 
         # get shift instance
         shift_inst = self.config_inst.get_shift(shift)
-        if shift_inst.id not in histogram.axes["shift"]:
+        if shift_inst.name not in histogram.axes["shift"]:
             raise ValueError(f"histogram does not contain shift `{shift}`")
 
         # work on a copy
@@ -231,7 +231,7 @@ class HistogramsBaseTask(
         # axis reductions
         h = h[{
             "process": sum,
-            "shift": hist.loc(shift_inst.id),
+            "shift": hist.loc(shift_inst.name),
             # TODO: read rebinning factors from config
             # @dsavoiu: might be better to use config binning for now
             # vars_["alpha"]: hist.rebin(5),
