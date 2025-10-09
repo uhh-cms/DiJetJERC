@@ -50,9 +50,6 @@ def event_weight(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
 @event_weight.init
 def event_weight_init(self: Producer) -> None:
-    if not getattr(self, "dataset_inst", None):
-        return
-
     self.uses |= set(self.config_inst.x.event_weights.keys())
     self.uses |= set(self.dataset_inst.x("event_weights", {}).keys())
 
@@ -93,9 +90,6 @@ def event_weights_to_normalize(self: Producer, events: ak.Array, results: Select
 
 @event_weights_to_normalize.init
 def event_weights_to_normalize_init(self) -> None:
-    if not getattr(self, "dataset_inst", None):
-        return
-
     if not self.dataset_inst.x("skip_scale", False):
         self.uses |= {murmuf_envelope_weights, murmuf_weights}
         self.produces |= {murmuf_envelope_weights, murmuf_weights}
@@ -168,9 +162,6 @@ def event_weights(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
 @event_weights.init
 def event_weights_init(self: Producer) -> None:
-    if not getattr(self, "dataset_inst", None):
-        return
-
     # if not self.dataset_inst.x("skip_scale", False):
     #     self.uses |= {normalized_scale_weights}
     #     self.produces |= {normalized_scale_weights}
@@ -178,6 +169,8 @@ def event_weights_init(self: Producer) -> None:
     # if not self.dataset_inst.x("skip_pdf", False):
     #     self.uses |= {normalized_pdf_weights}
     #     self.produces |= {normalized_pdf_weights}
+
+    pass
 
 
 @producer(

@@ -99,16 +99,6 @@ def trigger_selection(
 
 @trigger_selection.init
 def trigger_selection_init(self: Producer) -> None:
-    # return immediately if config not yet loaded
-    config_inst = getattr(self, "config_inst", None)
-    if not config_inst:
-        return
-
-    # return immediately if dataset not yet loaded
-    dataset_inst = getattr(self, "dataset_inst", None)
-    if not dataset_inst:
-        return
-
     # set config dict (use dijet triggers, fall back to single jet if missing)
     if self.dataset_inst.has_tag("missing_dijet_triggers"):
         self.central = self.config_inst.x.triggers.singlejet.central

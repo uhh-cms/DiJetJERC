@@ -32,9 +32,6 @@ def default(self: Calibrator, events: ak.Array, **kwargs) -> ak.Array:
 
 @default.init
 def default_init(self: Calibrator) -> None:
-    if not getattr(self, "dataset_inst", None):
-        return
-
     if self.dataset_inst.is_data:
         calibrators = {jec_nominal}
     else:
@@ -64,9 +61,6 @@ def skip_jecunc(self: Calibrator, events: ak.Array, **kwargs) -> ak.Array:
 
 @skip_jecunc.init
 def skip_jecunc_init(self: Calibrator) -> None:
-    if not getattr(self, "dataset_inst", None):
-        return
-
     if self.dataset_inst.is_data:
         calibrators = {jec_nominal}
     else:

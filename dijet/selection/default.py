@@ -122,8 +122,5 @@ def default(
 #         self.uses.add(cutflow_features)
 #         self.produces.add(cutflow_features)
 
-#     if not getattr(self, "dataset_inst", None) or self.dataset_inst.is_data:
-#         return
-
 #     self.uses.add(event_weights_to_normalize)
 #     self.produces.add(event_weights_to_normalize)
