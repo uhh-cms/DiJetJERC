@@ -10,10 +10,13 @@ import law
 from functools import partial
 
 from columnflow.tasks.framework.base import BaseTask, ShiftTask
+from columnflow.tasks.framework.remote import RemoteWorkflow
 from columnflow.tasks.framework.mixins import (
-    CalibratorsMixin, SelectorMixin, ProducersMixin,
-    CategoriesMixin,
+    CalibratorsMixin, SelectorMixin, ReducerMixin, ProducersMixin,
+    HistProducerMixin, CategoriesMixin,
 )
+from columnflow.tasks.histograms import MergeHistograms
+from columnflow.config_util import get_datasets_from_process
 from columnflow.util import dev_sandbox, DotDict
 
 from dijet.tasks.mixins import DiJetVariablesMixin, DiJetSamplesMixin
@@ -25,12 +28,14 @@ class DiJetTask(BaseTask):
 
 class HistogramsBaseTask(
     DiJetTask,
-    DiJetSamplesMixin,
-    CategoriesMixin,
-    DiJetVariablesMixin,
-    ProducersMixin,
-    SelectorMixin,
     CalibratorsMixin,
+    SelectorMixin,
+    ReducerMixin,
+    ProducersMixin,
+    HistProducerMixin,
+    CategoriesMixin,
+    DiJetSamplesMixin,
+    DiJetVariablesMixin,
     ShiftTask,
 ):
     """
@@ -43,6 +48,8 @@ class HistogramsBaseTask(
     # declare output as a nested sibling file collection
     output_collection_cls = law.NestedSiblingFileCollection
     output_base_keys = ()
+    resolution_task_cls = MergeHistograms
+    single_config = True
 
     # ways of creating the branch map
     branching_types = ("separate", "with_mc", "merged")
