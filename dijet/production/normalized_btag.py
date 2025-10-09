@@ -6,6 +6,8 @@ Producers for phase-space normalized btag scale factor weights.
 
 from __future__ import annotations
 
+import law
+
 from law.util import InsertableDict
 
 from columnflow.production import Producer, producer
@@ -66,10 +68,10 @@ def normalized_btag_weights_init(self: Producer) -> None:
 
 
 @normalized_btag_weights.requires
-def normalized_btag_weights_requires(self: Producer, reqs: dict) -> None:
+def normalized_btag_weights_requires(self: Producer, task: law.Task, reqs: dict) -> None:
     from columnflow.tasks.selection import MergeSelectionStats
     reqs["selection_stats"] = MergeSelectionStats.req(
-        self.task,
+        task,
         tree_index=0,
         branch=-1,
         _exclude=MergeSelectionStats.exclude_params_forest_merge,
@@ -77,7 +79,13 @@ def normalized_btag_weights_requires(self: Producer, reqs: dict) -> None:
 
 
 @normalized_btag_weights.setup
-def normalized_btag_weights_setup(self: Producer, reqs: dict, inputs: dict, reader_targets: InsertableDict) -> None:
+def normalized_btag_weights_setup(
+    self: Producer,
+    task: law.Task,
+    reqs: dict,
+    inputs: dict,
+    reader_targets: InsertableDict,
+) -> None:
     # load the selection stats
     stats = inputs["selection_stats"]["collection"][0]["stats"].load(formatter="json")
 

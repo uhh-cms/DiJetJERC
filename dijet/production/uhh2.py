@@ -1,9 +1,9 @@
 # coding: utf-8
-
 """
 Lookup corresponding events in UHH2.
 """
 
+import law
 
 from law.util import InsertableDict
 
@@ -56,7 +56,7 @@ def uhh2(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
 
 @uhh2.requires
-def uhh2_requires(self: Producer, reqs: dict) -> None:
+def uhh2_requires(self: Producer, task: law.Task, reqs: dict) -> None:
     """
     Register `UHH2ToParquet` task as dependency.
     """
@@ -64,12 +64,13 @@ def uhh2_requires(self: Producer, reqs: dict) -> None:
         return
 
     from dijet.tasks.uhh2 import UHH2ToParquet
-    reqs["uhh2"] = UHH2ToParquet.req(self.task)
+    reqs["uhh2"] = UHH2ToParquet.req(task)
 
 
 @uhh2.setup
 def uhh2_setup(
     self: Producer,
+    task: law.Task,
     reqs: dict,
     inputs: dict,
     reader_targets: InsertableDict,
