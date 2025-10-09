@@ -104,7 +104,8 @@ def add_config(
     cfg.x.default_calibrator = "skip_jecunc"
     cfg.x.default_selector = "default"
     cfg.x.default_producer = "default"
-    cfg.x.default_weight_producer = "all_weights"
+    cfg.x.default_reducer = "cf_default"
+    cfg.x.default_hist_producer = "all_weights"
     # cfg.x.default_ml_model = "default"
     # cfg.x.default_ml_model = None
     cfg.x.default_inference_model = "default"
