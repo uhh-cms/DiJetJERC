@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import annotations
 
 from typing import Tuple
 from columnflow.util import maybe_import
@@ -18,6 +19,8 @@ np = maybe_import("numpy")
 def dijet_selection(
     self: Selector,
     events: ak.Array,
+    # mask to apply to `event.Jet` before running selection
+    jet_mask: ak.Array | None = None,
     **kwargs,
 ) -> Tuple[ak.Array, SelectionResult]:
     # DiJet jet selection
@@ -26,8 +29,7 @@ def dijet_selection(
     # - deltaR>2.7
 
     # dijet
-
-    events = self[jet_assignment](events, **kwargs)
+    events = self[jet_assignment](events, jet_mask=jet_mask, **kwargs)
 
     # two back-to-back leading jets (delta_phi(j1,j2) = min(|phi1 - phi2|, 2PI - |phi2 - phi1|) > 2.7)
     # copied from https://root.cern.ch/doc/master/TVector2_8cxx_source.html#l00103

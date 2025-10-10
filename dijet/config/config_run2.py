@@ -537,7 +537,7 @@ def add_config(
             "alpha",
         } | set(  # Jets
             f"{jet_obj}.{field}"
-            for jet_obj in ["Jet"]
+            for jet_obj in ["Jet", "probe_jet", "reference_jet"]
             # NOTE: if we run into storage troubles, skip Bjet and Lightjet
             for field in ["pt", "eta", "phi", "mass", "genJetIdx"]
         ) | set(  # MET

@@ -40,14 +40,14 @@ ak = maybe_import("awkward")
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,
         jet_selection, lepton_selection, trigger_selection, dijet_selection,
-        dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
+        jet_assignment, cutflow_features, dijet_increment_stats,
     },
     produces={
         met_filters, json_filter,
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,
         jet_selection, lepton_selection, trigger_selection, dijet_selection,
-        dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
+        jet_assignment, cutflow_features, dijet_increment_stats,
     },
     exposed=True,
     check_used_columns=True,
@@ -87,14 +87,17 @@ def default(
     events, results_jet = self[jet_selection](events, **kwargs)
     results += results_jet
 
+    # retrieve jet mask to use in subsequent selection step
+    jet_mask = results_jet.objects.Jet.Jet
+
     # trigger selection
     # Uses pt_avg and the probe jet
     if self.dataset_inst.is_data:
-        events, results_trigger = self[trigger_selection](events, **kwargs)
+        events, results_trigger = self[trigger_selection](events, jet_mask=jet_mask, **kwargs)
         results += results_trigger
 
     # dijet selection
-    events, results_dijet = self[dijet_selection](events, **kwargs)
+    events, results_dijet = self[dijet_selection](events, jet_mask=jet_mask, **kwargs)
     results += results_dijet
 
     # create process ids

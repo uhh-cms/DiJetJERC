@@ -3,6 +3,7 @@
 """
 Producer to set ak columns for alpha
 """
+from __future__ import annotations
 
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column

@@ -1,11 +1,11 @@
 # coding: utf-8
+from __future__ import annotations
 
 from typing import Tuple
 
 from columnflow.util import maybe_import
 from columnflow.selection import Selector, SelectionResult, selector
 from columnflow.production import Producer
-from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
 
 ak = maybe_import("awkward")
@@ -14,7 +14,7 @@ np = maybe_import("numpy")
 
 @selector(
     uses={
-        dijet_balance, jet_assignment,
+        jet_assignment,
         "event", "run", "luminosityBlock",
         "HLT.DiPFJetAve*", "HLT.PFJet*",
     },
@@ -24,6 +24,8 @@ def trigger_selection(
     self: Selector,
     events: ak.Array,
     data_only: bool = True,
+    # mask to apply to `event.Jet` before running selection
+    jet_mask: ak.Array | None = None,
     **kwargs,
 ) -> Tuple[ak.Array, SelectionResult]:
 
@@ -34,8 +36,7 @@ def trigger_selection(
     #       - Jet collections (AK4 vs. AK8)
 
     # NOTE: jet_assignment needed when including forward triggers
-    events = self[jet_assignment](events, **kwargs)
-    events = self[dijet_balance](events, **kwargs)
+    events = self[jet_assignment](events, jet_mask=jet_mask, **kwargs)
 
     # per-event trigger index (based on thresholds)
     if self.dataset_inst.has_tag("missing_dijet_triggers"):
@@ -53,8 +54,9 @@ def trigger_selection(
 
     # TODO: In UHH2 singlejet triggers are also checked with pt_avg
     #       Keep for consistency in validation process for now.
-    sel_trigger_index_central = np.digitize(ak.to_numpy(events.dijets.pt_avg), thrs_central) - 1  # can be -1
-    sel_trigger_index_forward = np.digitize(ak.to_numpy(events.dijets.pt_avg), thrs_forward) - 1  # can be -1
+    pt_avg = 0.5 * (events.reference_jet.pt + events.probe_jet.pt)
+    sel_trigger_index_central = np.digitize(ak.to_numpy(pt_avg), thrs_central) - 1  # can be -1
+    sel_trigger_index_forward = np.digitize(ak.to_numpy(pt_avg), thrs_forward) - 1  # can be -1
 
     # mask -1 values to avoid picking wrong trigger. Does not cut events but marks them as unvalid!
     sel_trigger_index_central = ak.mask(sel_trigger_index_central, sel_trigger_index_central < 0, valid_when=False)

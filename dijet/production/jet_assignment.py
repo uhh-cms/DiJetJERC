@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import annotations
 
 """
 Selectors to set ak columns for dijet properties
@@ -29,7 +30,13 @@ ak = maybe_import("awkward")
         "reference_jet.pt", "reference_jet.eta", "reference_jet.phi", "reference_jet.mass",
     },
 )
-def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
+def jet_assignment(
+    self: Producer,
+    events: ak.Array,
+    # mask to apply to `event.Jet` before running assignment
+    jet_mask: ak.Array | None = None,
+    **kwargs
+) -> ak.Array:
     """
     Producer to assign the probe and reference jets. Creates new four-vector
     columns `probe_jet` and `reference_jet` as main result. Also produces
@@ -46,10 +53,17 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     is considered the probe jet. The FE method is used in this case.
     """
 
-    # TODO: for now, this only works for reco level
+    # retrieve jet collection
     jets = events.Jet
+
+    # apply jet mask, if provided
+    if jet_mask is not None:
+        jets = jets[jet_mask]
+
+    # pad jet collection to at least length two
     jets = ak.pad_none(jets, 2)
 
+    # retrieve absolute eta of two leading jets
     abseta_jet1 = np.abs(jets.eta[:, 0])
     abseta_jet2 = np.abs(jets.eta[:, 1])
 
