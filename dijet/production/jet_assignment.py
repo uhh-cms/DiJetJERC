@@ -24,7 +24,7 @@ ak = maybe_import("awkward")
         "Jet.pt", "Jet.eta", "Jet.phi", "Jet.mass",
     },
     produces={
-        "use_sm", "use_fe", "n_jet",
+        "use_sm", "use_fe",
         "probe_jet.pt", "probe_jet.eta", "probe_jet.phi", "probe_jet.mass",
         "reference_jet.pt", "reference_jet.eta", "reference_jet.phi", "reference_jet.mass",
     },
@@ -48,7 +48,6 @@ def jet_assignment(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
     # TODO: for now, this only works for reco level
     jets = events.Jet
-    events = set_ak_column(events, "n_jet", ak.num(jets.pt, axis=1), value_type=np.int32)
     jets = ak.pad_none(jets, 2)
 
     abseta_jet1 = np.abs(jets.eta[:, 0])
