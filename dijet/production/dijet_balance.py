@@ -15,22 +15,30 @@ ak = maybe_import("awkward")
 
 """
 Creates column 'Dijet', which includes the most relevant properties of the JetMET dijet analysis.
- - Namely: asymmetry, pt avg of both leading jets and alpha
+ - Namely: asymmetry, pt avg of both leading jets and alpha_raw
 """
 
 
 @producer(
     uses={
         "Jet.pt", "MET.pt", "MET.phi",
-        jet_assignment,
+        jet_assignment.PRODUCES,
     },
     produces={
-        "dijets.pt_avg", "dijets.asymmetry", "dijets.mpf", "dijets.mpfx", "dijets.alpha",
+        "dijets.pt_avg",
+        "dijets.asymmetry",
+        "dijets.mpf",
+        "dijets.mpfx",
+        "dijets.alpha_raw",
     },
 )
-def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
+def dijet_balance(
+    self: Producer,
+    events: ak.Array,
+    **kwargs
+) -> ak.Array:
 
-    # TODO: for now, this only works for reco level
+    # retrieve jet collection
     jets = events.Jet
 
     # ensure at least three jets
@@ -39,7 +47,7 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     # compute derived quantities
     pt_avg = (events.probe_jet.pt + events.reference_jet.pt) / 2
     asym = (events.probe_jet.pt - events.reference_jet.pt) / (2 * pt_avg)
-    alpha = jets.pt[:, 2] / pt_avg
+    alpha_raw = jets.pt[:, 2] / pt_avg
     delta_phi = events.probe_jet.phi - events.MET.phi
     mpf = events.MET.pt * np.cos(delta_phi) / (2 * pt_avg)
     mpfx = events.MET.pt * np.sin(delta_phi) / (2 * pt_avg)
@@ -48,7 +56,7 @@ def dijet_balance(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     dijets = {
         "pt_avg": ak.fill_none(pt_avg, EMPTY_FLOAT),
         "asymmetry": ak.fill_none(asym, EMPTY_FLOAT),
-        "alpha": ak.fill_none(alpha, EMPTY_FLOAT),
+        "alpha_raw": ak.fill_none(alpha_raw, EMPTY_FLOAT),
         "mpf": ak.fill_none(mpf, EMPTY_FLOAT),
         "mpfx": ak.fill_none(mpfx, EMPTY_FLOAT),
     }
