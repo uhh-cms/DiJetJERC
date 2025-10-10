@@ -45,19 +45,17 @@ def dijet_selection(
         ),
     )
 
-    dijet_sel = (
-        (
-            (abs(events.probe_jet.pt) > 15) |
-            (abs(events.reference_jet.pt) > 15)
-        ) &
-        (abs(delta_phi_pi) > 2.7)
+    # selection masks
+    sel_dijet_pt = (
+        (events.probe_jet.pt > 15) |
+        (events.reference_jet.pt > 15)
     )
-
-    dijet_sel = ak.fill_none(dijet_sel, False)
+    sel_dijet_delta_phi = (abs(delta_phi_pi) > 2.7)
 
     # build and return selection results plus new columns
     return events, SelectionResult(
         steps={
-            "dijet": dijet_sel,
+            "dijet_pt": ak.fill_none(sel_dijet_pt, False),
+            "dijet_delta_phi": ak.fill_none(sel_dijet_delta_phi, False),
         },
     )
