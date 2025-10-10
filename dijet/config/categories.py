@@ -114,7 +114,7 @@ def add_categories(config: od.Config) -> None:
     method_categories = []
 
     @categorizer(
-        uses={jet_assignment},
+        uses={"use_sm"},
         cls_name="catid_sm",
     )
     def catid_sm(
@@ -124,7 +124,6 @@ def add_categories(config: od.Config) -> None:
         """
         Select events with probe jet and reference jet in same eta bin (standard method)
         """
-        events = self[jet_assignment](events, **kwargs)
         return events, ak.fill_none(events.use_sm, False)
 
     method_categories.append(
@@ -137,7 +136,7 @@ def add_categories(config: od.Config) -> None:
     )
 
     @categorizer(
-        uses={jet_assignment},
+        uses={"use_fe"},
         cls_name="catid_fe",
     )
     def catid_fe(
@@ -150,7 +149,6 @@ def add_categories(config: od.Config) -> None:
         reference jet eta < 1.131
         (forward extension)
         """
-        events = self[jet_assignment](events, **kwargs)
         return events, ak.fill_none(events.use_fe, False)
 
     cat = config.add_category(
