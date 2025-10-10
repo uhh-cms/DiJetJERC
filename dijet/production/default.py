@@ -21,17 +21,27 @@ ak = maybe_import("awkward")
 
 @producer(
     uses={
-        category_ids, normalization_weights,
+        category_ids,
+        normalization_weights,
         event_weights,
-        dijet_balance, jet_assignment, alpha,
+        jet_assignment.PRODUCES,
+        dijet_balance,
+        alpha,
     },
     produces={
-        category_ids, normalization_weights,
+        category_ids,
+        normalization_weights,
         event_weights,
-        dijet_balance, jet_assignment, alpha,
+        jet_assignment.PRODUCES,
+        dijet_balance,
+        alpha,
     },
 )
-def default(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
+def default(
+    self: Producer,
+    events: ak.Array,
+    **kwargs
+) -> ak.Array:
 
     # mc-only weights
     if self.dataset_inst.is_mc:
@@ -39,17 +49,13 @@ def default(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
         # events = self[normalization_weights](events, **kwargs)
         events = self[event_weights](events, **kwargs)
 
-    # dijet properties: alpha, asymmetry, pt_avg
-    # Include MPF production here
-    events = self[jet_assignment](events, **kwargs)
+    # dijet properties: alpha_raw, asymmetry, pt_avg
     events = self[dijet_balance](events, **kwargs)
+
+    # recompute alpha
     events = self[alpha](events, **kwargs)
-    # TODO: Producer for 3rd jet take alpha from dijet_balance
 
     # category ids
-    events = self[category_ids](events, **kwargs)
-
-    # deterministoc seeds
     events = self[category_ids](events, **kwargs)
 
     return events
