@@ -38,7 +38,7 @@ ak = maybe_import("awkward")
     uses={
         met_filters, json_filter,
         category_ids, process_ids, attach_coffea_behavior,
-        mc_weight, large_weights_killer,  # not opened per default but always required in Cutflow tasks
+        mc_weight, large_weights_killer,
         jet_selection, lepton_selection, trigger_selection, dijet_selection,
         dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
     },
@@ -50,8 +50,8 @@ ak = maybe_import("awkward")
         dijet_balance, jet_assignment, cutflow_features, dijet_increment_stats,
     },
     exposed=True,
-    check_used_columns=False,
-    check_produced_columns=False,
+    check_used_columns=True,
+    check_produced_columns=True,
 )
 def default(
     self: Selector,
@@ -64,7 +64,7 @@ def default(
         events = self[mc_weight](events, **kwargs)
         events = self[large_weights_killer](events, **kwargs)
 
-    # ensure coffea behavior
+    # ensure coffea behavior is attached to collections
     events = self[attach_coffea_behavior](events, **kwargs)
 
     # prepare the selection results that are updated at every step
@@ -79,8 +79,7 @@ def default(
         events, json_filter_results = self[json_filter](events, **kwargs)
         results += json_filter_results
 
-    # # TODO Implement selection
-    # # lepton selection
+    # lepton selection
     events, results_lepton = self[lepton_selection](events, **kwargs)
     results += results_lepton
 
@@ -94,6 +93,7 @@ def default(
         events, results_trigger = self[trigger_selection](events, **kwargs)
         results += results_trigger
 
+    # dijet selection
     events, results_dijet = self[dijet_selection](events, **kwargs)
     results += results_dijet
 
