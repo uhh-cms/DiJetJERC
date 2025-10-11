@@ -12,8 +12,10 @@ from functools import partial
 from columnflow.util import maybe_import
 
 from dijet.tasks.alpha import AlphaExtrapolation
-from dijet.plotting.base import PlottingBaseTask
+from dijet.plotting.base import PlottingBaseTask, bin_skip_fn
 from dijet.plotting.util import annotate_corner, get_bin_slug, get_bin_label, plot_xy
+
+logger = law.logger.get_logger(__name__)
 
 hist = maybe_import("hist")
 np = maybe_import("numpy")
@@ -55,6 +57,9 @@ class PlotWidth(
         "ylim": (0, 0.25),
         "yscale": "linear",
     }
+
+    # non-binning variables that can be specified via --variable-settings
+    add_variables_for_settings = {}  # disallow alpha
 
     #
     # helper methods for handling task inputs/outputs
@@ -137,12 +142,34 @@ class PlotWidth(
             for i, (e_dn, e_up) in enumerate(zip(edges[:-1], edges[1:])):
                 yield {"up": e_up, "dn": e_dn, **add_kwargs}
 
+        # limit variable range for plotting if configured
+        bv_minmax = {
+            bv: (
+                self.bin_selectors.get(bv, {}).get("min", None),
+                self.bin_selectors.get(bv, {}).get("max", None),
+            )
+            for bv in binning_variable_edges
+        }
+
         # loop through bins and do plotting
         plt.style.use(mplhep.style.CMS)
         for m, *bv_bins in itertools.product(
             self.method_categories,
             *[iter_bins(bv_edges, var_name=bv) for bv, bv_edges in binning_variable_edges.items()],
         ):
+            # skip binning variable bin for skipping, if requested
+            skip = False
+            for i, bv_bin in enumerate(bv_bins):
+                bin_edges = (bv_bin["dn"], bv_bin["up"])
+                if bin_skip_fn(bin_edges, bv_minmax[bv_bin["var_name"]]):
+                    skip = True
+                    break
+
+            # inform about skipping binnning variable bin
+            if skip:
+                logger.warning_once(f"skipping {bv_bin['var_name']} bin: {bin_edges}")
+                continue
+
             # initialize figure and axes
             fig, ax = plt.subplots()
             mplhep.cms.label(
