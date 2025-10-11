@@ -54,7 +54,7 @@ def alpha(
     jets_padded = ak.pad_none(jets, 3)
 
     # compute raw alpha
-    alpha_raw = jets_padded.pt[:, 2] / events.dijets.pt_avg
+    alpha_raw = jets_padded["pt"][:, 2] / events.dijets.pt_avg
 
     # refine alpha computation given pT threshold
     # - if third jet is above threshold -> use alpha_raw unchanged
@@ -64,7 +64,7 @@ def alpha(
 
     # check if third jet is above threshold A
     jet3_is_above_thr = ak.fill_none(
-        jets_padded.pt[:, 2] > jet3_min_pt,
+        jets_padded["pt"][:, 2] > jet3_min_pt,
         False,
     )
 
