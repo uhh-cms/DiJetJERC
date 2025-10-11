@@ -533,7 +533,9 @@ def add_config(
             "pu_weight*", "pdf_weight*",
             "murf_envelope_weight*", "mur_weight*", "muf_weight*",
             "btag_weight*",
-            # Properties for dijet
+            # produced by 'jet_assignment' producer
+            "use_fe", "use_sm",
+            # produced by 'alpha' producer
             "alpha",
         } | set(  # Jets
             f"{jet_obj}.{field}"
