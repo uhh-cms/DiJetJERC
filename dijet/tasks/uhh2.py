@@ -45,6 +45,7 @@ class UHH2ToParquet(
     #
     version = None  # deactivate
     shift = None  # deactivate
+    allow_empty_shift = True
 
     # other class variables
 
