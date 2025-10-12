@@ -320,7 +320,7 @@ def add_variables(config: od.Config) -> None:
     add_dijet_variable(
         name="dijets_pt_avg",
         expression="dijets.pt_avg",
-        binning=(100, 0, 1000),
+        binning=pt,
         x_title=r"$p_{T}^{avg}$",
         unit="GeV",
         gen_name="dijets_pt_avg_gen",
