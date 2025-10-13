@@ -177,24 +177,29 @@ class HistogramsBaseTask(
         - *sample*: the sample being processed; if *branching_type* is
           'merged', this will be a representation of all sample names
         """
+        # FIXME: ideally move to `DiJetSamplesMixin`, but doesn't seen to work atm due to mro complications
         parts = super().store_parts()
 
+        # insert 'sample' part after 'dataset'
         if self.branching_type in ("separate", "with_mc"):
             parts.insert_after(
-                "version",
+                "dataset",
                 "sample",
                 f"{self.branch_data.sample}",
             )
 
         elif self.branching_type == "merged":
             parts.insert_after(
-                "version",
+                "dataset",
                 "sample",
                 f"{self.branch_data.data_sample}__{self.branch_data.mc_sample}",
             )
 
         else:
             assert False, "internal error"
+
+        # remove 'dataset' part from store_parts
+        parts.pop('dataset', None)
 
         return parts
 
