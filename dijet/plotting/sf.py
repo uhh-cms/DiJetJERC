@@ -54,7 +54,7 @@ class PlotSFs(
         "xlim": (49, 2100),
         "xscale": "log",
         "ylabel": "Jet energy resolution scale factor",
-        # "ylim": (0.8, 20),
+        "ylim": (0.5, 3.5),
         "yscale": "linear",
     }
 
@@ -204,7 +204,7 @@ class PlotSFs(
                 get_sample_label(self.branch_data.mc_sample),
             ])
 
-            # plot JER
+            # plot JER SF
             plot_xy(
                 h_sliced.axes[vars_["binning"]["dijets_pt_avg"]].centers,
                 h_sliced.values(),
