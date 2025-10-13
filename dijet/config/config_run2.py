@@ -475,6 +475,9 @@ def add_config(
         # jet energy correction
         "jet_jerc": (f"{json_mirror}/POG/JME/{year}{corr_postfix}_UL/jet_jerc.json.gz", "v1"),
 
+        # jet veto map
+        "jet_veto_map": (f"{json_mirror}/POG/JME/{year}{corr_postfix}_UL/jetvetomaps.json.gz", "v1"),
+
         # pileup weights from correctionlib
         "pu_sf": (f"{json_mirror}/POG/LUM/{year}{corr_postfix}_UL/puWeights.json.gz", "v1"),
 

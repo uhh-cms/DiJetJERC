@@ -4,13 +4,20 @@ from typing import Tuple
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column
 from columnflow.selection import Selector, SelectionResult, selector
+# from columnflow.selection.cms.jets import jet_veto_map
 from dijet.util import masked_sorted_indices
 
 ak = maybe_import("awkward")
 
 
 @selector(
-    uses={"Jet.pt", "Jet.eta", "Jet.phi", "Jet.jetId", "Jet.puId"},
+    uses={
+        "Jet.pt", "Jet.eta", "Jet.phi", "Jet.jetId", "Jet.puId",
+        # jet_veto_map,
+    },
+    # produces={
+    #     jet_veto_map,
+    # },
     exposed=True,
 )
 def jet_selection(
@@ -20,6 +27,10 @@ def jet_selection(
 ) -> Tuple[ak.Array, SelectionResult]:
     # DiJet jet selection
     # - require ...
+
+    # run veto map selector -> produces column `Jet.veto_map_mask` that can be used
+    # to veto individual jets
+    # events = self[jet_veto_map](events, **kwargs)
 
     # assign local index to all Jets - stored after masks for matching
     # TODO: Drop for dijet ?
@@ -38,6 +49,7 @@ def jet_selection(
         (events.Jet.jetId == 6) &  # 2: fail tight LepVeto and 6: pass tightLepVeto
         ((events.Jet.puId == 7) | (events.Jet.pt > 50))  # pass all IDs (l, m and t) only for jets with pt < 50 GeV
     )
+    # jet_mask = (jet_mask & veto_map_mask)
     jet_sel = ak.num(events.Jet[jet_mask]) >= 2
 
     jet_indices = masked_sorted_indices(jet_mask, events.Jet.pt)
