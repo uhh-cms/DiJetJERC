@@ -22,8 +22,8 @@ from dijet.config.cutflow_variables import add_cutflow_variables
 from dijet.config.datasets import get_dataset_lfns
 from dijet.config.analysis_dijet import analysis_dijet
 
-from dijet.plotting.asymmetry import PlotAsymmetries
-from dijet.plotting.alpha import PlotWidth
+from dijet.plotting.asymmetry import PlotAsymmetry
+from dijet.plotting.alpha import PlotAlphaExtrapolation
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 
@@ -150,7 +150,7 @@ def add_config(
                     "color": "k",
                     "label": "Data",
                 },
-                PlotAsymmetries: {
+                PlotAsymmetry: {
                     "method": "errorbar",
                     "fmt": "o",
                     "marker": "o",
@@ -172,7 +172,7 @@ def add_config(
                     "color": "indianred",
                     "label": "MC",
                 },
-                PlotAsymmetries: {
+                PlotAsymmetry: {
                     "method": "bar",
                     "alpha": 0.6,
                     "color": "indianred",

@@ -23,7 +23,7 @@ plt = maybe_import("matplotlib.pyplot")
 mplhep = maybe_import("mplhep")
 
 
-class PlotWidth(
+class PlotAlphaExtrapolation(
     PlottingBaseTask,
 ):
     """

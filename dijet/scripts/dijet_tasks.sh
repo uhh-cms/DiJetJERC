@@ -29,7 +29,7 @@ dijet_jer(){
 }
 
 dijet_plot_asym(){
-    law run dijet.PlotAsymmetries                                            \
+    law run dijet.PlotAsymmetry                                            \
     --config config_2017_limited                                                     \
     --version sync_alpha                                                     \
     --datasets data_jetht_e                                               \
