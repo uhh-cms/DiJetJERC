@@ -376,7 +376,17 @@ def add_uhh2_synch_variables(config: od.Config) -> None:
     """
     Add variables needed for synchronization with UHH2.
     """
+    num_jets_max = 7
     variables = {
+        "n_jet": {
+            "expression_cf": lambda x: ak.num(Route("Jet.pt").apply(x, None)),
+            "expression_uhh2": "uhh2.Njet",
+            "inputs": {"Jet.*"},
+            # "scale": "log",
+            "binning": np.linspace(-0.5, num_jets_max + 0.5, num_jets_max + 2),
+            "diff_binning": np.linspace(-num_jets_max - 0.5, num_jets_max + 0.5, 2 * (num_jets_max + 1)),
+            "label": r"Number of jets",
+        },
         "jet1_pt": {
             "expression_cf": lambda x: Route("Jet.pt[:, 0]").apply(x, None),
             "expression_uhh2": "uhh2.jet1_pt",
@@ -403,6 +413,15 @@ def add_uhh2_synch_variables(config: od.Config) -> None:
             "binning": np.linspace(0, 100, 100),
             "diff_binning": np.linspace(-50, 50, 101),
             "label": r"Jet 3 $p_{T}$",
+        },
+        "jet4_pt": {
+            "expression_cf": lambda x: Route("Jet.pt[:, 3]").apply(x, None),
+            "expression_uhh2": "uhh2.jet4_pt",
+            "inputs": {"Jet.*"},
+            # "scale": "log",
+            "binning": np.linspace(0, 50, 100),
+            "diff_binning": np.linspace(-25, 25, 101),
+            "label": r"Jet 4 $p_{T}$",
         },
         "asymmetry": {
             "expression_cf": "dijets.asymmetry",
