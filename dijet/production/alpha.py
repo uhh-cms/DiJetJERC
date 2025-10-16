@@ -75,7 +75,8 @@ def alpha(
         ak.where(
             n_jet <= 2,
             0,
-            1,
+            # note: better agreement with UHH2 if using `alpha_raw`, but seems to contradict UHH2 code?
+            alpha_raw,  # 1,
         ),
     )
 
