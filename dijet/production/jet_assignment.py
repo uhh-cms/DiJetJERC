@@ -23,6 +23,7 @@ ak = maybe_import("awkward")
 @producer(
     uses={
         "Jet.pt", "Jet.eta", "Jet.phi", "Jet.mass",
+        "deterministic_seed",
     },
     produces={
         "use_sm", "use_fe",
@@ -75,15 +76,6 @@ def jet_assignment(
     # set a flag for when the Standard Method should be used
     events = set_ak_column(events, "use_sm", jets_same_abseta_bin)
 
-    # use event numbers in chunk to seed random number generator
-    # TODO: use deterministic seeds
-    rand_gen = np.random.Generator(np.random.SFC64(events.event.to_list()))
-    rand_ind = ak_random(
-        ak.zeros_like(events.event),
-        2 * ak.ones_like(events.event),
-        rand_func=rand_gen.integers,
-    )
-
     # check whether leading jets are in the central detector region
     jet1_is_central = (abseta_jet1 < 1.131)
     jet2_is_central = (abseta_jet2 < 1.131)
@@ -108,6 +100,10 @@ def jet_assignment(
         ),
         np.uint8,
     )
+
+    # use deterministic event seed to determine a random index
+    # for selecting the reference jet in some cases (below)
+    rand_ind = (events.deterministic_seed % 2)
 
     # compute index of reference and probe jets:
     # - if one jet central and the other noncentral -> pick central jet as reference
