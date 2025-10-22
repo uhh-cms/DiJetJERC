@@ -152,3 +152,124 @@ def create_hist_from_variables(
         raise ValueError(f"unknown storage type '{storage}'")
 
     return histogram
+
+
+#
+# functions for working with histogram data
+#
+
+def hist_apply_along_axis(
+    h: hist.Hist,
+    func: callable,
+    axis: str | int,
+    storage_cls: hist.storage.Storage | None = None,
+) -> hist.Hist | hist.storage.Storage :
+    """
+    Apply a function to histogram contents in slices along the given axis.
+
+    The user-supplied function `func(struct_arr, **kwargs)` takes a NumPy
+    structured array `struct_arr` as an input, whose fields correspond to the
+    values tracked by the histogram storage. For example, for a histogram using
+    the `Weight` storage type, the array of values and variances can be accessed
+    via `struct_arr.value` and `struct_arr.variance` inside the function.
+
+    The following `**kwargs` are passed to `func`:
+        - `ax` (the axis the function is being applied to)
+        - `dtype` (NumPy structured array dtype expected by the output
+                   histogram storage)
+
+    The function `func` should return a value that can be assigned to a
+    structured array containing the fields tracked by the storage type.
+    The simplest return type is a tuple, in which case the tuple elements
+    are taken to correspond to the storage fields, in the order defined by
+    the storage. For example, for `Weight` storage, the first element should
+    contain the result used for the `value` field, and the second for `variance`.
+
+    Optionally, a different storage class for the output histogram can be provided
+    via `storage_cls`.
+
+    A histogram with the same axis structure as `h` is returned, except
+    for the `axis`, which is dropped and replaced by a storage element
+    whose values are set by the array returned by `func`.
+
+    Parameters
+    ----------
+
+    h: hist.Hist
+        input histogram
+
+    func: callable
+        function to apply to the histogram contents
+
+    axis: str | int
+        axis to which the function should be applied
+
+    storage_cls: type(hist.storage.Storage) (optional)
+        class to use as a storage for the output histogram
+
+    Return
+    ------
+
+    h_out: hist.Hist | hist.Storage
+        output histogram (or Storage object if no axes left)
+    """
+    import hist
+    import boost_histogram as bh
+
+    # check storage type
+    if h.storage_type != bh.storage.Weight:
+        raise ValueError(
+            f"unsupported storage type '{h.storage_type}'; "
+            f"expected '{bh.storage.Weight}'"
+        )
+
+    # get axis index
+    if isinstance(axis, str):
+        axis_names = [a.name for a in h.axes]
+        if axis not in axis_names:
+            raise ValueError(f"unknown axis: {axis}")
+        axis_index = axis_names.index(axis)
+
+    elif isinstance(axis, int):
+        if axis >= len(h.axes) or axis < -len(h.axes):
+            raise IndexError(f"axis index out of range")
+        axis_index = axis + len(h.axes) if axis < 0 else axis
+
+    else:
+        raise TypeError(
+            f"expected 'str' or 'int' type for axis specification, got {type(axis)}",
+        )
+
+    # determine basic output axes (all but one input)
+    if storage_cls is None:
+        storage_cls = h.storage_type
+    axes_out = [ax for i, ax in enumerate(h.axes) if i != axis_index]
+    shape_out = tuple(len(a) for a in axes_out)
+
+    # apply function to histogram contents
+    f_out = np.apply_along_axis(
+        func1d=func,
+        axis=axis_index,
+        arr=h.view(),
+        # kwargs passed to `func` follow
+        ax=h.axes[axis_index],
+        dtype=hist.Hist(storage=storage_cls).view().dtype,
+    )
+
+    # add axes as needed to accommodate potential extra dimensions
+    # of array returned by `func`
+    shape_out_add = f_out.shape[len(shape_out):]  # dimensions added by `func`
+    for add_dim_len in shape_out_add:
+        axes_out.append(
+            # use `IntCategory` for additional axes
+            hist.axis.IntCategory(range(add_dim_len)),
+        )
+
+    # create output histogram
+    h_out = hist.Hist(*axes_out, storage=storage_cls)
+
+    # write results to histogram storage
+    h_out[...] = f_out
+
+    # return output hist (or naked storage if no axes left)
+    return h_out if axes_out else h_out[()]
