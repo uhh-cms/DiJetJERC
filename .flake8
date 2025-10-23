@@ -8,3 +8,10 @@ ignore = E128, E306, E402, E722, E731, W504, Q003
 
 # enforce double quotes
 inline-quotes = double
+
+# exclude paths from flake8
+exclude =
+  .git,
+  __pycache__,
+  modules,
+  data
