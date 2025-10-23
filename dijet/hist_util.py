@@ -8,18 +8,9 @@ from __future__ import annotations
 
 __all__ = []
 
-import functools
 import law
-import order as od
 
-from columnflow.hist_util import (
-    copy_axis,
-    get_axis_kwargs,
-    add_hist_axis,
-    create_hist_from_variables,
-    translate_hist_intcat_to_strcat,
-    add_missing_shifts,
-)
+from columnflow.hist_util import add_hist_axis
 from columnflow.columnar_util import flat_np_view
 from columnflow.util import maybe_import
 from columnflow.types import TYPE_CHECKING, Any
@@ -163,7 +154,8 @@ def hist_apply_along_axis(
     func: callable,
     axis: str | int,
     storage_cls: hist.storage.Storage | None = None,
-) -> hist.Hist | hist.storage.Storage :
+    new_axes: list[hist.axis.AxesMixin] | None = None,
+) -> hist.Hist | hist.storage.Storage:
     """
     Apply a function to histogram contents in slices along the given axis.
 
@@ -187,6 +179,14 @@ def hist_apply_along_axis(
 
     Optionally, a different storage class for the output histogram can be provided
     via `storage_cls`.
+
+    *Advanced use*: `func` can also return an array with extra dimensions, in
+    which case additional axes will be added to the histogram. By default, these
+    will be `IntCategory` axes indexing the values contained in the return array
+    starting with zero. Optionally, a list of Axis objects `new_axes` can be passed
+    to this function and will be used when creating the output histogram. The
+    number and length of Axis objects has to match the shape of the array
+    returned by `func`. s
 
     A histogram with the same axis structure as `h` is returned, except
     for the `axis`, which is dropped and replaced by a storage element
@@ -220,7 +220,7 @@ def hist_apply_along_axis(
     if h.storage_type != bh.storage.Weight:
         raise ValueError(
             f"unsupported storage type '{h.storage_type}'; "
-            f"expected '{bh.storage.Weight}'"
+            f"expected '{bh.storage.Weight}'",
         )
 
     # get axis index
@@ -232,7 +232,7 @@ def hist_apply_along_axis(
 
     elif isinstance(axis, int):
         if axis >= len(h.axes) or axis < -len(h.axes):
-            raise IndexError(f"axis index out of range")
+            raise IndexError(f"axis index {axis} out of range")
         axis_index = axis + len(h.axes) if axis < 0 else axis
 
     else:
@@ -259,11 +259,30 @@ def hist_apply_along_axis(
     # add axes as needed to accommodate potential extra dimensions
     # of array returned by `func`
     shape_out_add = f_out.shape[len(shape_out):]  # dimensions added by `func`
-    for add_dim_len in shape_out_add:
-        axes_out.append(
-            # use `IntCategory` for additional axes
-            hist.axis.IntCategory(range(add_dim_len)),
+    if new_axes is None:
+        new_axes = [
+            hist.axis.IntCategory(range(add_dim_len))
+            for add_dim_len in shape_out_add
+        ]
+
+    # check number of axes
+    if len(new_axes) != len(shape_out_add):
+        raise ValueError(
+            f"number of axes supplied as `new_axes` ({len(new_axes)}) "
+            "does not match the number of additional dimensions inserted "
+            f"({len(shape_out_add)})",
         )
+
+    # check length of axes
+    for new_axis, add_dim_len in zip(new_axes, shape_out_add):
+        if add_dim_len != len(new_axis):
+            raise ValueError(
+                f"length of axis does not match the number of additional "
+                f"dimensions inserted ({add_dim_len}): ({new_axis})",
+            )
+
+    # add the axes to the histogram
+    axes_out.extend(new_axes)
 
     # create output histogram
     h_out = hist.Hist(*axes_out, storage=storage_cls)
