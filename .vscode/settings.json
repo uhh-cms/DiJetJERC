@@ -6,7 +6,22 @@
     "flake8.path": [
         "${workspaceFolder}/run_flake8.sh"
     ],
-    "python.languageServer": "Pylance",
+    "python.languageServer": "Jedi",
+    "python.defaultInterpreterPath": "${workspaceFolder}/data/software/venvs/cf_dev_9b04c75c/bin/python",
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/modules/columnflow",
+        "${workspaceFolder}/modules/columnflow/bin",
+        "${workspaceFolder}/modules/columnflow/modules/law",
+        "${workspaceFolder}/modules/columnflow/modules/order",
+        "${workspaceFolder}/data/software/venvs/venv_columnar_dev_bef01d72/lib/python3.9/site-packages",
+        "${workspaceFolder}/modules/cmsdb",
+        "${workspaceFolder}/data/software/venvs/cf_dev_9b04c75c/lib/python3.9/site-packages",
+        "${workspaceFolder}/data/software/conda/lib/python3.9/site-packages",
+        "${workspaceFolder}/data/software/conda/lib/python39.zip",
+        "${workspaceFolder}/data/software/conda/lib/python3.9",
+        "${workspaceFolder}/data/software/conda/lib/python3.9/lib-dynload"
+    ],
     "python.analysis.extraPaths": [
         "${workspaceFolder}",
         "${workspaceFolder}/modules/columnflow",
