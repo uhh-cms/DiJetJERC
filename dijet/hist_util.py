@@ -13,13 +13,11 @@ import law
 from columnflow.hist_util import add_hist_axis
 from columnflow.columnar_util import flat_np_view
 from columnflow.util import maybe_import
-from columnflow.types import TYPE_CHECKING, Any
+from columnflow.types import Any
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
-if TYPE_CHECKING:
-    hist = maybe_import("hist")
-
+hist = maybe_import("hist")
 
 logger = law.logger.get_logger(__name__)
 
@@ -292,3 +290,188 @@ def hist_apply_along_axis(
 
     # return output hist (or naked storage if no axes left)
     return h_out if axes_out else h_out[()]
+
+
+#
+# functions for operations on histogram contents
+#
+
+# TODO: rewrite using classes
+
+def _mean_variance_impl(edges, values, variances):
+    """
+    Compute the mean and variance of a histogram
+    """
+    edges = np.asarray(edges)
+    centers = 0.5 * (edges[1:] + edges[:-1])
+
+    # sum of bin values and variances
+    sum_values = np.sum(values)
+    sum_variances = np.sum(variances)
+
+    # compute average from bin centers and values
+    num_avg = np.tensordot(values, centers, ([0], [0]))
+    with np.errstate(invalid="ignore"):
+        h_avg = num_avg / sum_values
+
+    # compute variance from distance to average
+    num_var = np.tensordot(values, (centers - h_avg)**2, ([0], [0]))
+    with np.errstate(invalid="ignore"):
+        h_var = num_var / sum_values
+
+    # compute standard error on mean
+    num_var = np.tensordot(variances, centers**2, ([0], [0]))
+    with np.errstate(invalid="ignore"):
+        h_avg_err = num_var / (sum_values ** 2) - sum_variances * (num_avg / sum_values ** 2) ** 2
+
+    # compute standard error on variance
+    h_var_err = np.zeros_like(h_var)
+    with np.errstate(invalid="ignore"):
+        h_var_err = h_var / (2 * sum_values)
+
+    return (h_avg, h_avg_err), (h_var, h_var_err)
+
+
+def _mean_variance_func1d(hist_data, ax, dtype):
+    """
+    Compute the mean and variance of the histogram data along the specified axis.
+    """
+    # pass the bin edges and contents to the mean/variance implementation
+    (h_avg, h_avg_err), (h_var, h_var_err) = _mean_variance_impl(
+        ax.edges,
+        hist_data.value,
+        hist_data.variance,
+    )
+
+    # Gaussian parameter values and variances
+    avg_arr = np.rec.fromarrays(
+        np.array([h_avg, h_avg_err]),
+        dtype=dtype,
+    )
+    var_arr = np.rec.fromarrays(
+        np.array([h_var, h_var_err]),
+        dtype=dtype,
+    )
+
+    # return the values of interest
+    return np.stack([avg_arr, var_arr], axis=-1)
+
+
+def _fit_gaussian_impl(edges, values, variances):
+    """
+    Perform a maximum likelihood fit on a histogram
+    using the BinnedNLL cost function from IMinuit.
+    """
+    from iminuit import Minuit
+    from iminuit.cost import BinnedNLL
+    from scipy.stats import norm
+
+    # compute the cumulative distribution function (CDF)
+    # of the probability sumsity that should be fit
+    def cdf(xe, mu, sigma):
+        return norm(loc=mu, scale=sigma).cdf(xe)
+
+    # set up a cost function using the defined CDF
+    cost_func = BinnedNLL(
+        n=np.vstack([values, variances]).T,
+        xe=edges,
+        cdf=cdf,
+    )
+
+    # calculate empirical mean and variance of histogram
+    (h_avg, _), (h_var, _) = _mean_variance_impl(edges, values, variances)
+
+    # initialize and run a NLL fit using Minuit
+    m = Minuit(cost_func, mu=h_avg, sigma=np.sqrt(h_var))
+    m.migrad()
+
+    # return the fit result object
+    return m
+
+
+def _fit_gaussian_func1d(hist_data, ax, dtype):
+    """
+    Fit a Gaussian probability density to the histogram data along the specified axis.
+    """
+    # pass the bin edges and contents to the fit implementation
+    fit_result = _fit_gaussian_impl(
+        ax.edges,
+        hist_data.value,
+        hist_data.variance,
+    )
+
+    mu = fit_result.params[0].value
+    mu_var = fit_result.params[0].error ** 2
+    sigma = fit_result.params[1].value
+    sigma_var = fit_result.params[1].error ** 2
+
+    # Gaussian parameter values and variances
+    mu_arr = np.rec.fromarrays(
+        np.array([mu, mu_var]),
+        dtype=dtype,
+    )
+    sigma_arr = np.rec.fromarrays(
+        np.array([sigma, sigma_var]),
+        dtype=dtype,
+    )
+
+    # cost function value at minimum
+    fval_arr = np.rec.fromarrays(
+        np.array([fit_result.fval, np.zeros_like(fit_result.fval)]),
+        dtype=dtype,
+    )
+
+    # number of degrees of freedom
+    ndof_arr = np.rec.fromarrays(
+        np.array([fit_result.ndof, np.zeros_like(fit_result.ndof)]),
+        dtype=dtype,
+    )
+
+    # return the values of interest
+    return np.stack([mu_arr, sigma_arr, fval_arr, ndof_arr], axis=-1)
+
+
+def hist_fit_gaussian(h: hist.Histogram, axis: str | int = -1) -> hist.Histogram:
+    """
+    Fit a Gaussian probability density to a histogram *h* along a specified *axis*.
+    If no *axis* is given, the last axis will be used by default.
+
+    Returns a histogram with *axis* removed and replaced by an `StrCategory`
+    axis containing the fit results. The axis contains the following entries:
+    - "mu": mean of the fitted Gaussian
+    - "sigma": standard deviation of the fitted Gaussian
+    - "fval": value of the cost function at the minimum
+    - "ndof": number of degrees of freedom of the fit
+    """
+    return hist_apply_along_axis(
+        h, _fit_gaussian_func1d, axis,
+        new_axes=[
+            hist.axis.StrCategory(
+                ["mu", "sigma", "fval", "ndof"],
+                label="Fit result",
+                name="fit",
+            ),
+        ],
+    )
+
+
+def hist_mean_variance(h: hist.Histogram, axis: str | int = -1) -> hist.Histogram:
+    """
+    Compute the mean and variance of a histogram *h* along a specified *axis*.
+    If no *axis* is given, the last axis will be used by default.
+
+    Returns a histogram with *axis* removed and replaced by an `StrCategory`
+    axis containing the empirical statistics. The axis contains the following entries:
+    - "mean": mean of the histogram along the specified axis
+    - "variance": variance of the histogram along the specified axis
+    """
+    return hist_apply_along_axis(
+        h, _mean_variance_func1d, axis,
+        new_axes=[
+            hist.axis.StrCategory(
+                ["mean", "variance"],
+                label="Empirical stats",
+                name="stats",
+            ),
+        ],
+    )
