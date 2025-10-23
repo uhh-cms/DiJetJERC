@@ -13,6 +13,7 @@ from columnflow.tasks.framework.base import Requirements
 from dijet.tasks.base import HistogramsBaseTask
 from dijet.tasks.asymmetry import Asymmetry
 from dijet.tasks.correlated_fit import CorrelatedFit
+from dijet.hist_util import hist_mean_variance
 
 hist = maybe_import("hist")
 np = maybe_import("numpy")
@@ -100,37 +101,29 @@ class AlphaExtrapolation(
         # start main processing
         #
 
+        # load asymmetry histograms and number of events
         h_asyms = self.load_input("asym_cut", level=level)
         h_nevts = self.load_input("nevt", level=level)
 
-        # Get widths of asymmetries
-        asyms = h_asyms.axes[vars_["asymmetry"]].centers
-
-        # Take mean value from normalized asymmetry
+        # check that asymmetry axis is last
         axes_names = [a.name for a in h_asyms.axes]
         assert axes_names[-1] == vars_["asymmetry"], "asymmetry axis must come last"
-        means = np.nansum(
-            asyms * h_asyms.view().value,
-            axis=-1,
-            keepdims=True,
-        )
-        h_stds = h_asyms.copy()
-        h_stds = h_stds[{vars_["asymmetry"]: sum}]
 
-        # Get stds
-        h_stds.view().value = np.sqrt(
-            np.average(
-                ((asyms - means)**2),
-                weights=h_asyms.view().value,
-                axis=-1,
-            ),
+        # compute mean and variance of input histograms along asymmetry axis
+        h_mean_variance = hist_mean_variance(
+            h_asyms,
+            axis=vars_["asymmetry"],
         )
-        h_stds.view().value = np.nan_to_num(h_stds.view().value, nan=0.0)
 
-        # note: error on std deviation analogous to implementation in ROOT::TH1
+        # calculate standard deviation and its errors
+        # note: the error on standard deviation is analogous to the
+        # implementation in ROOT::TH1:
         # https://root.cern/doc/v630/TH1_8cxx_source.html#l07520
-        h_stds.view().variance = h_stds.values()**2 / (2 * h_nevts.values())
-        h_stds.view().variance = np.nan_to_num(h_stds.view().variance, nan=0.0)
+        h_stds = h_mean_variance[..., "variance"]
+        v_stds = h_stds.view()
+        with np.errstate(invalid="ignore"):
+            v_stds.variance = v_stds.value / (2 * h_nevts.values())
+            v_stds.value = np.nan_to_num(np.sqrt(v_stds.value), nan=0.0)
 
         # Store alphas here to get alpha up to 1
         # In the next stepts only alpha<0.3 needed; avoid slicing from there
