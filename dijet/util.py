@@ -1,5 +1,7 @@
 # coding: utf-8
 
+import order as od
+
 from functools import wraps
 
 from columnflow.util import maybe_import
@@ -39,3 +41,19 @@ def call_once_on_config(func=None, *, include_hash=False):
         return func(config, *args, **kwargs)
 
     return inner
+
+
+def get_variable_for_level(config: od.Config, name: str, level: str):
+    """
+    Get name of variable corresponding to main variable *name*
+    of level *level*, where *level* can be either 'reco' or 'gen'.
+    """
+    if level == "reco":
+        # reco level is default -> return directly
+        return name
+    elif level == "gen":
+        # look up registered gen-level name in aux data
+        var_inst = config.get_variable(name)
+        return var_inst.x("gen_variable", name)
+    else:
+        raise ValueError(f"invalid level '{level}', expected one of: gen,reco")

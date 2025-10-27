@@ -12,10 +12,17 @@ import luigi
 import law
 import order as od
 
-from columnflow.tasks.framework.base import ConfigTask
+from columnflow.types import Any
+
+from columnflow.tasks.framework.base import ConfigTask, RESOLVE_DEFAULT
 from columnflow.tasks.framework.mixins import DatasetsProcessesMixin, VariablesMixin
+from columnflow.tasks.framework.parameters import DerivableInstParameter
+
+from dijet.postprocessing import PostProcessor
+from dijet.util import get_variable_for_level
 
 
+# TODO: replace with post-processor-based variable resolution
 class DiJetVariablesMixin(
     VariablesMixin,
 ):
@@ -73,22 +80,6 @@ class DiJetVariablesMixin(
             for v in self.binning_variables
         }
 
-    @staticmethod
-    def _get_variable_for_level(config: od.Config, name: str, level: str):
-        """
-        Get name of variable corresponding to main variable *name*
-        of level *level*, where *level* can be either 'reco' or 'gen'.
-        """
-        if level == "reco":
-            # reco level is default -> return directly
-            return name
-        elif level == "gen":
-            # look up registered gen-level name in aux data
-            var_inst = config.get_variable(name)
-            return var_inst.x("gen_variable", name)
-        else:
-            raise ValueError(f"invalid level '{level}', expected one of: gen,reco")
-
     def _make_var_lookup(self, level: str):
         """
         Return a dictionary storing either variables or their gen-level equivalents
@@ -96,7 +87,7 @@ class DiJetVariablesMixin(
         actual variable names
         """
         resolve_var = partial(
-            self._get_variable_for_level,
+            get_variable_for_level,
             config=self.config_inst,
             level=level,
         )
@@ -187,7 +178,7 @@ class DiJetVariablesMixin(
         for level in params["levels"]:
             # required variables
             multivar_elems_for_level = [
-                cls._get_variable_for_level(config_inst, e, level)
+                get_variable_for_level(config_inst, e, level)
                 for e in multivar_elems
             ]
             multivars.append(
@@ -327,3 +318,125 @@ class DiJetSamplesMixin(ConfigTask):
                 f"unknown sample '{sample}', valid: {','.join(self.samples)}",
             )
         return self.samples.index(sample)
+
+
+class PostProcessorMixin(ConfigTask):
+    """
+    Mixin to include a postprocessor into tasks.
+
+    Inheriting from this mixin will allow a task to instantiate and access a
+    :py:class:`~dijet.postprocessing.PostProcessor` instance with name *postprocessor*,
+    which is an input parameter for this task.
+    """
+
+    postprocessor = luigi.Parameter(
+        default=RESOLVE_DEFAULT,
+        description="the name of the post-processor to be applied; default: value of the "
+        "'default_postprocessor' analysis aux",
+    )
+    postprocessor_inst = DerivableInstParameter(
+        default=None,
+        visibility=luigi.parameter.ParameterVisibility.PRIVATE,
+    )
+
+    allow_empty_postprocessor = False
+
+    exclude_params_index = {"postprocessor_inst"}
+    exclude_params_repr = {"postprocessor_inst"}
+    exclude_params_sandbox = {"postprocessor_inst"}
+    exclude_params_remote_workflow = {"postprocessor_inst"}
+    exclude_params_repr_empty = {"postprocessor"}
+
+    @property
+    def postprocessor_repr(self) -> str:
+        """
+        Returns a string representation of the post-processor instance.
+        """
+        return self.build_repr(str(self.postprocessor_inst))
+
+    @classmethod
+    def req_params(cls, inst: law.Task, **kwargs) -> dict[str, Any]:
+        # prefer --postprocessor set on task-level via cli
+        kwargs["_prefer_cli"] = law.util.make_set(kwargs.get("_prefer_cli", [])) | {"postprocessor"}
+        return super().req_params(inst, **kwargs)
+
+    @classmethod
+    def get_postprocessor_inst(
+        cls,
+        postprocessor: str,
+        analysis_inst: od.Analysis,
+        requested_configs: list[str] | None = None,
+        **kwargs,
+    ) -> PostProcessor:
+        """
+        Get requested *postprocessor* instance.
+
+        This method retrieves the requested *postprocessor* instance. If *requested_configs* are provided,
+        they are passed to the setup function of the post-processor.
+
+        :param postprocessor: Name of :py:class:`~dijet.postprocessing.PostProcessor` to load.
+        :param analysis_inst: Forward this analysis inst to the init function of new PostProcessor sub class.
+        :param requested_configs: Configs passed to the processor.
+        :param kwargs: Additional keyword arguments to forward to the :py:class:`~dijet.postprocessing.PostProcessor`
+                       instance.
+        :return: :py:class:`~dijet.postprocessing.PostProcessor` instance.
+        """
+        postprocessor_inst: PostProcessor = PostProcessor.get_cls(postprocessor)(analysis_inst, **kwargs)
+        if requested_configs:
+            postprocessor_inst._setup(requested_configs)
+
+        return postprocessor_inst
+
+    @classmethod
+    def get_config_lookup_keys(
+        cls,
+        inst_or_params: PostProcessorMixin | dict[str, Any],
+    ) -> law.util.InsertiableDict:
+        keys = super().get_config_lookup_keys(inst_or_params)
+
+        # add the post-processor name
+        postprocessor = (
+            inst_or_params.get("postprocessor")
+            if isinstance(inst_or_params, dict)
+            else getattr(inst_or_params, "postprocessor", None)
+        )
+        if postprocessor not in (law.NO_STR, None, ""):
+            prefix = "pp"
+            keys[prefix] = f"{prefix}_{postprocessor}"
+
+        return keys
+
+    @classmethod
+    def resolve_param_values_pre_init(cls, params: dict[str, Any]) -> dict[str, Any]:
+        params = super().resolve_param_values_pre_init(params)
+
+        # add the default post-processor when empty
+        if (container := cls._get_config_container(params)):
+            params["postprocessor"] = cls.resolve_config_default(
+                param=params.get("postprocessor"),
+                task_params=params,
+                container=container,
+                default_str="default_postprocessor",
+                multi_strategy="same",
+            )
+
+        # when both config_inst and postprocessor are set, initialize the postprocessor_inst
+        if all(params.get(x) not in {None, law.NO_STR} for x in ("config_inst", "postprocessor")):
+            if not params.get("postprocessor_inst"):
+                params["postprocessor_inst"] = cls.get_postprocessor_inst(
+                    params["postprocessor"],
+                    params["analysis_inst"],
+                    requested_configs=[params["config_inst"]],
+                )
+        elif not cls.allow_empty_postprocessor:
+            raise Exception(f"no postprocessor configured for {cls.task_family}")
+
+        return params
+
+    def store_parts(self) -> law.util.InsertableDict:
+        parts = super().store_parts()
+
+        if self.postprocessor_inst:
+            parts.insert_before("version", "postprocessor", f"pp__{self.postprocessor_repr}")
+
+        return parts

@@ -43,10 +43,10 @@ class PlotJER(
     input_task_cls = JER
 
     # keys for looking up input task results
-    input_keys = ("jers",)
+    input_keys = ("jer",)
 
     # plot file names will start with this
-    output_prefix = "jers"
+    output_prefix = "jer"
 
     # plot configuration (e.g. axes limits/labels/scales)
     plot_settings = {
@@ -134,7 +134,7 @@ class PlotJER(
                 return
             for k, v in d.items():
                 yield from _iter_flat(v)
-        ref_object = next(_iter_flat(inputs["jers"]))
+        ref_object = next(_iter_flat(inputs["jer"]))
 
         # binning information from inputs
         binning_variable_edges = {
@@ -163,7 +163,7 @@ class PlotJER(
         # loop through bins and do plotting
         plt.style.use(mplhep.style.CMS)
         for m, *bv_bins in itertools.product(
-            self.method_categories,
+            self.config_inst.x.method_categories,
             *[iter_bins(bv_edges, var_name=bv) for bv, bv_edges in binning_variable_edges.items()],
         ):
             # skip binning variable bin for skipping, if requested
@@ -204,7 +204,7 @@ class PlotJER(
             for sample in self.samples:
 
                 # get input histogram for widths
-                h_in = inputs["jers"][sample]["jer"]
+                h_in = inputs["jer"][sample]
                 h_sliced = h_in[bin_selector]
 
                 # plot asymmetry distribution

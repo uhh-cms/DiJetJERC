@@ -2,16 +2,32 @@
 
 from columnflow.util import maybe_import
 
-from dijet.tasks.util import chi2_linear
-
 sc = maybe_import("scipy.optimize")
 nd = maybe_import("numdifftools")
 np = maybe_import("numpy")
 
 
+def linear_function(x, p):
+    """Linear function in `x` with slope `p[0]` and intercept `p[1]`."""
+    return p[0] * x + p[1]
+
+
+def chi2_linear(p, x, data, cov_inv):
+    """
+    Chi2 function to minimize assuming the model follows a linear function
+    of `x` with parameters `p`, compared to `data` with inverse covariance
+    matrix `cov_inv`.
+    """
+    y_hat = linear_function(x=x, p=p)
+    residuals = data - y_hat
+    chi2 = residuals.T @ cov_inv @ residuals
+    return chi2
+
+
 class CorrelatedFit():
     """
-    Task to calculated correlated fit to widths.
+    Tool for fitting a linear function to widths as a function of inclusive
+    alpha bins, taking correlations into account as appropriate.
 
     ## Covariance matrix
     [1] Based on K. Goebel dissertation ch. A.3.
@@ -74,7 +90,8 @@ class CorrelatedFit():
 
         return result.x, perr
 
-    def get_correlated_fit(self, wmax, std, nevts):
+    @staticmethod
+    def get_correlated_fit(wmax, std, nevts):
         # In case of very few events in a eta-pt bin two alpha bins can be equal
         # In that case the matrix is not invertable "numpy.linalg.LinAlgError: Singular matrix"
         # np.insert(std[:-1] != std[1:], 0, True) sets entry i to False if entry i-1 is equal
@@ -89,8 +106,8 @@ class CorrelatedFit():
         std = std[mask]
         nevts = nevts[mask]
 
-        y_cov_mc = self.create_cov(widths=std, nevts=nevts)
+        y_cov_mc = CorrelatedFit.create_cov(widths=std, nevts=nevts)
         y_cov_mc_inv = np.linalg.inv(y_cov_mc)
-        popt, perr = self.correlated_fit(wmax, std, y_cov_mc_inv)
+        popt, perr = CorrelatedFit.correlated_fit(wmax, std, y_cov_mc_inv)
 
         return popt, perr

@@ -20,17 +20,14 @@ class SF(
     law.LocalWorkflow,
 ):
     """
-    Task to derive the JER SFs from the ratio of JERs in data and MC.
+    Task to derive the JER SFs using the JERs in data and MC as inputs.
 
-    Processing steps:
-    - read in JERs for both data and MC from `JER` task
-    - perform a ratio
-    - TODO: add fits (constant, NSC)
+    Requires a post-processor that implements the following steps:
+    - ``calc_sf`` (inputs: ``jer_data``, ``jer_mc``, outputs: ``sf``)
     """
 
     # declare output collection type and keys
     output_collection_cls = law.NestedSiblingFileCollection
-    output_base_keys = ("sfs",)
 
     # how to create the branch map
     branching_type = "merged"
@@ -39,6 +36,14 @@ class SF(
     reqs = Requirements(
         JER=JER,
     )
+
+    @property
+    def output_base_keys(self):
+        return {
+            output
+            for step in ("calc_sf",)
+            for output in self.postprocessor_inst.steps[step].outputs
+        }
 
     #
     # methods required by law
@@ -97,38 +102,23 @@ class SF(
             f"{self.branch_data.data_sample!r} (data)",
         )
 
-        # load JERs results
-        jers = {
-            "data": self.load_input("jers", sample=self.branch_data.data_sample)["jer"],
-            "mc": self.load_input("jers", sample=self.branch_data.mc_sample)["jer"],
+        # load JER in data and MC
+        h_data = self.load_input("jer", sample=self.branch_data.data_sample)
+        h_mc = self.load_input("jer", sample=self.branch_data.mc_sample)
+
+        # collect postprocessor inputs in dict
+        hists = {
+            "jer_data": h_data,
+            "jer_mc": h_mc,
         }
 
-        # views
-        v_jers = {}
-        v_jers["data"] = jers["data"].view().copy()
-        v_jers["mc"] = jers["mc"].view().copy()
+        # run post-processing step for calculating JER
+        hists.update(self.postprocessor_inst.run_step(
+            task=self,
+            step="calc_sf",
+            inputs=hists,
+        ))
 
-        # output histogram with scale factors
-        h_sf = jers["data"].copy()
-        v_sf = h_sf.view()
-
-        v_sf.value = v_jers["data"].value / v_jers["mc"].value
-        # inf values if mc is zero; add for precaution
-        mask = np.fabs(v_sf.value) == np.inf  # account also for -inf
-        v_sf.value[mask] = np.nan
-        v_sf.value = np.nan_to_num(v_sf.value, nan=0.0)
-
-        # Error propagation
-        # x = data; y = mc; s_x = sigma x
-        # x/y -> sqrt( ( s_x/y )**2 + ( (x*s_y)/y**2 )**2 )
-        term1 = v_jers["data"].variance / v_jers["mc"].value
-        term2 = (v_jers["data"].value * v_jers["mc"].variance) / v_jers["mc"].value**2
-        v_sf.variance = np.sqrt(term1**2 + term2**2)
-        # inf values if mc is zero; add for precaution
-        v_sf.variance[mask] = np.nan  # account also for -inf
-        v_sf.variance = np.nan_to_num(v_sf.variance, nan=0.0)
-
-        results_sfs = {
-            "sfs": h_sf,
-        }
-        self.output()["sfs"].dump(results_sfs, formatter="pickle")
+        # store outputs in pickle file for further processing
+        for key in self.output_base_keys:
+            self.dump_output(key, obj=hists[key])

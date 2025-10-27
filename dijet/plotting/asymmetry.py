@@ -159,7 +159,7 @@ class PlotAsymmetry(
         # loop through bins and do plotting
         plt.style.use(mplhep.style.CMS)
         for m, (ia, alpha_up), *bv_bins in itertools.product(
-            self.method_categories,
+            self.config_inst.x.method_categories,
             enumerate(alpha_edges[1:]),
             *[iter_bins(bv_edges, var_name=bv) for bv, bv_edges in binning_variable_edges.items()],
         ):

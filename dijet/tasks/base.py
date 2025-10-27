@@ -17,7 +17,8 @@ from columnflow.tasks.framework.mixins import (
 from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import dev_sandbox, DotDict
 
-from dijet.tasks.mixins import DiJetVariablesMixin, DiJetSamplesMixin
+from dijet.tasks.mixins import PostProcessorMixin, DiJetVariablesMixin, DiJetSamplesMixin
+from dijet.util import get_variable_for_level
 
 
 class DiJetTask(BaseTask):
@@ -31,6 +32,7 @@ class HistogramsBaseTask(
     ReducerMixin,
     ProducersMixin,
     HistProducerMixin,
+    PostProcessorMixin,
     CategoriesMixin,
     DiJetSamplesMixin,
     DiJetVariablesMixin,
@@ -53,8 +55,9 @@ class HistogramsBaseTask(
     branching_types = ("separate", "with_mc", "merged")
     branching_type = None  # set in derived tasks
 
-    # names of categories used for methods
-    method_categories = ("sm", "fe")  # hard-coded for now
+    #
+    # class methods
+    #
 
     @property
     def valid_levels(self):
@@ -210,8 +213,9 @@ class HistogramsBaseTask(
 
         # dict storing either variables or their gen-level equivalents
         # for convenient access
+        # TODO: use post-processor for variable resolution
         resolve_var = partial(
-            self._get_variable_for_level,
+            get_variable_for_level,
             config=self.config_inst,
             level=level,
         )

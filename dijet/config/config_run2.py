@@ -114,6 +114,7 @@ def add_config(
     cfg.x.default_hist_producer = "all_weights"
     # cfg.x.default_ml_model = "default"
     # cfg.x.default_ml_model = None
+    cfg.x.default_postprocessor = "dijet_balance"
     cfg.x.default_inference_model = "default"
     cfg.x.default_categories = ["incl"]
     cfg.x.default_variables = ["jet1_pt"]

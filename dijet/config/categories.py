@@ -157,3 +157,6 @@ def add_categories(config: od.Config) -> None:
         label="Forward Extension",
     )
     method_categories.append(cat)
+
+    # add method category names as config aux
+    config.x.method_categories = [c.name for c in method_categories]

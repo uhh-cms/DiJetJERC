@@ -70,7 +70,7 @@ class JERtoRoot(
         # in external script
         results_jers = {}
         abseta_bins = h_jer.axes[self._vars.abseta].edges
-        for method in self.method_categories:
+        for method in self.config_inst.x.method_categories:
             for abseta_lo, abseta_hi in zip(
                 abseta_bins[:-1],
                 abseta_bins[1:],
