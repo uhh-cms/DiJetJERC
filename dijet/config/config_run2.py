@@ -290,9 +290,11 @@ def add_config(
     # JER
     # https://twiki.cern.ch/twiki/bin/view/CMS/JetResolution?rev=107
     cfg.x.jer = DotDict.wrap({
-        "campaign": f"Summer19UL{year2}{jerc_postfix}",
-        "version": "JR" + {2016: "V3", 2017: "V2", 2018: "V2"}[year],
-        "jet_type": "AK4PFchs",
+        "Jet": {
+            "campaign": f"Summer19UL{year2}{jerc_postfix}",
+            "version": "JR" + {2016: "V3", 2017: "V2", 2018: "V2"}[year],
+            "jet_type": "AK4PFchs",
+        },
     })
 
     # JEC uncertainty sources propagated to btag scale factors
