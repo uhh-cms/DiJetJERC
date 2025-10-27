@@ -72,7 +72,7 @@ def add_config(
         "data_jetht_e",
         "data_jetht_f",
         # QCD
-        # "qcd_ht50to100_madgraph",  # no meaningful contribution
+        "qcd_ht50to100_madgraph",
         "qcd_ht100to200_madgraph",
         "qcd_ht200to300_madgraph",
         "qcd_ht300to500_madgraph",
@@ -80,7 +80,7 @@ def add_config(
         "qcd_ht700to1000_madgraph",
         "qcd_ht1000to1500_madgraph",
         "qcd_ht1500to2000_madgraph",
-        # "qcd_ht2000toinf_madgraph",
+        "qcd_ht2000toinf_madgraph",
     ]
     for dataset_name in dataset_names:
         dataset = cfg.add_dataset(campaign.get_dataset(dataset_name))
