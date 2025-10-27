@@ -46,7 +46,6 @@ from columnflow.util import maybe_import
 # from columnflow.config_util import create_category_combinations
 
 from columnflow.categorization import Categorizer, categorizer
-from dijet.production.jet_assignment import jet_assignment
 
 from dijet.util import call_once_on_config
 

@@ -28,7 +28,7 @@ def alpha(
     jet_mask: ak.Array | None = None,
     #  pT for a jet to be considered when computing alpha
     jet3_min_pt: float = 15.,
-    **kwargs
+    **kwargs,
 ) -> ak.Array:
     """
     Computes the quantity 'alpha', which measures the additional jet activity in the event,

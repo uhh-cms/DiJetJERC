@@ -10,13 +10,11 @@ import law
 from functools import partial
 
 from columnflow.tasks.framework.base import BaseTask, ShiftTask
-from columnflow.tasks.framework.remote import RemoteWorkflow
 from columnflow.tasks.framework.mixins import (
     CalibratorsMixin, SelectorMixin, ReducerMixin, ProducersMixin,
     HistProducerMixin, CategoriesMixin,
 )
 from columnflow.tasks.histograms import MergeHistograms
-from columnflow.config_util import get_datasets_from_process
 from columnflow.util import dev_sandbox, DotDict
 
 from dijet.tasks.mixins import DiJetVariablesMixin, DiJetSamplesMixin
@@ -199,7 +197,7 @@ class HistogramsBaseTask(
             assert False, "internal error"
 
         # remove 'dataset' part from store_parts
-        parts.pop('dataset', None)
+        parts.pop("dataset", None)
 
         return parts
 

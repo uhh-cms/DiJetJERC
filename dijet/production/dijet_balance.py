@@ -35,7 +35,7 @@ Creates column 'Dijet', which includes the most relevant properties of the JetME
 def dijet_balance(
     self: Producer,
     events: ak.Array,
-    **kwargs
+    **kwargs,
 ) -> ak.Array:
 
     # retrieve jet collection

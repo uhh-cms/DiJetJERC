@@ -23,7 +23,6 @@ from dijet.config.datasets import get_dataset_lfns
 from dijet.config.analysis_dijet import analysis_dijet
 
 from dijet.plotting.asymmetry import PlotAsymmetry
-from dijet.plotting.alpha import PlotAlphaExtrapolation
 
 thisdir = os.path.dirname(os.path.abspath(__file__))
 

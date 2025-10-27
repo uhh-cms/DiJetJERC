@@ -40,7 +40,7 @@ ak = maybe_import("awkward")
 def default(
     self: Producer,
     events: ak.Array,
-    **kwargs
+    **kwargs,
 ) -> ak.Array:
 
     # mc-only weights

@@ -153,5 +153,3 @@ def weighted_mean_post_process_hist(self: HistProducer, h: hist.Hist, task: law.
         h = translate_hist_intcat_to_strcat(h, "shift", shift_map)
 
     return h
-
-

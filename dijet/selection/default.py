@@ -21,7 +21,6 @@ from columnflow.production.cms.mc_weight import mc_weight
 from columnflow.production.processes import process_ids
 
 from dijet.production.weights import large_weights_killer
-from dijet.production.dijet_balance import dijet_balance
 from dijet.production.jet_assignment import jet_assignment
 from dijet.selection.jet import jet_selection
 from dijet.selection.dijet import dijet_selection

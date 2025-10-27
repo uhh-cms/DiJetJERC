@@ -12,7 +12,6 @@ Selectors to set ak columns for dijet properties
 from columnflow.util import maybe_import
 from columnflow.columnar_util import set_ak_column
 from columnflow.production import Producer, producer
-from columnflow.calibration.util import ak_random
 
 from dijet.constants import eta
 
@@ -36,7 +35,7 @@ def jet_assignment(
     events: ak.Array,
     # mask to apply to `event.Jet` before running assignment
     jet_mask: ak.Array | None = None,
-    **kwargs
+    **kwargs,
 ) -> ak.Array:
     """
     Producer to assign the probe and reference jets. Creates new four-vector
