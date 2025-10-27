@@ -9,7 +9,8 @@ import law
 
 from functools import partial
 
-from columnflow.util import maybe_import
+from columnflow.util import maybe_import, load_correction_set
+from columnflow.tasks.external import BundleExternalFiles
 
 from dijet.tasks.sf import SF
 from dijet.plotting.base import PlottingBaseTask, bin_skip_fn
@@ -61,6 +62,14 @@ class PlotSF(
     # non-binning variables that can be specified via --variable-settings
     add_variables_for_settings = {}  # disallow alpha
 
+    def requires(self):
+        deps = super().requires()
+
+        # add external files requirement
+        deps["external_files"] = BundleExternalFiles.req(self)
+
+        return deps
+
     #
     # helper methods for handling task inputs/outputs
     #
@@ -104,6 +113,13 @@ class PlotSF(
             # return prepared histogram
             return histogram
         inputs = law.util.map_struct(_prepare_input, raw_inputs)
+
+        # load correction object for official JER SF
+        # TODO: make optional
+        jer_cfg = self.config_inst.x.jer["Jet"]
+        jer_sf_key = f"{jer_cfg.campaign}_{jer_cfg.version}_MC_ScaleFactor_{jer_cfg.jet_type}"
+        correction_set = load_correction_set(self.requires()["external_files"].files["jet_jerc"])
+        correction = correction_set[jer_sf_key]
 
         # binning information from first histogram object
         # (assume identical binning for all)
@@ -212,6 +228,17 @@ class PlotSF(
                 yerr=np.sqrt(h_sliced.variances()),
                 ax=ax,
                 **plot_kwargs,
+            )
+
+            # plot official JER values from correction object
+            # TODO: add support for pT-dependent JER SFs
+            ax.axhline(
+                correction.evaluate(eta_midp, "nom"),
+                color="gray",
+                linestyle="dashed",
+                linewidth=2,
+                label=f"{jer_cfg.campaign}_{jer_cfg.version}",
+                zorder=-10,
             )
 
             #

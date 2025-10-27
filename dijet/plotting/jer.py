@@ -9,7 +9,8 @@ import law
 
 from functools import partial
 
-from columnflow.util import maybe_import
+from columnflow.util import maybe_import, load_correction_set
+from columnflow.tasks.external import BundleExternalFiles
 
 from dijet.tasks.jer import JER
 from dijet.plotting.base import PlottingBaseTask, bin_skip_fn
@@ -61,6 +62,14 @@ class PlotJER(
     # non-binning variables that can be specified via --variable-settings
     add_variables_for_settings = {}  # disallow alpha
 
+    def requires(self):
+        deps = super().requires()
+
+        # add external files requirement
+        deps["external_files"] = BundleExternalFiles.req(self)
+
+        return deps
+
     #
     # helper methods for handling task inputs/outputs
     #
@@ -109,6 +118,13 @@ class PlotJER(
             # return prepared histogram
             return histogram
         inputs = law.util.map_struct(_prepare_input, raw_inputs)
+
+        # load correction object for official JER SF
+        # TODO: make optional
+        jer_cfg = self.config_inst.x.jer["Jet"]
+        jer_sf_key = f"{jer_cfg.campaign}_{jer_cfg.version}_MC_PtResolution_{jer_cfg.jet_type}"
+        correction_set = load_correction_set(self.requires()["external_files"].files["jet_jerc"])
+        correction = correction_set[jer_sf_key]
 
         # binning information from first histogram object
         # (assume identical binning for all)
@@ -210,6 +226,24 @@ class PlotJER(
                     ax=ax,
                     **plot_kwargs,
                 )
+
+                # plot official JER values from correction object
+                # (only QCD HT sample)
+                # FIXME: avoid hard-coding sample name
+                if sample == "qcdht":
+                    rho_val = 40  # placeholder for rho value (TODO: make configurable)
+                    pt_edges = h_sliced.axes[vars_["binning"]["dijets_pt_avg"]].edges
+                    pt_vals = np.logspace(np.log10(pt_edges[0]), np.log10(pt_edges[-1]), 101)
+                    jer_vals = correction.evaluate(eta_midp, pt_vals, float(rho_val))
+                    plt.plot(
+                        pt_vals,
+                        jer_vals,
+                        color="red",
+                        linestyle="dashed",
+                        linewidth=2,
+                        label=rf"{jer_cfg.campaign}_{jer_cfg.version}",
+                        zorder=-10,
+                    )
 
             #
             # annotations
