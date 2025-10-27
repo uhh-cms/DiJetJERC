@@ -13,7 +13,7 @@ from columnflow.tasks.framework.base import Requirements
 from dijet.tasks.base import HistogramsBaseTask
 from dijet.tasks.asymmetry import Asymmetry
 from dijet.tasks.correlated_fit import CorrelatedFit
-from dijet.hist_util import hist_mean_variance
+from dijet.hist_util import hist_mean_variance, hist_fit_gaussian
 
 hist = maybe_import("hist")
 np = maybe_import("numpy")
@@ -48,6 +48,9 @@ class AlphaExtrapolation(
     reqs = Requirements(
         Asymmetry=Asymmetry,
     )
+
+    width_extraction_method = "empirical"
+    # width_extraction_method = "gaussian_fit"
 
     #
     # methods required by law
@@ -109,21 +112,50 @@ class AlphaExtrapolation(
         axes_names = [a.name for a in h_asyms.axes]
         assert axes_names[-1] == vars_["asymmetry"], "asymmetry axis must come last"
 
-        # compute mean and variance of input histograms along asymmetry axis
-        h_mean_variance = hist_mean_variance(
-            h_asyms,
-            axis=vars_["asymmetry"],
-        )
+        #
+        # method choice: Gaussian fit or empirical standard deviation
+        #
 
-        # calculate standard deviation and its errors
-        # note: the error on standard deviation is analogous to the
-        # implementation in ROOT::TH1:
-        # https://root.cern/doc/v630/TH1_8cxx_source.html#l07520
-        h_stds = h_mean_variance[..., "variance"]
-        v_stds = h_stds.view()
-        with np.errstate(invalid="ignore"):
-            v_stds.variance = v_stds.value / (2 * h_nevts.values())
-            v_stds.value = np.nan_to_num(np.sqrt(v_stds.value), nan=0.0)
+        if self.width_extraction_method == "gaussian_fit":
+            # fit Gaussian to input histograms along asymmetry axis
+            h_fit_gaussian = hist_fit_gaussian(
+                h_asyms,
+                axis=vars_["asymmetry"],
+            )
+            h_stds_fit = h_fit_gaussian[..., "sigma"]
+            v_stds_fit = h_stds_fit.view()
+            v_stds_fit.value = np.nan_to_num(v_stds_fit.value, nan=0.0)
+            v_stds_fit.variance = np.nan_to_num(v_stds_fit.variance, nan=0.0)
+
+            # use Gaussian fit results as widths
+            h_stds = h_stds_fit
+
+        elif self.width_extraction_method == "empirical":
+            # compute mean and variance of input histograms along asymmetry axis
+            h_mean_variance = hist_mean_variance(
+                h_asyms,
+                axis=vars_["asymmetry"],
+            )
+
+            # calculate standard deviation and its errors
+            # note: the error on standard deviation is analogous to the
+            # implementation in ROOT::TH1:
+            # https://root.cern/doc/v630/TH1_8cxx_source.html#l07520
+            h_stds_emp = h_mean_variance[..., "variance"]
+            v_stds_emp = h_stds_emp.view()
+            with np.errstate(invalid="ignore"):
+                v_stds_emp.variance = v_stds_emp.value / (2 * h_nevts.values())
+                v_stds_emp.value = np.nan_to_num(np.sqrt(v_stds_emp.value), nan=0.0)
+
+            # use empirical standard deviations as widths
+            h_stds = h_stds_emp
+
+        else:
+            raise ValueError(
+                f"invalid width extraction method "
+                f"'{self.width_extraction_method}', expected one of: "
+                f"gaussian_fit,empirical",
+            )
 
         # Store alphas here to get alpha up to 1
         # In the next stepts only alpha<0.3 needed; avoid slicing from there
