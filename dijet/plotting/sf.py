@@ -66,15 +66,16 @@ class PlotSF(
     #
 
     def load_input(self, key: str):
+        input_collection = self.input()["input_task"]["collection"]
         coll_keys = [
             coll_key
-            for coll_key, coll in self.input()["collection"].targets.items()
+            for coll_key, coll in input_collection.targets.items()
         ]
         if len(coll_keys) != 1:
             raise RuntimeError(
                 f"found {len(coll_keys)} input collections, expected 1",
             )
-        return self.input()["collection"][coll_keys[0]][key].load(formatter="pickle")
+        return input_collection[coll_keys[0]][key].load(formatter="pickle")
 
     def load_inputs(self):
         return {

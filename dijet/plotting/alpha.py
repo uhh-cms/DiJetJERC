@@ -66,9 +66,10 @@ class PlotAlphaExtrapolation(
     #
 
     def load_input(self, key: str, sample: str, level: str):
+        input_collection = self.input()["input_task"]["collection"]
         coll_keys = [
             coll_key
-            for coll_key, coll in self.input()["collection"].targets.items()
+            for coll_key, coll in input_collection.targets.items()
             if sample in coll[key]
         ]
         if len(coll_keys) != 1:
@@ -76,7 +77,7 @@ class PlotAlphaExtrapolation(
                 f"found {len(coll_keys)} input collections corresponding to "
                 f"sample '{sample}', expected 1",
             )
-        return self.input()["collection"][coll_keys[0]][key][sample][level].load(formatter="pickle")
+        return input_collection[coll_keys[0]][key][sample][level].load(formatter="pickle")
 
     def load_inputs(self):
         return {

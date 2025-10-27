@@ -150,7 +150,6 @@ class PlottingBaseTask(
         # to read in bins from task inputs
         input_branches = super().create_branch_map()
 
-
         # limit variable range for plotting if configured
         # FIXME: avoid hard-coding 'probejet_abseta'?
         eta_minmax = (
@@ -182,7 +181,9 @@ class PlottingBaseTask(
         }
 
     def requires(self):
-        return self.reqs[self.input_task_cls].req_different_branching(self, branch=-1)
+        return {
+            "input_task": self.reqs[self.input_task_cls].req_different_branching(self, branch=-1),
+        }
 
     def workflow_requires(self):
         reqs = super().workflow_requires()
