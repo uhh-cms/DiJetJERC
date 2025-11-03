@@ -43,7 +43,14 @@ def uhh2(
     events, default_results = self[default](events, stats, **kwargs)
     results += default_results
 
+    #
     # UHH2-specific selection steps
+    #
+
+    # remove ad-hoc pTavg/HT cut from default selection
+    results.steps.pop("ad_hoc_ptavg_ht_cut", None)
+
+    # add minimum average pT cut
     results += SelectionResult(
         steps={
             # ensure pTavg > 50 GeV

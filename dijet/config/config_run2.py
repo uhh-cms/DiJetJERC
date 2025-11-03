@@ -6,6 +6,7 @@ Configuration of the 2018 DiJet analysis.
 
 from __future__ import annotations
 
+import math
 import os
 import re
 from typing import Set
@@ -94,6 +95,12 @@ def add_config(
         # add aux info to datasets
         if dataset.name.startswith("qcd"):
             dataset.x.is_qcd = True
+
+            if (m := re.match(r"qcd_ht(\d+)to(\d+|inf)_madgraph", dataset.name)):
+                g = m.groups()
+                ht_min = int(g[0])
+                ht_max = math.inf if g[1] == "inf" else int(g[1])
+                dataset.x.ht_range = (ht_min, ht_max)
 
         # mark datasets with missing dijet trigger info
         if dataset.name in ("data_jetht_b", "data_jetht_c"):

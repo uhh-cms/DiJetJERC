@@ -99,6 +99,13 @@ def default(
     events, results_dijet = self[dijet_selection](events, jet_mask=jet_mask, **kwargs)
     results += results_dijet
 
+    # ad-hoc pTavg/HT cut in MC to remove unphysical events
+    if self.dataset_inst.x("ht_range", None) is not None:
+        pt_avg = (events.probe_jet.pt + events.reference_jet.pt) / 2
+        ad_hoc_mask = (pt_avg < 1.5 * self.dataset_inst.x.ht_range[0])
+        ad_hoc_sel = ak.fill_none(ad_hoc_mask, True)
+        results.steps["ad_hoc_ptavg_ht_cut"] = ad_hoc_sel
+
     # create process ids
     events = self[process_ids](events, **kwargs)
 
