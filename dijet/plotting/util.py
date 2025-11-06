@@ -36,7 +36,7 @@ def get_bin_slug(var_inst: od.Variable, bin_edges: tuple[float]):
     """
     def default_bin_slug_func(self, bin_edges):
         return "_".join([
-            self.x.slug_name,
+            self.x("slug_name", self.name),
             self.x("bin_slug_format", dot_to_p)(bin_edges[0]),
             self.x("bin_slug_format", dot_to_p)(bin_edges[1]),
         ])
