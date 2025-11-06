@@ -556,7 +556,7 @@ def calc_jer(
             (
                 h_widths.variances() * h_widths.values()**2 +
                 h_widths_gen.variances() * h_widths_gen.values()**2
-            ) / values,
+            ) / values**2,
             nan=0.0,
         )
 
