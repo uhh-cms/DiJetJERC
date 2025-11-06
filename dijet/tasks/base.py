@@ -17,7 +17,7 @@ from columnflow.tasks.framework.mixins import (
 from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import dev_sandbox, DotDict
 
-from dijet.tasks.mixins import PostProcessorMixin, DiJetVariablesMixin, DiJetSamplesMixin
+from dijet.tasks.mixins import PostProcessorMixin, DiJetSamplesMixin
 from dijet.util import get_variable_for_level
 
 
@@ -35,7 +35,6 @@ class HistogramsBaseTask(
     PostProcessorMixin,
     CategoriesMixin,
     DiJetSamplesMixin,
-    DiJetVariablesMixin,
     ShiftTask,
 ):
     """
@@ -54,6 +53,20 @@ class HistogramsBaseTask(
     # ways of creating the branch map
     branching_types = ("separate", "with_mc", "merged")
     branching_type = None  # set in derived tasks
+
+    #
+    # law parameters
+    #
+
+    levels = law.CSVParameter(
+        default=("reco", "gen"),
+        description="comma-separated list of 'reco', 'gen', or both, indicating whether to "
+        "use the regular (reconstruction-level) variables or the equivalent variable on "
+        "generator-level; if not given, only 'reco'-level variables are used",
+        choices={"reco", "gen"},
+        brace_expand=True,
+        parse_empty=True,
+    )
 
     #
     # class methods

@@ -71,29 +71,13 @@ class Asymmetry(
         for dataset in self.datasets:
             # get dataset instance
             dataset_inst = self.config_inst.get_dataset(dataset)
-            valid_levels = ["reco"]
-            if dataset_inst.is_mc:
-                valid_levels.append("gen")
 
             # variables to pass on to dependent task (including
             # gen-level variables only for MC)
-            variables_for_histograms = [
-                variable
-                for level, variable in self.iter_levels_variables(
-                    levels=valid_levels,
-                )
-            ]
-            variables_for_histograms_pp = self.postprocessor_inst.variables_func(
+            variables_for_histograms = self.postprocessor_inst.variables_func(
                 task=self,
                 dataset_inst=dataset_inst,
             )
-            # TODO: use only pp value and remove check
-            if not set(variables_for_histograms_pp) == set(variables_for_histograms):
-                print(f"{dataset = }")
-                print(f"{valid_levels = }")
-                print(f"{set(variables_for_histograms_pp) = }")
-                print(f"{set(variables_for_histograms) = }")
-                # raise ValueError
 
             # register `MergeHistograms` as requirement,
             # setting `variables` by hand
