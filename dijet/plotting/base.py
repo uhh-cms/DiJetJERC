@@ -19,15 +19,39 @@ logger = law.logger.get_logger(__name__)
 
 # helper function for skipping bins
 def bin_skip_fn(val, minmax):
+    """
+    Return true if the bin described by *val* is to be skipped. The *minmax* parameter is a
+    2-tuple indicating the bounds of the range of value permitted to be contained in a bin.
+
+    The supplied *val* is compared to the *minmax* bounds to make the decision. It can be a
+    single value or a 2-tuple, in which case the first (second) entry should contain the value
+    to be compared to the upper (lower) bound. A bin is skipped if the (second) value is strictly
+    less than the lower bound or if the (first) value is strictly larger than the upper bound.
+
+    If *minmax* contains None, the respective bound is not checked.
+
+    The following sketch illustrates bins that would be skipped, assuming that *val* contains
+    the lower and upper bounds of each bin:
+
+        val[0]
+        |   val[1]
+        |   |
+    +---+---+---+---+---+---+---+
+    | X |   |   |   |   | X | X |
+    +---+---+---+---+---+---+---+
+        |             |
+        minmax[0]     minmax[1]
+
+    """
     # ensure 'val' is a 2-tuple, containing the values to compare to the minimum and the maximum, respectively
     if not isinstance(val, tuple):
         val = (val, val)
     if len(val) != 2:
         raise ValueError(f"internal error: expected 'val' to be a 2-tuple, got: {val}")
 
-    if minmax[0] is not None and val[0] < minmax[0]:
+    if minmax[0] is not None and val[1] < minmax[0]:
         return True
-    elif minmax[1] is not None and val[1] > minmax[1]:
+    elif minmax[1] is not None and val[0] > minmax[1]:
         return True
     else:
         return False
