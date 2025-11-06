@@ -6,15 +6,19 @@ from __future__ import annotations
 
 import law
 
-from columnflow.util import DotDict
+from columnflow.util import DotDict, maybe_import
+from columnflow.types import TYPE_CHECKING
 from columnflow.tasks.framework.parameters import MultiSettingsParameter
 from columnflow.tasks.framework.remote import RemoteWorkflow
 from dijet.tasks.base import HistogramsBaseTask
 
-from dijet.constants import eta
-from dijet.plotting.util import get_bin_slug
+from dijet.util import product_dict
+from dijet.plotting.util import get_bin_label, get_bin_slug
 
 logger = law.logger.get_logger(__name__)
+
+if TYPE_CHECKING:
+    hist = maybe_import("hist")
 
 
 # helper function for skipping bins
@@ -86,14 +90,20 @@ class PlottingBaseTask(
     # for which to create plots
     bin_selectors = MultiSettingsParameter(
         default=None,
-        description="map of variable names with 'min' and 'max' keys to indicate which bins "
+        description="map of variable keys with 'min' and 'max' keys to indicate which bins "
         "of those variables to plot; the values given need not be aligned to the bin edges, "
         "the bin containing the value 'min' ('max') will be taken as the first (last) bin to "
         "be plotted",
     )
-    # additional non-binning variables that can be specified in --variable-settings (e.g. alpha)
-    add_variables_for_settings = {}
-    allowed_settings = {"min", "max"}
+    # keys that users are allowed to pass in `--bin-selectors`
+    bin_selectors_allowed_keys = {"min", "max"}
+
+    # which variable keys to use for constructing branch map
+    # (i.e. one branch will be created for each element of the
+    # cartesian product of bins in these variables)
+    # TODO: avoid hardcoding variable keys?
+    # set in derived tasks
+    branch_map_binning_variable_keys = None
 
     #
     # methods required by law
@@ -113,36 +123,42 @@ class PlottingBaseTask(
             params["bin_selectors"] = {}
             return params
 
-        # get all variables
-        all_variables = set(params["binning_variables"])
+        # check postprocessor exists and defines a variable_map
+        if (postprocessor_inst := params.get("postprocessor_inst", None)) is None:
+            raise RuntimeError(
+                "internal error: task does not have an initialized postprocessor instance, aborting",
+            )
+        if not hasattr(postprocessor_inst, "variable_map"):
+            raise RuntimeError(
+                "postprocessor instance does not define a `variable_map`, aborting",
+            )
 
-        # allowed variables
-        if cls.add_variables_for_settings is not None:
-            all_variables |= set(cls.add_variables_for_settings)
+        # get all variable keys
+        all_variable_keys = set(params["postprocessor_inst"].variable_map["reco"])
 
         # warn about unknown/disallowed variables
-        unknown_variables = set(params["bin_selectors"]) - all_variables
-        if unknown_variables:
-            unknown_variables_str = ",".join(sorted(unknown_variables))
-            allowed_variables_str = ",".join(sorted(all_variables))
+        unknown_keys = set(params["bin_selectors"]) - all_variable_keys
+        if unknown_keys:
+            unknown_keys_str = ",".join(sorted(unknown_keys))
+            allowed_keys_str = ",".join(sorted(all_variable_keys))
             logger.warning_once(
                 "variables specified in variables_settings are not known or valid "
-                f"for use with this task and will be ignored: {unknown_variables_str}; "
-                f"allowed variables are: {allowed_variables_str}",
+                f"for use with this postprocessor and will be ignored: {unknown_keys_str}; "
+                f"allowed variable specifiers are: {allowed_keys_str}",
             )
 
         # drop invalid variables from settings
         params["bin_selectors"] = {
             variable: bin_selectors
             for variable, bin_selectors in params["bin_selectors"].items()
-            if variable in all_variables
+            if variable in all_variable_keys
         }
 
         # warn if unknown keys are present
-        allowed_keys_str = ",".join(sorted(cls.allowed_settings))
+        allowed_keys_str = ",".join(sorted(cls.bin_selectors_allowed_keys))
         for variable, bin_selectors in params["bin_selectors"].items():
             keys = set(bin_selectors)
-            unknown_keys = keys - cls.allowed_settings
+            unknown_keys = keys - cls.bin_selectors_allowed_keys
             if unknown_keys:
                 unknown_keys_str = ",".join(sorted(unknown_keys))
                 logger.warning_once(
@@ -163,32 +179,123 @@ class PlottingBaseTask(
 
         return reqs
 
+    def _get_filtered_variable_bins(
+        self,
+        variable_map: dict[str],
+        variable_keys: list[str],
+        bin_selectors: dict[dict] | None = None,
+        from_hist: hist.Hist | None = None,
+        remove_skipped: bool = True,
+    ) -> dict[list[dict]]:
+        """
+        Given a variable map and a sequence of keys, return a dict mapping
+        those keys to a list of bin dicts, each containing information
+        like upper and lower bin egdes, bin center or a human-readable
+        string representing the bin (a.k.a a 'slug').
+
+        By default, this function uses `od.Variable` information contained in
+        via the *config_inst*. If `from_hist` is provided, the binning is
+        retrieved from the axes of the given `hist.Hist` object. Note that
+        the histogram must contain the axes contained in the `variable_map`.
+
+        If `remove_skipped` is True, skipped bins will not appear in the output.
+        Otherwise, they will be included and marked by a `skip=True` entry
+        in the bin dict.
+        """
+        # use default bin selectors if not specified
+        bin_selectors = bin_selectors or self.bin_selectors
+
+        # retrieve which bins to plot
+        bv_bins = {}
+        for bv_key in variable_keys:
+            # retrieve actual variable name
+            bv_name = variable_map[bv_key]
+
+            # retrieve variable instance from config
+            bv_inst = self.config_inst.get_variable(bv_name)
+
+            # get min and max binning value for filtering
+            bv_minmax = (
+                bin_selectors.get(bv_key, {}).get("min", None),
+                bin_selectors.get(bv_key, {}).get("max", None),
+            )
+
+            # get bin edges from config or input histogram
+            if from_hist is None:
+                bv_edges = bv_inst.bin_edges
+            else:
+                bv_edges = from_hist.axes[bv_name].edges
+
+            # get filtered list of bins for the branch map
+            bv_bins[bv_key] = [
+                {
+                    # bin edges and center
+                    "lo": bv_lo,
+                    "center": 0.5 * (bv_lo + bv_hi),
+                    "hi": bv_hi,
+                    # representation to use in file names
+                    "slug": get_bin_slug(bv_inst, (bv_lo, bv_hi)),
+                    "label": get_bin_label(bv_inst, (bv_lo, bv_hi)),
+                    # key and name of variable being binned
+                    "var_key": bv_key,
+                    "var_name": bv_name,
+                    # selector to use for slicing histograms
+                    "loc": 0.5 * (bv_lo + bv_hi),
+                    "skip": bin_skip,
+                }
+                for bv_lo, bv_hi in zip(bv_edges[:-1], bv_edges[1:])
+                if not ((bin_skip := bin_skip_fn((bv_lo, bv_hi), bv_minmax)) and remove_skipped)
+            ]
+
+        return bv_bins
+
     def create_branch_map(self):
         """
         Workflow extends branch map of input task, creating one branch
-        per entry in the input task branch map per each eta bin (eta).
+        per entry in the input task branch map per each |eta| bin (abseta).
         """
-        # TODO: way to specify which variables to handle via branch
-        # map and which to loop over in `run` method
-        # TODO: don't hardcode eta bins, use dynamic workflow condition
-        # to read in bins from task inputs
         input_branches = super().create_branch_map()
 
         # limit variable range for plotting if configured
-        # FIXME: avoid hard-coding 'probejet_abseta'?
-        eta_minmax = (
-            self.bin_selectors.get("probejet_abseta", {}).get("min", None),
-            self.bin_selectors.get("probejet_abseta", {}).get("max", None),
+        # FIXME: avoid hard-coding 'reco'?
+        variable_map = self.postprocessor_inst.variable_map["reco"]
+
+        if self.branch_map_binning_variable_keys is None:
+            raise ValueError(
+                "cannot construct branch map: property "
+                "'branch_map_binning_variable_keys' not set for task "
+                f"{self.__class__.__name__}!",
+            )
+
+        # check keys in variable map
+        missing_keys = {
+            bv_key
+            for bv_key in self.branch_map_binning_variable_keys
+            if bv_key not in variable_map
+        }
+        if missing_keys:
+            missing_keys_str = ",".join(sorted(missing_keys))
+            raise ValueError(
+                f"postprocessor '{self.postprocessor}' variable map does not define "
+                "variables the following keys, which are needed for creating the "
+                f"branch map for plotting: {missing_keys_str}",
+            )
+
+        # retrieve which bins to place on branches
+        bv_bins = self._get_filtered_variable_bins(
+            variable_map,
+            self.branch_map_binning_variable_keys,
+            from_hist=None,  # uses config for now -> switch to actual inputs?
+            remove_skipped=True,
         )
 
+        # extend super branching map by cartesian product
+        # of binning
         branches = []
         for ib in input_branches:
             branches.extend([
-                DotDict.wrap(dict(ib, **{
-                    "eta": (eta_lo, eta_hi),
-                }))
-                for eta_lo, eta_hi in zip(eta[:-1], eta[1:])
-                if not bin_skip_fn((eta_lo, eta_hi), eta_minmax)
+                DotDict.wrap(dict(ib, **bv_bin_dict))
+                for bv_bin_dict in product_dict(bv_bins)
             ])
 
         return branches
@@ -198,10 +305,14 @@ class PlottingBaseTask(
         Organize output as a (nested) dictionary. Output files will be in a single
         directory, which is determined by `store_parts`.
         """
-        eta_bin_slug = get_bin_slug(self.binning_variable_insts["probejet_abseta"], self.branch_data.eta)
+        # join bin slugs to get output directory path
+        bin_slug = "/".join(
+            self.branch_data[bv_key]["slug"]
+            for bv_key in self.branch_map_binning_variable_keys
+        )
         return {
-            "dummy": self.target(f"{eta_bin_slug}/DUMMY"),
-            "plots": self.target(f"{eta_bin_slug}", dir=True),
+            "dummy": self.target(f"{bin_slug}/DUMMY"),
+            "plots": self.target(f"{bin_slug}", dir=True),
         }
 
     def requires(self):

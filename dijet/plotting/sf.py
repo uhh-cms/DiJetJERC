@@ -1,10 +1,10 @@
 # coding: utf-8
 """
-Task for plotting JER scale factors.
+Task for plotting JER scale factors as a function
+of pt.
 """
 from __future__ import annotations
 
-import itertools
 import law
 
 from functools import partial
@@ -13,8 +13,9 @@ from columnflow.util import maybe_import, load_correction_set
 from columnflow.tasks.external import BundleExternalFiles
 
 from dijet.tasks.sf import SF
-from dijet.plotting.base import PlottingBaseTask, bin_skip_fn
-from dijet.plotting.util import annotate_corner, get_bin_slug, get_bin_label, plot_xy
+from dijet.plotting.base import PlottingBaseTask
+from dijet.plotting.util import annotate_corner, plot_xy
+from dijet.util import product_dict
 
 logger = law.logger.get_logger(__name__)
 
@@ -31,7 +32,7 @@ class PlotSF(
     Task to plot the JER scale factors.
 
     Shows the ratios of JERs extracted from data and MC
-    provided via `--samples`. One plot is produced for each abseta bin
+    provided via `--samples`. One plot is produced for each |eta| bin
     for each method (fe, sm).
     The methods to take into account are given as `--categories`.
     """
@@ -43,15 +44,15 @@ class PlotSF(
     input_task_cls = SF
 
     # keys for looking up input task results
-    input_keys = ("sfs",)
+    input_keys = ("sf",)
 
     # plot file names will start with this
-    output_prefix = "sfs"
+    output_prefix = "sf"
 
     # plot configuration (e.g. axes limits/labels/scales)
     plot_settings = {
         "legend_kwargs": dict(loc="upper right"),
-        "xlabel": lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["binning"]["dijets_pt_avg"]).get_full_x_title(),  # noqa
+        "xlabel": lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["pt"]).get_full_x_title(),  # noqa
         "xlim": (49, 2100),
         "xscale": "log",
         "ylabel": "Jet energy resolution scale factor",
@@ -59,8 +60,8 @@ class PlotSF(
         "yscale": "linear",
     }
 
-    # non-binning variables that can be specified via --variable-settings
-    add_variables_for_settings = {}  # disallow alpha
+    # which variable keys to use for constructing branch map
+    branch_map_binning_variable_keys = ("abseta",)
 
     def requires(self):
         deps = super().requires()
@@ -102,7 +103,7 @@ class PlotSF(
 
         # dict storing either variables or their gen-level equivalents
         # for convenient access
-        vars_ = self._make_var_lookup(level="reco")
+        variable_map = self.postprocessor_inst.variable_map["reco"]
 
         # prepare inputs (clean nans)
         def _prepare_input(histogram):
@@ -129,49 +130,44 @@ class PlotSF(
                 return
             for k, v in d.items():
                 yield from _iter_flat(v)
-        ref_object = next(_iter_flat(inputs["sfs"]))
+        ref_object = next(_iter_flat(inputs["sf"]))
 
-        # binning information from inputs
-        binning_variable_edges = {
-            bv: ref_object.axes[bv_resolved].edges
-            for bv, bv_resolved in vars_["binning"].items()
-            if bv not in ("probejet_abseta", "dijets_pt_avg")
+        # a mapping of variable keys to lists o
+        # dicts, each containing information about one bin
+        # in the corresponding variable (excluding variables
+        # that are already part of the branch map)
+        bv_var_keys = set(variable_map) - set(self.branch_map_binning_variable_keys) - {
+            "asymmetry",
+            "alpha",
+            "pt",
         }
-
-        # binning information from branch
-        eta_lo, eta_hi = self.branch_data.eta
-        eta_midp = 0.5 * (eta_lo + eta_hi)
-
-        def iter_bins(edges, **add_kwargs):
-            for i, (e_dn, e_up) in enumerate(zip(edges[:-1], edges[1:])):
-                yield {"up": e_up, "dn": e_dn, **add_kwargs}
-
-        # limit variable range for plotting if configured
-        bv_minmax = {
-            bv: (
-                self.bin_selectors.get(bv, {}).get("min", None),
-                self.bin_selectors.get(bv, {}).get("max", None),
-            )
-            for bv in binning_variable_edges
-        }
+        bv_bin_lists: dict[list[dict]] = self._get_filtered_variable_bins(
+            variable_map,
+            bv_var_keys,
+            from_hist=ref_object,
+            remove_skipped=False,
+        )
 
         # loop through bins and do plotting
         plt.style.use(mplhep.style.CMS)
-        for m, *bv_bins in itertools.product(
-            self.config_inst.x.method_categories,
-            *[iter_bins(bv_edges, var_name=bv) for bv, bv_edges in binning_variable_edges.items()],
-        ):
-            # skip binning variable bin for skipping, if requested
-            skip = False
-            for i, bv_bin in enumerate(bv_bins):
-                bin_edges = (bv_bin["dn"], bv_bin["up"])
-                if bin_skip_fn(bin_edges, bv_minmax[bv_bin["var_name"]]):
-                    skip = True
-                    break
+        for bv_bins in product_dict({
+            "category": self.config_inst.x.method_categories,
+            **bv_bin_lists,
+        }):
+            # pop category and retrieve config object
+            category = bv_bins.pop("category")
+            category_inst = self.config_inst.get_category(category)
 
-            # inform about skipping binnning variable bin
-            if skip:
-                logger.warning_once(f"skipping {bv_bin['var_name']} bin: {bin_edges}")
+            # skip bin if requested
+            if any(
+                bv_bin.get("skip", False)
+                for bv_bin in bv_bins.values()
+            ):
+                bin_slug = "/".join(
+                    slug for bv_bin in bv_bins.values()
+                    if (slug := bv_bin.get("slug", None))
+                )
+                logger.warning_once(f"skipping bin: {bin_slug}")
                 continue
 
             # initialize figure and axes
@@ -185,18 +181,25 @@ class PlotSF(
             )
 
             # selector to get current bin
-            bin_selector = {}
             bin_selector = {
-                "category": hist.loc(self.config_inst.get_category(m).name),
-                vars_["binning"]["probejet_abseta"]: hist.loc(eta_midp),
+                "category": hist.loc(category),
             }
-            for bv_bin in bv_bins:
-                bin_selector[vars_["binning"][bv_bin["var_name"]]] = (
-                    hist.loc(0.5 * (bv_bin["up"] + bv_bin["dn"]))
+            # axes that are part of branch map
+            for bv_key in self.branch_map_binning_variable_keys:
+                bin_selector[variable_map[bv_key]] = hist.loc(
+                    self.branch_data[bv_key]["loc"],
+                )
+
+            # axes that are part of inner loop
+            for bv_key, bv_bin in bv_bins.items():
+                bin_selector[variable_map[bv_key]] = (
+                    hist.loc(category_inst.name)
+                    if bv_key == "category"
+                    else hist.loc(bv_bin["loc"])
                 )
 
             # get input histogram for widths
-            h_in = inputs["sfs"]["sfs"]
+            h_in = inputs["sf"]
             h_sliced = h_in[bin_selector]
 
             # plot asymmetry distribution
@@ -223,17 +226,17 @@ class PlotSF(
 
             # plot JER SF
             plot_xy(
-                h_sliced.axes[vars_["binning"]["dijets_pt_avg"]].centers,
+                h_sliced.axes[variable_map["pt"]].centers,
                 h_sliced.values(),
                 yerr=np.sqrt(h_sliced.variances()),
                 ax=ax,
                 **plot_kwargs,
             )
 
-            # plot official JER values from correction object
+            # plot official JER SF values from correction object
             # TODO: add support for pT-dependent JER SFs
             ax.axhline(
-                correction.evaluate(eta_midp, "nom"),
+                correction.evaluate(self.branch_data.abseta.loc, "nom"),
                 color="gray",
                 linestyle="dashed",
                 linewidth=2,
@@ -248,16 +251,14 @@ class PlotSF(
             # texts to display on plot
             annotation_texts = [
                 # category label
-                self.config_inst.get_category(m).label,
-                # eta bin
-                get_bin_label(self.binning_variable_insts["probejet_abseta"], (eta_lo, eta_hi)),
+                category_inst.label,
+            ] + [
+                self.branch_data[bv_key]["label"]
+                for bv_key in self.branch_map_binning_variable_keys
+            ] + [
+                bv_bin["label"]
+                for bv_bin in bv_bins.values()
             ]
-
-            # texts for other binning variables
-            for i, bv_bin in enumerate(bv_bins):
-                bin_edges = (bv_bin["dn"], bv_bin["up"])
-                bin_label = get_bin_label(self.binning_variable_insts[bv_bin["var_name"]], bin_edges)
-                annotation_texts.append(bin_label)
 
             # curry function for convenience
             annotate = partial(annotate_corner, ax=ax, loc="upper left")
@@ -270,7 +271,7 @@ class PlotSF(
                 )
 
             # figure adjustments
-            self.apply_plot_settings(ax=ax, context={"vars": vars_})
+            self.apply_plot_settings(ax=ax, context={"vars": variable_map})
 
             # legend
             ax.legend(**self.plot_settings.get("legend_kwargs", {}))
@@ -280,15 +281,14 @@ class PlotSF(
                 # base name
                 self.output_prefix,
                 # method
-                m,
-                # abseta bin
-                get_bin_slug(self.binning_variable_insts["probejet_abseta"], (eta_lo, eta_hi)),
+                category,
+            ] + [
+                self.branch_data[bv_key]["slug"]
+                for bv_key in self.branch_map_binning_variable_keys
+            ] + [
+                bv_bin["slug"]
+                for bv_bin in bv_bins.values()
             ]
-            # other bins
-            for bv_bin in bv_bins:
-                bin_edges = (bv_bin["dn"], bv_bin["up"])
-                bin_slug = get_bin_slug(self.binning_variable_insts[bv_bin["var_name"]], bin_edges)
-                fname_parts.append(bin_slug)
 
             # save plot to file
             self.save_plot("__".join(fname_parts), fig)

@@ -12,8 +12,9 @@ from functools import partial
 from columnflow.util import maybe_import
 
 from dijet.tasks.asymmetry import Asymmetry
-from dijet.plotting.base import PlottingBaseTask, bin_skip_fn
-from dijet.plotting.util import annotate_corner, get_bin_slug, get_bin_label, plot_xy
+from dijet.plotting.base import PlottingBaseTask
+from dijet.plotting.util import annotate_corner, plot_xy
+from dijet.util import product_dict
 
 logger = law.logger.get_logger(__name__)
 
@@ -29,9 +30,9 @@ class PlotAsymmetry(
     """
     Task to plot asymmetry distributions.
 
-    Shows the distribution of the `--asymmetry-variable` for all given `--samples`
-    and `--levels`. One plot is produced for each eta, pt and alpha bin
-    for each method (fe, sm).
+    Shows the asymmetry distribution for all given `--samples`
+    and `--levels`. One plot is produced for each |eta|, pt and alpha bin
+    and for each method (fe, sm).
     The methods to take into account are given as `--categories`.
     """
 
@@ -42,7 +43,7 @@ class PlotAsymmetry(
     input_task_cls = Asymmetry
 
     # keys for looking up input task results
-    input_keys = ("asym", "quantile")
+    input_keys = ("asym", "cut_edges")
 
     # plot file names will start with this
     output_prefix = "asym"
@@ -58,8 +59,8 @@ class PlotAsymmetry(
         "yscale": "log",
     }
 
-    # additional non-binning variables that can be specified in --variable-settings (e.g. alpha)
-    add_variables_for_settings = {"alpha"}
+    # which variable keys to use for constructing branch map
+    branch_map_binning_variable_keys = ("abseta",)  # TODO: add alpha, pt
 
     #
     # helper methods for handling task inputs/outputs
@@ -102,10 +103,7 @@ class PlotAsymmetry(
 
         # dict storing either variables or their gen-level equivalents
         # for convenient access
-        vars_ = {
-            level: self._make_var_lookup(level=level)
-            for level in self.levels
-        }
+        variable_map = self.postprocessor_inst.variable_map
 
         # prepare inputs (clean nans)
         def _prepare_input(histogram):
@@ -127,63 +125,38 @@ class PlotAsymmetry(
                 yield from _iter_flat(v)
         ref_object = next(_iter_flat(inputs["asym"]))
 
-        # binning information from inputs
-        alpha_edges = ref_object.axes[vars_["reco"]["alpha"]].edges
-        binning_variable_edges = {
-            bv: ref_object.axes[bv_resolved].edges
-            for bv, bv_resolved in vars_["reco"]["binning"].items()
-            if bv != "probejet_abseta"
-        }
-
-        # binning information from branch
-        eta_lo, eta_hi = self.branch_data.eta
-        eta_midp = 0.5 * (eta_lo + eta_hi)
-
-        def iter_bins(edges, **add_kwargs):
-            for i, (e_dn, e_up) in enumerate(zip(edges[:-1], edges[1:])):
-                yield {"up": e_up, "dn": e_dn, **add_kwargs}
-
-        # limit variable range for plotting if configured
-        alpha_minmax = (
-            self.bin_selectors.get("alpha", {}).get("min", None),
-            self.bin_selectors.get("alpha", {}).get("max", None),
+        # a mapping of variable keys to lists of
+        # dicts, each containing information about one bin
+        # in the corresponding variable (excluding variables
+        # that are already part of the branch map)
+        bv_var_keys = set(variable_map["reco"]) - set(self.branch_map_binning_variable_keys) - {"asymmetry"}
+        bv_bin_lists: dict[list[dict]] = self._get_filtered_variable_bins(
+            variable_map["reco"],
+            bv_var_keys,
+            from_hist=ref_object,
+            remove_skipped=False,
         )
-        bv_minmax = {
-            bv: (
-                self.bin_selectors.get(bv, {}).get("min", None),
-                self.bin_selectors.get(bv, {}).get("max", None),
-            )
-            for bv in binning_variable_edges
-        }
 
         # loop through bins and do plotting
         plt.style.use(mplhep.style.CMS)
-        for m, (ia, alpha_up), *bv_bins in itertools.product(
-            self.config_inst.x.method_categories,
-            enumerate(alpha_edges[1:]),
-            *[iter_bins(bv_edges, var_name=bv) for bv, bv_edges in binning_variable_edges.items()],
-        ):
-            # skip alpha bin if requested
-            skip = False
-            if bin_skip_fn(alpha_up, alpha_minmax):
-                skip = True
+        for bv_bins in product_dict({
+            "category": self.config_inst.x.method_categories,
+            **bv_bin_lists,
+        }):
+            # pop category and retrieve config object
+            category = bv_bins.pop("category")
+            category_inst = self.config_inst.get_category(category)
 
-            # inform about skipping alpha bin
-            if skip:
-                logger.warning_once(f"skipping alpha bin: {alpha_up}")
-                continue
-
-            # skip binning variable bin for skipping, if requested
-            skip = False
-            for i, bv_bin in enumerate(bv_bins):
-                bin_edges = (bv_bin["dn"], bv_bin["up"])
-                if bin_skip_fn(bin_edges, bv_minmax[bv_bin["var_name"]]):
-                    skip = True
-                    break
-
-            # inform about skipping binnning variable bin
-            if skip:
-                logger.warning_once(f"skipping {bv_bin['var_name']} bin: {bin_edges}")
+            # skip bin if requested
+            if any(
+                bv_bin.get("skip", False)
+                for bv_bin in bv_bins.values()
+            ):
+                bin_slug = "/".join(
+                    slug for bv_bin in bv_bins.values()
+                    if (slug := bv_bin.get("slug", None))
+                )
+                logger.warning_once(f"skipping bin: {bin_slug}")
                 continue
 
             # initialize figure and axes
@@ -196,17 +169,24 @@ class PlotAsymmetry(
                 data=True,
             )
 
-            # selector to get current bin
+            # construct selectors for slicing histogram to get current bin
             bin_selectors = {}
             for level in self.levels:
-                bin_selectors[level] = {
-                    "category": hist.loc(self.config_inst.get_category(m).name),
-                    vars_[level]["alpha"]: hist.loc(alpha_up - 0.001),
-                    vars_[level]["binning"]["probejet_abseta"]: hist.loc(eta_midp),
+                bin_selectors[level] = bin_selectors_level = {
+                    "category": hist.loc(category),
                 }
-                for bv_bin in bv_bins:
-                    bin_selectors[level][vars_[level]["binning"][bv_bin["var_name"]]] = (
-                        hist.loc(0.5 * (bv_bin["up"] + bv_bin["dn"]))
+                # selectors that are part of branch map
+                for bv_key in self.branch_map_binning_variable_keys:
+                    bin_selectors_level[variable_map[level][bv_key]] = hist.loc(
+                        self.branch_data[bv_key]["loc"],
+                    )
+
+                # selectors that are part of inner loop
+                for bv_key, bv_bin in bv_bins.items():
+                    bin_selectors_level[variable_map[level][bv_key]] = (
+                        hist.loc(category_inst.name)
+                        if bv_key == "category"
+                        else hist.loc(bv_bin["loc"])
                     )
 
             # loop through samples/levels
@@ -240,16 +220,16 @@ class PlotAsymmetry(
 
                 # plot asymmetry distribution
                 plot_xy(
-                    h_sliced.axes[vars_[level]["asymmetry"]].centers,
+                    h_sliced.axes[variable_map[level]["asymmetry"]].centers,
                     h_sliced.values(),
-                    xerr=h_sliced.axes[vars_[level]["asymmetry"]].widths / 2,
+                    xerr=h_sliced.axes[variable_map[level]["asymmetry"]].widths / 2,
                     yerr=np.sqrt(h_sliced.variances()),
                     ax=ax,
                     **plot_kwargs,
                 )
 
                 # plot quantiles as vertical lines
-                hs_in_quantiles = inputs["quantile"][sample][level]
+                hs_in_quantiles = inputs["cut_edges"][sample][level]
                 q_lo = hs_in_quantiles["low"][bin_selectors[level]].value
                 q_up = hs_in_quantiles["up"][bin_selectors[level]].value
                 ax.axvline(q_lo, 0, 0.67, color=plot_kwargs.get("color"), linestyle="--")
@@ -262,18 +242,14 @@ class PlotAsymmetry(
             # texts to display on plot
             annotation_texts = [
                 # category label
-                self.config_inst.get_category(m).label,
-                # alpha bin
-                get_bin_label(self.alpha_variable_inst, (0, alpha_up)),
-                # eta bin
-                get_bin_label(self.binning_variable_insts["probejet_abseta"], (eta_lo, eta_hi)),
+                category_inst.label,
+            ] + [
+                self.branch_data[bv_key]["label"]
+                for bv_key in self.branch_map_binning_variable_keys
+            ] + [
+                bv_bin["label"]
+                for bv_bin in bv_bins.values()
             ]
-
-            # texts for other binning variables
-            for i, bv_bin in enumerate(bv_bins):
-                bin_edges = (bv_bin["dn"], bv_bin["up"])
-                bin_label = get_bin_label(self.binning_variable_insts[bv_bin["var_name"]], bin_edges)
-                annotation_texts.append(bin_label)
 
             # curry function for convenience
             annotate = partial(annotate_corner, ax=ax, loc="upper left")
@@ -286,7 +262,7 @@ class PlotAsymmetry(
                 )
 
             # figure adjustments
-            self.apply_plot_settings(ax=ax, context={"vars": vars_})
+            self.apply_plot_settings(ax=ax, context={"vars": variable_map})
 
             # legend
             ax.legend(**self.plot_settings.get("legend_kwargs", {}))
@@ -296,17 +272,14 @@ class PlotAsymmetry(
                 # base name
                 self.output_prefix,
                 # method
-                m,
-                # alpha
-                get_bin_slug(self.alpha_variable_inst, (0, alpha_up)),
-                # abseta bin
-                get_bin_slug(self.binning_variable_insts["probejet_abseta"], (eta_lo, eta_hi)),
+                category,
+            ] + [
+                self.branch_data[bv_key]["slug"]
+                for bv_key in self.branch_map_binning_variable_keys
+            ] + [
+                bv_bin["slug"]
+                for bv_bin in bv_bins.values()
             ]
-            # other bins
-            for bv_bin in bv_bins:
-                bin_edges = (bv_bin["dn"], bv_bin["up"])
-                bin_slug = get_bin_slug(self.binning_variable_insts[bv_bin["var_name"]], bin_edges)
-                fname_parts.append(bin_slug)
 
             # save plot to file
             self.save_plot("__".join(fname_parts), fig)
