@@ -6,8 +6,6 @@ dijet analysis.
 """
 from __future__ import annotations
 
-from functools import partial
-
 import luigi
 import law
 import order as od
@@ -15,13 +13,10 @@ import order as od
 from columnflow.types import Any
 
 from columnflow.tasks.framework.base import ConfigTask, RESOLVE_DEFAULT
-from columnflow.tasks.framework.mixins import DatasetsProcessesMixin, VariablesMixin
+from columnflow.tasks.framework.mixins import DatasetsProcessesMixin
 from columnflow.tasks.framework.parameters import DerivableInstParameter
 
 from dijet.postprocessing import PostProcessor
-from dijet.util import get_variable_for_level
-
-
 
 
 class DiJetSamplesMixin(ConfigTask):

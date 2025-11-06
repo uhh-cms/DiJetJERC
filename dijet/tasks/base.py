@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import law
 
-from functools import partial
-
 from columnflow.tasks.framework.base import BaseTask, ShiftTask
 from columnflow.tasks.framework.mixins import (
     CalibratorsMixin, SelectorMixin, ReducerMixin, ProducersMixin,
@@ -18,7 +16,6 @@ from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import dev_sandbox, DotDict
 
 from dijet.tasks.mixins import PostProcessorMixin, DiJetSamplesMixin
-from dijet.util import get_variable_for_level
 
 
 class DiJetTask(BaseTask):
