@@ -211,19 +211,6 @@ class HistogramsBaseTask(
         """
         import hist
 
-        # dict storing either variables or their gen-level equivalents
-        # for convenient access
-        # TODO: use post-processor for variable resolution
-        resolve_var = partial(
-            get_variable_for_level,
-            config=self.config_inst,
-            level=level,
-        )
-        vars_ = {
-            "alpha": resolve_var(name=self.alpha_variable),
-            "asymmetry": resolve_var(name=self.asymmetry_variable),
-        }
-
         def flatten_nested_list(nested_list):
             return [item for sublist in nested_list for item in sublist]
 
@@ -242,7 +229,7 @@ class HistogramsBaseTask(
             # TODO: read rebinning factors from config
             # @dsavoiu: might be better to use config binning for now
             # vars_["alpha"]: hist.rebin(5),
-            vars_["asymmetry"]: hist.rebin(2),
+            # vars_["asymmetry"]: hist.rebin(2),
         }]
 
         return h

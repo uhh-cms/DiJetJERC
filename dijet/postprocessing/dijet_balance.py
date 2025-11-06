@@ -77,6 +77,8 @@ dijet_balance = postprocessor(
     },
     # keys of variables used for binning (not extrapolation or response itself)
     binning_var_keys=("abseta", "pt"),
+    # rebinning factor to apply to asymmetry axis
+    trim_tails_asymmetry_rebin_factor=2,
     # total fraction of response distribution to remove symetrically from both
     # ends in order to cut off non-Gaussian tails
     trim_tails_fraction=0.03,
@@ -162,6 +164,13 @@ def trim_tails(
 
     # copy input histogram
     h_in = inputs["hist"].copy(deep=False)
+
+    # rebin asymmetry (TODO: use config binning?)
+    h_in = h_in[{
+        variable_map["asymmetry"]: hist.rebin(
+            self.trim_tails_asymmetry_rebin_factor,
+        ),
+    }]
 
     # resolve axis names and indices
     axis_names = [a.name for a in h_in.axes]
