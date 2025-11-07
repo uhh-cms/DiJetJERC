@@ -7,6 +7,8 @@ Custom tasks to derive JER SF.
 import law
 import order as od
 
+from law.util import flatten
+
 from columnflow.tasks.framework.base import Requirements
 from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import maybe_import
@@ -72,12 +74,17 @@ class Asymmetry(
             # get dataset instance
             dataset_inst = self.config_inst.get_dataset(dataset)
 
-            # variables to pass on to dependent task (including
-            # gen-level variables only for MC)
-            variables_for_histograms = self.postprocessor_inst.variables_func(
-                task=self,
-                dataset_inst=dataset_inst,
-            )
+            # arbitrary struct of multidimensional variables,
+            # organized by level and histogram key
+            variables_for_histograms = self.postprocessor_inst.variables_func(self)
+
+            # get variables as flat list and pass on to dependent task
+            # (including gen-level variables only for MC)
+            variables = []
+            for level in self.levels:
+                if level == "gen" and not dataset_inst.is_mc:
+                    continue
+                variables.extend(flatten(variables_for_histograms[level]))
 
             # register `MergeHistograms` as requirement,
             # setting `variables` by hand
@@ -85,7 +92,7 @@ class Asymmetry(
                 self,
                 dataset=dataset,
                 branch=-1,
-                variables=variables_for_histograms,
+                variables=variables,
             )
 
         return reqs
@@ -119,7 +126,7 @@ class Asymmetry(
     # task implementation
     #
 
-    def _run_impl(self, datasets: list[od.Dataset], level: str, variable: str):
+    def _run_impl(self, datasets: list[od.Dataset], level: str, variables: dict[str]):
         """
         Implementation of asymmetry calculation.
         """
@@ -127,20 +134,23 @@ class Asymmetry(
         if level not in ("gen", "reco"):
             raise ValueError(f"invalid level '{level}', expected one of: gen,reco")
 
-        # load hists and sum over all datasets
-        h_all = []
-        for dataset in datasets:
-            h_in = self.load_histogram(dataset, variable)
-            h_in_reduced = self.reduce_histogram(
-                h_in,
-                self.shift,
-                level,
-            )
-            h_all.append(h_in_reduced)
-        h_all = sum(h_all)
+        # helper function for loading hists and summing over all datasets
+        def prepare_hist(variable):
+            h_all = []
+            for dataset in datasets:
+                h_in = self.load_histogram(dataset, variable)
+                h_in_reduced = self.reduce_histogram(
+                    h_in,
+                    self.shift,
+                    level,
+                )
+                h_all.append(h_in_reduced)
+            return sum(h_all)
 
+        # put inputs into structure expected by post-processor
         hists = {
-            "hist": h_all,
+            hist_key: prepare_hist(var_name)
+            for hist_key, var_name in variables.items()
         }
 
         # run post-processing step for computing trimmed asymmetry
@@ -158,6 +168,7 @@ class Asymmetry(
     def run(self):
         # process histograms for all applicable levels
         sample = self.branch_data.sample
-        for level, variable in self.iter_levels_variables():
-            print(f"computing asymmetries for {sample = !r}, {level = !r}, {variable = !r}")
-            self._run_impl(self.branch_data.datasets, level=level, variable=variable)
+        for level, variables in self.iter_levels_histogram_variables():
+            variables_str = ", ".join(variables.values())
+            print(f"computing asymmetries for {sample = !r}, {level = !r}, variables = {variables_str!r}")
+            self._run_impl(self.branch_data.datasets, level=level, variables=variables)

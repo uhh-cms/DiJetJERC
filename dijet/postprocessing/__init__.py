@@ -190,13 +190,12 @@ class PostProcessor(Derivable):
         and should return a sequence of multi-dimensional variables used to fill input histograms.
         The function should accept the following arguments:
             - *task*: the invoking task instance;
-            - *dataset_inst*: an :py:class:`od.Dataset` instance
 
         The decorator does not return the wrapped function.
         """
         cls.variables_func = func
 
-    def variables_func(self, task: law.Task, dataset_inst: od.Dataset) -> None:
+    def variables_func(self, task: law.Task) -> None:
         """
         Default variables function.
         """

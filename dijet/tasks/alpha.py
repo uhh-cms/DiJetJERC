@@ -89,7 +89,7 @@ class AlphaExtrapolation(
     # task implementation
     #
 
-    def _run_impl(self, datasets: list[od.Dataset], level: str, variable: str):
+    def _run_impl(self, datasets: list[od.Dataset], level: str):
         """
         Implementation of width extrapolation from asymmetry distributions.
         """
@@ -101,6 +101,7 @@ class AlphaExtrapolation(
         h_asyms = self.load_input("asym_cut", level=level)
         h_nevts = self.load_input("nevt", level=level)
 
+        # put inputs into structure expected by post-processor
         hists = {
             "asym_cut": h_asyms,
             "nevt": h_nevts,
@@ -129,6 +130,6 @@ class AlphaExtrapolation(
     def run(self):
         # process histograms for all applicable levels
         sample = self.branch_data.sample
-        for level, variable in self.iter_levels_variables():
-            print(f"performing alpha extrapolation for {sample = }, {level = }, {variable = }")
-            self._run_impl(self.branch_data.datasets, level=level, variable=variable)
+        for level, _ in self.iter_levels_histogram_variables():
+            print(f"performing alpha extrapolation for {sample = }, {level = }")
+            self._run_impl(self.branch_data.datasets, level=level)

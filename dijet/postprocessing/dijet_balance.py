@@ -75,6 +75,10 @@ dijet_balance = postprocessor(
             "asymmetry": "dijets_asymmetry_gen",  # TODO: rename to response
         },
     },
+    # keys to use for multidimensional histogram vars
+    input_histograms={
+        "hist": ("alpha", "abseta", "pt", "asymmetry"),
+    },
     # keys of variables used for binning (not extrapolation or response itself)
     binning_var_keys=("abseta", "pt"),
     # rebinning factor to apply to asymmetry axis
@@ -94,25 +98,23 @@ dijet_balance = postprocessor(
 
 
 @dijet_balance.variables
-def dijet_balance_variables(self: PostProcessor, task: law.Task, dataset_inst: od.Dataset):
+def dijet_balance_variables(self: PostProcessor, task: law.Task):
     """
     Compute multidimensional variables used for filling input histograms.
     """
-    variables = set()
-
-    # determine valid levels
-    levels = {"reco"}
-    if dataset_inst.is_mc:
-        levels.add("gen")
-
     # compute multi-dimensional input variables
     # from variable map and level information
-    for level in levels:
-        single_variables = self.variable_map[level].values()
-        variables.add("-".join(single_variables))
+    hist_vars = {}
+    for level in self.variable_map:
+        hist_vars[level] = hist_vars_level = {}
+        for hist_key, hist_var_keys in self.input_histograms.items():
+            hist_vars_level[hist_key] = "-".join(
+                self.variable_map[level][key]
+                for key in hist_var_keys
+            )
 
     # return variables
-    return variables
+    return hist_vars
 
 
 #
