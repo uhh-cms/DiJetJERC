@@ -15,7 +15,7 @@ from columnflow.tasks.external import BundleExternalFiles
 from dijet.tasks.sf import SF
 from dijet.plotting.base import PlottingBaseTask
 from dijet.plotting.util import annotate_corner, plot_xy
-from dijet.util import product_dict
+from dijet.util import product_dict, inflate_dict
 
 logger = law.logger.get_logger(__name__)
 
@@ -43,9 +43,6 @@ class PlotSF(
     # upstream workflow
     input_task_cls = SF
 
-    # keys for looking up input task results
-    input_keys = ("sf",)
-
     # plot file names will start with this
     output_prefix = "sf"
 
@@ -63,7 +60,15 @@ class PlotSF(
     # which variable keys to use for constructing branch map
     branch_map_binning_variable_keys = ("abseta",)
 
+    #
+    # methods required by law
+    #
+
     def requires(self):
+        """
+        Include external files bundle in requirements (for plotting JER SF
+        from correctionlib files)
+        """
         deps = super().requires()
 
         # add external files requirement
@@ -75,7 +80,11 @@ class PlotSF(
     # helper methods for handling task inputs/outputs
     #
 
-    def load_input(self, key: str):
+    def load_input(self, input_key: str):
+        """
+        Load a single input from a pickle file.
+        """
+        # map of input task branch to collection of output targets
         input_collection = self.input()["input_task"]["collection"]
         coll_keys = [
             coll_key
@@ -85,12 +94,17 @@ class PlotSF(
             raise RuntimeError(
                 f"found {len(coll_keys)} input collections, expected 1",
             )
-        return input_collection[coll_keys[0]][key].load(formatter="pickle")
+
+        # retrieve target for input key
+        input_target = input_collection[coll_keys[0]][input_key]
+
+        # load pickle file
+        return input_target.load(formatter="pickle")
 
     def load_inputs(self):
         return {
-            key: self.load_input(key)
-            for key in self.input_keys
+            input_key: self.load_input(input_key)
+            for input_key in self.input_keys
         }
 
     #
@@ -105,7 +119,7 @@ class PlotSF(
         # for convenient access
         variable_map = self.postprocessor_inst.variable_map["reco"]
 
-        # prepare inputs (clean nans)
+        # helper function for input preparation (clean nans)
         def _prepare_input(histogram):
             # map `nan` values to zero
             v = histogram.view()
@@ -113,7 +127,12 @@ class PlotSF(
             v.variance = np.nan_to_num(v.variance, nan=0.0)
             # return prepared histogram
             return histogram
+
+        # iteratively apply preparation to nested input dict
         inputs = law.util.map_struct(_prepare_input, raw_inputs)
+
+        # expand dot-separated keys to multi-level
+        inputs = inflate_dict(inputs)
 
         # load correction object for official JER SF
         # TODO: make optional
@@ -130,17 +149,29 @@ class PlotSF(
                 return
             for k, v in d.items():
                 yield from _iter_flat(v)
-        ref_object = next(_iter_flat(inputs["sf"]))
 
-        # a mapping of variable keys to lists o
+        # retrieve response configuration
+        response_key = self.postprocessor_inst.calc_jer_main_response
+        response_cfg = self.postprocessor_inst.responses[response_key]
+
+        # get binning information from first histogram object
+        # (assume identical binning for all)
+        ref_object = next(_iter_flat(inputs[response_key]["jer_sf"]))
+
+        # variable key corresponsing to response distribution
+        response_var_key = response_cfg["response_var_key"]
+
+        # a mapping of variable keys to lists of
         # dicts, each containing information about one bin
         # in the corresponding variable (excluding variables
         # that are already part of the branch map)
-        bv_var_keys = set(variable_map) - set(self.branch_map_binning_variable_keys) - {
-            "asymmetry",
-            "alpha",
-            "pt",
-        }
+        bv_var_keys = (
+            set(response_cfg["all_var_keys"]) -
+            set(self.branch_map_binning_variable_keys) -
+            {self.postprocessor_inst.extrapolation_var_key} -
+            {response_var_key} -
+            {"pt"}
+        )
         bv_bin_lists: dict[list[dict]] = self._get_filtered_variable_bins(
             variable_map,
             bv_var_keys,
@@ -180,17 +211,17 @@ class PlotSF(
                 data=True,
             )
 
-            # selector to get current bin
+            # construct selectors for slicing histogram to get current bin
             bin_selector = {
                 "category": hist.loc(category),
             }
-            # axes that are part of branch map
+            # selectors that are part of branch map
             for bv_key in self.branch_map_binning_variable_keys:
                 bin_selector[variable_map[bv_key]] = hist.loc(
                     self.branch_data[bv_key]["loc"],
                 )
 
-            # axes that are part of inner loop
+            # selectors that are part of inner loop
             for bv_key, bv_bin in bv_bins.items():
                 bin_selector[variable_map[bv_key]] = (
                     hist.loc(category_inst.name)
@@ -199,7 +230,7 @@ class PlotSF(
                 )
 
             # get input histogram for widths
-            h_in = inputs["sf"]
+            h_in = inputs[response_key]["jer_sf"]
             h_sliced = h_in[bin_selector]
 
             # plot asymmetry distribution
@@ -278,8 +309,10 @@ class PlotSF(
 
             # compute plot filename
             fname_parts = [
-                # base name
+                # output prefix from task
                 self.output_prefix,
+                # name of response
+                response_key,
                 # method
                 category,
             ] + [

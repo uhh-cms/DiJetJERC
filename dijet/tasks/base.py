@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import law
 
-from law.util import flatten
-
 from columnflow.tasks.framework.base import BaseTask, ShiftTask
 from columnflow.tasks.framework.mixins import (
     CalibratorsMixin, SelectorMixin, ReducerMixin, ProducersMixin,
@@ -45,7 +43,6 @@ class HistogramsBaseTask(
 
     # declare output as a nested sibling file collection
     output_collection_cls = law.NestedSiblingFileCollection
-    output_base_keys = ()
     resolution_task_cls = MergeHistograms
     single_config = True
 
@@ -57,6 +54,7 @@ class HistogramsBaseTask(
     # law parameters
     #
 
+    # TODO: implement in post-processor?
     levels = law.CSVParameter(
         default=("reco", "gen"),
         description="comma-separated list of 'reco', 'gen', or both, indicating whether to "
@@ -80,24 +78,6 @@ class HistogramsBaseTask(
             return self.levels
         else:
             return [level for level in self.levels if self.branch_data.is_mc or level != "gen"]
-
-    def iter_levels_histogram_variables(self, levels: list[str] | None = None):
-        """
-        Generator yielding tuples of the form (level, histogram_variables), with
-        *level* being either 'reco' for reconstruction-level or 'gen' for gen-level,
-        and *histogram_variables* being a structure returned by the post-processor's
-        `variables_func` for that level. An *levels* argument can be provided to restrict
-        which levels are returned (e.g. gen-level in MC).
-        """
-        levels_ = levels or self.valid_levels
-
-        # arbitrary struct of multidimensional variables,
-        # organized by level and histogram key
-        variables_for_histograms = self.postprocessor_inst.variables_func(self)
-
-        # yield level-histvars pairs one by one
-        for level in levels_:
-            yield (level, variables_for_histograms[level])
 
     def create_branch_map(self):
         """

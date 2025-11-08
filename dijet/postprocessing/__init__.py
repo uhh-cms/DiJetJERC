@@ -118,8 +118,16 @@ class PostProcessor(Derivable):
             if name in cls.steps:
                 raise ValueError(f"post-processing step '{name}' already registered")
 
-            expanded_inputs = {law.util.brace_expand(input_) for input_ in inputs}
-            expanded_outputs = {law.util.brace_expand(output) for output in outputs}
+            expanded_inputs = {
+                input_
+                for input_spec in inputs
+                for input_ in law.util.brace_expand(input_spec)
+            }
+            expanded_outputs = {
+                output
+                for output_spec in outputs
+                for output in law.util.brace_expand(output_spec)
+            }
 
             cls.steps[name] = DotDict.wrap({
                 "func": func,
@@ -246,26 +254,11 @@ class PostProcessor(Derivable):
         if (step_dict := self.steps.get(step, None)) is None:
             raise ValueError(f"unknown post-processing step '{step}'")
 
-        def get_nested_entry(input_dict: dict, key: tuple[str] | str):
-            # split string key by "." to get consecutive fields to check
-            if isinstance(key, str):
-                key = key.split(".")
-
-            # check presence of nested fields
-            val = input_dict
-            for key in keys:
-                # return early if not found
-                if (val := val.get(key, None)) is None:
-                    return None
-
-            # return value
-            return val
-
         # check inputs
         missing_inputs = {
             input_
             for input_ in (step_dict["inputs"] or [])
-            if get_nested_entry(inputs, input_) is None
+            if input_ not in inputs
         }
         if missing_inputs:
             missing_inputs_str = ",".join(sorted(missing_inputs))
@@ -273,14 +266,25 @@ class PostProcessor(Derivable):
                 f"post-processing step '{step}' missing expected inputs: {missing_inputs_str}",
             )
 
+        # add kwargs from decorator call
+        kwargs = {
+            **{
+                k: v
+                for k, v in step_dict.items()
+                if k not in {"name", "func", "inputs", "outputs"}
+            },
+            **kwargs,
+        }
+
         # run post-processing step
+        inputs = DotDict.wrap(inputs)
         outputs = step_dict["func"](self, task, inputs, **kwargs)
 
         # check outputs
         missing_outputs = {
             output
             for output in (step_dict["outputs"] or [])
-            if get_nested_entry(outputs, output) is None
+            if output not in outputs
         }
         if missing_outputs:
             missing_outputs_str = ",".join(sorted(missing_outputs))
@@ -289,7 +293,7 @@ class PostProcessor(Derivable):
             )
 
         # return outputs
-        return outputs
+        return DotDict.wrap(outputs)
 
 
 postprocessor = PostProcessor.postprocessor

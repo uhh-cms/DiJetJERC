@@ -14,6 +14,7 @@ from columnflow.tasks.histograms import MergeHistograms
 from columnflow.util import maybe_import
 
 from dijet.tasks.base import HistogramsBaseTask
+from dijet.util import deflate_dict
 
 ak = maybe_import("awkward")
 hist = maybe_import("hist")
@@ -39,14 +40,13 @@ class Asymmetry(
     # how to create the branch map
     branching_type = "separate"
 
+    # post-processor steps
+    postprocessor_steps = ("trim_tails",)
+
     # upstream requirements
     reqs = Requirements(
         MergeHistograms=MergeHistograms,
     )
-
-    @property
-    def output_base_keys(self):
-        return self.postprocessor_inst.steps["trim_tails"].outputs
 
     #
     # methods required by law
@@ -58,13 +58,16 @@ class Asymmetry(
         directory, which is determined by `store_parts`.
         """
         return {
-            key: {
-                self.branch_data.sample: {
-                    level: self.target(f"{key}_{level}.pickle")
+            # add top-level sample key (for easier output lookup by plotting task)
+            self.branch_data.sample: {
+                # key indicating result produced by processing step
+                output_key: {
+                    # level: 'gen' (MC-only) or 'reco'
+                    level: self.target(f"{'__'.join(output_key.split('.'))}__{level}.pickle")
                     for level in self.valid_levels
-                },
-            }
-            for key in self.output_base_keys
+                }
+                for output_key in self.output_keys
+            },
         }
 
     def requires(self):
@@ -106,6 +109,26 @@ class Asymmetry(
     # helper methods for handling task inputs/outputs
     #
 
+    @property
+    def input_keys(self):
+        """
+        Get input keys from first post-processor step
+        """
+        if not self.postprocessor_steps:
+            return set()
+        step = self.postprocessor_steps[0]
+        return set(self.postprocessor_inst.steps[step]["inputs"])
+
+    @property
+    def output_keys(self):
+        """
+        Collect output keys from all postprocessor steps.
+        """
+        output_keys = set()
+        for step in self.postprocessor_steps:
+            output_keys |= set(self.postprocessor_inst.steps[step]["outputs"])
+        return output_keys
+
     def load_histogram(self, dataset: str, variable: str):
         """
         Load histogram for a single `dataset` and `variable`
@@ -114,19 +137,36 @@ class Asymmetry(
         histogram = self.input()[dataset]["collection"][0]["hists"].targets[variable].load(formatter="pickle")
         return histogram
 
-    def dump_output(self, key: str, level: str, obj: object):
-        if key not in self.output_base_keys:
-            raise ValueError(
-                f"output key '{key}' not registered in "
-                f"`{self.task_family}.output_base_keys`",
-            )
-        self.output()[key][self.branch_data.sample][level].dump(obj, formatter="pickle")
+    def dump_output(self, output_key: str, level: str, obj: object):
+        """
+        Helper function for writing output to pickle file at the appropriate path.
+        """
+
+        # details of path in nested output dict
+        path = [
+            ("sample", self.branch_data.sample),
+            ("output_key", output_key),
+            ("level", level),
+        ]
+
+        # iteratively get target from nested output dict
+        output = self.output()
+        for key_label, key in path:
+            try:
+                output = output[key]
+            except KeyError:
+                raise KeyError(
+                    f"no output registered for {key_label} '{key}'",
+                )
+
+        # write the output
+        output.dump(obj, formatter="pickle")
 
     #
     # task implementation
     #
 
-    def _run_impl(self, datasets: list[od.Dataset], level: str, variables: dict[str]):
+    def _run_impl(self, datasets: list[od.Dataset], level: str):
         """
         Implementation of asymmetry calculation.
         """
@@ -134,41 +174,60 @@ class Asymmetry(
         if level not in ("gen", "reco"):
             raise ValueError(f"invalid level '{level}', expected one of: gen,reco")
 
-        # helper function for loading hists and summing over all datasets
-        def prepare_hist(variable):
+        # collect outputs here
+        hists = {}
+
+        # read histograms for input responses
+        for response_key, response_cfg in self.postprocessor_inst.responses.items():
+            # skip derived responses
+            if response_cfg.get("derived", False):
+                continue
+            # retrieve histogram variable
+            hist_var = response_cfg["hist_vars"][level]
+
+            # load input hists
             h_all = []
             for dataset in datasets:
-                h_in = self.load_histogram(dataset, variable)
+                h_in = self.load_histogram(dataset, hist_var)
                 h_in_reduced = self.reduce_histogram(
                     h_in,
                     self.shift,
                     level,
                 )
                 h_all.append(h_in_reduced)
-            return sum(h_all)
 
-        # put inputs into structure expected by post-processor
-        hists = {
-            hist_key: prepare_hist(var_name)
-            for hist_key, var_name in variables.items()
-        }
+            # sum over all datasets
+            h_sum = sum(h_all)
 
-        # run post-processing step for computing trimmed asymmetry
-        hists.update(self.postprocessor_inst.run_step(
-            task=self,
-            step="trim_tails",
-            inputs=hists,
-            level=level,
-        ))
+            # put inputs into structure expected by post-processor
+            hists[response_key] = {
+                "dist": h_sum,
+            }
 
-        # store outputs in pickle file for further processing
-        for key in self.output_base_keys:
-            self.dump_output(key, level=level, obj=hists[key])
+        # deflate nested input dict before passing
+        # to postprocessor
+        hists = deflate_dict(hists, max_depth=2)
+
+        # run post-processing steps
+        for step in self.postprocessor_steps:
+            hists.update(self.postprocessor_inst.run_step(
+                task=self,
+                step=step,
+                inputs=hists,
+                level=level,
+            ))
+
+        # return
+        return hists
 
     def run(self):
         # process histograms for all applicable levels
         sample = self.branch_data.sample
-        for level, variables in self.iter_levels_histogram_variables():
-            variables_str = ", ".join(variables.values())
-            print(f"computing asymmetries for {sample = !r}, {level = !r}, variables = {variables_str!r}")
-            self._run_impl(self.branch_data.datasets, level=level, variables=variables)
+        for level in self.valid_levels:
+            print(f"computing asymmetry for {sample = !r}, {level = !r}")
+            results = self._run_impl(self.branch_data.datasets, level=level)
+
+            print("writing outputs")
+            for output_key in self.output_keys:
+                result = results[output_key]
+                self.dump_output(output_key, level, result)

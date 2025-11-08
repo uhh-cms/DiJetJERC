@@ -3,12 +3,12 @@
 """
 Custom tasks to derive JER SF.
 """
+from __future__ import annotations
 
 import law
-import order as od
 
-from columnflow.util import maybe_import
 from columnflow.tasks.framework.base import Requirements
+from columnflow.util import maybe_import
 
 from dijet.tasks.base import HistogramsBaseTask
 from dijet.tasks.asymmetry import Asymmetry
@@ -40,18 +40,13 @@ class AlphaExtrapolation(
     # how to create the branch map
     branching_type = "separate"
 
+    # post-processor steps
+    postprocessor_steps = ("extract_width", "extrapolate_width")
+
     # upstream requirements
     reqs = Requirements(
         Asymmetry=Asymmetry,
     )
-
-    @property
-    def output_base_keys(self):
-        return {
-            output
-            for step in ("extract_width", "extrapolate_width")
-            for output in self.postprocessor_inst.steps[step].outputs
-        }
 
     #
     # methods required by law
@@ -74,22 +69,60 @@ class AlphaExtrapolation(
     # helper methods for handling task inputs/outputs
     #
 
-    def load_input(self, key: str, level: str):
-        return self.input()[key][self.branch_data.sample][level].load(formatter="pickle")
+    @property
+    def input_keys(self):
+        """
+        Get input keys from first post-processor step
+        """
+        if not self.postprocessor_steps:
+            return set()
+        step = self.postprocessor_steps[0]
+        return set(self.postprocessor_inst.steps[step]["inputs"])
 
-    def dump_output(self, key: str, level: str, obj: object):
-        if key not in self.output_base_keys:
-            raise ValueError(
-                f"output key '{key}' not registered in "
-                f"`{self.task_family}.output_base_keys`",
-            )
-        self.output()[key][self.branch_data.sample][level].dump(obj, formatter="pickle")
+    @property
+    def output_keys(self):
+        """
+        Collect output keys from all postprocessor steps.
+        """
+        output_keys = set()
+        for step in self.postprocessor_steps:
+            output_keys |= set(self.postprocessor_inst.steps[step]["outputs"])
+        return output_keys
+
+    def load_input(self, input_key: str, level: str):
+        sample = self.branch_data.sample
+        return self.input()[sample][input_key][level].load(formatter="pickle")
+
+    def dump_output(self, output_key: str, level: str, obj: object):
+        """
+        Helper function for writing output to pickle file at the appropriate path.
+        """
+
+        # details of path in nested output dict
+        path = [
+            ("sample", self.branch_data.sample),
+            ("output_key", output_key),
+            ("level", level),
+        ]
+
+        # iteratively get target from nested output dict
+        output = self.output()
+        for key_label, key in path:
+            try:
+                output = output[key]
+            except KeyError:
+                raise KeyError(
+                    f"no output registered for {key_label} '{key}'",
+                )
+
+        # write the output
+        output.dump(obj, formatter="pickle")
 
     #
     # task implementation
     #
 
-    def _run_impl(self, datasets: list[od.Dataset], level: str):
+    def _run_impl(self, level: str):
         """
         Implementation of width extrapolation from asymmetry distributions.
         """
@@ -97,39 +130,32 @@ class AlphaExtrapolation(
         if level not in ("gen", "reco"):
             raise ValueError(f"invalid level '{level}', expected one of: gen,reco")
 
-        # load asymmetry histograms and number of events
-        h_asyms = self.load_input("asym_cut", level=level)
-        h_nevts = self.load_input("nevt", level=level)
-
-        # put inputs into structure expected by post-processor
+        # load inputs
         hists = {
-            "asym_cut": h_asyms,
-            "nevt": h_nevts,
+            input_key: self.load_input(input_key, level)
+            for input_key in self.input_keys
         }
 
-        # run post-processing step for extracting distributionwidths
-        hists.update(self.postprocessor_inst.run_step(
-            task=self,
-            step="extract_width",
-            inputs=hists,
-            level=level,
-        ))
+        # run post-processing steps
+        for step in self.postprocessor_steps:
+            hists.update(self.postprocessor_inst.run_step(
+                task=self,
+                step=step,
+                inputs=hists,
+                level=level,
+            ))
 
-        # run post-processing step for extrapolating distribution widths
-        hists.update(self.postprocessor_inst.run_step(
-            task=self,
-            step="extrapolate_width",
-            inputs=hists,
-            level=level,
-        ))
-
-        # store outputs in pickle file for further processing
-        for key in self.output_base_keys:
-            self.dump_output(key, level=level, obj=hists[key])
+        # return
+        return hists
 
     def run(self):
         # process histograms for all applicable levels
         sample = self.branch_data.sample
-        for level, _ in self.iter_levels_histogram_variables():
-            print(f"performing alpha extrapolation for {sample = }, {level = }")
-            self._run_impl(self.branch_data.datasets, level=level)
+        for level in self.valid_levels:
+            print(f"performing width extraction and alpha extrapolation for {sample = !r}, {level = !r}")
+            results = self._run_impl(level=level)
+
+            print("writing outputs")
+            for output_key in self.output_keys:
+                result = results[output_key]
+                self.dump_output(output_key, level, result)

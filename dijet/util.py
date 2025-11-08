@@ -1,4 +1,5 @@
 # coding: utf-8
+from __future__ import annotations
 
 import order as od
 
@@ -93,3 +94,90 @@ def iter_bins(bin_edges, **add_kwargs):
     # yield bin dict
     for i, (e_lo, e_hi) in enumerate(zip(bin_edges[:-1], bin_edges[1:])):
         yield {"index": i, "lo": e_lo, "hi": e_hi, **add_kwargs}
+
+
+def get_nested_entry(input_dict: dict, key: tuple[str] | str, on_missing: str = "raise"):
+    # validate inputs
+    if on_missing not in ("raise", "return_none"):
+        raise ValueError(
+            f"invalid value {on_missing=!r}, expecting one of: raise,return_none",
+        )
+
+    # split string key by "." to get consecutive fields to check
+    if isinstance(key, str):
+        key = key.split(".")
+
+    # check presence of nested fields
+    val = input_dict
+    for i_key, key_ in enumerate(key):
+        # return early if not found
+        if (val := val.get(key_, None)) is None:
+            if on_missing == "raise":
+                missing_key_str = ".".join(key[:i_key + 1])
+                raise KeyError(missing_key_str)
+            elif on_missing == "return_none":
+                return None
+
+    # return value
+    return val
+
+def deflate_dict(input_dict: dict, sep: str = ".", max_depth: int | None = None):
+    """
+    Deflate a nested dictionary to one containing a single level of keys.
+
+    The returned dictionary will have keys of the form ``level_1.level_2.[...].level_N``,
+    where ``level_i`` refer to the keys applied at the *i*-th level, e.g.:
+    ```
+    flat_dict["level_1.level_2"] == input_dict["level_1"]["level_2"]
+    ```
+
+    If given, *max_depth* indicates the maximum number of key levels to merge, starting
+    from the top level. A *max_depth* of 1 will leave the input dict unchanged.
+    """
+    flat_dict = {}
+
+    def _flatten(structured_dict: dict, prev_keys: list[str] | None = None):
+        prev_keys = prev_keys or []
+        depth = len(prev_keys)
+        for key, value in structured_dict.items():
+            if isinstance(value, dict) and (max_depth is None or depth < max_depth - 1):
+                _flatten(value, prev_keys + [key])
+                continue
+
+            flat_key = sep.join(prev_keys + [key])
+            flat_dict[flat_key] = value
+
+    _flatten(input_dict)
+
+    return flat_dict
+
+def inflate_dict(flat_dict: dict):
+    """
+    Inflate a single-level dictionary with keys of the form 'level_1.level_2.[...]'.
+
+    The returned dict will have a nested structure with keys indicated by
+    the 'level_i' substrings, e.g.:
+    ```
+    input_dict["level_1"]["level_2"] == flat_dict["level_1.level_2"]
+    ```
+    """
+    nested_dict = {}
+
+    for key, value in flat_dict.items():
+        key_seq = key.split(".")
+
+        inner_dict = nested_dict
+        for key_ in key_seq[:-1]:
+            if key_ not in inner_dict:
+                inner_dict[key_] = {}
+
+            inner_dict = inner_dict[key_]
+
+        if key_seq[-1] in inner_dict:
+            raise ValueError(
+                f"direct value provided for nested key '{key}'",
+            )
+
+        inner_dict[key_seq[-1]] = value
+
+    return nested_dict

@@ -329,6 +329,13 @@ class PlottingBaseTask(
     # helper methods for handling task inputs/outputs
     #
 
+    @property
+    def input_keys(self):
+        """
+        Return all keys to be plotted
+        """
+        return self.requires()["input_task"].output_keys
+
     def save_plot(self, basename: str, fig: object, extensions: tuple[str] | list[str] | None = None):
         for ext in self.file_types:
             target = self.output()["plots"].child(f"{basename}.{ext}", type="f")

@@ -477,3 +477,80 @@ def hist_mean_variance(h: hist.Histogram, axis: str | int = -1) -> hist.Histogra
             ),
         ],
     )
+
+
+def _hist_binop_in_quadrature(
+    op_name: str,
+    hist_a: hist.Histogram,
+    hist_b: hist.Histogram,
+):
+    """
+    Given two identically-binned histograms, return
+    a histogram containing their difference in quadrature,
+    taking error propagation into account.
+    """
+    # fail if shapes are incompatible
+    if hist_a.view().shape != hist_b.view().shape:
+        msg = f"{hist_a.view().shape!r}, {hist_b.view().shape!r}"
+        raise ValueError(
+            f"histograms have incompatible storage shapes: {msg}",
+        )
+
+    # retrieve binary operator function
+    import operator as op
+    if op_name not in ("add", "sub") or (op_func := getattr(op, op_name, None)) is None:
+        raise ValueError(
+            f"invalid or unsupported binary operator: {op_name}",
+        )
+
+    # operate on copies
+    h_a = hist_a.copy()
+    h_b = hist_b.copy()
+
+    # obtain output values by subtracting in quadrature
+    # (replacing imaginary values with zero)
+    values = np.sqrt(np.maximum(
+        op_func(h_a.values()**2, h_b.values()**2),
+        0.0,
+    ))
+
+    # obtain variances from Gaussian error propagation
+    variances = np.nan_to_num(
+        (
+            h_a.variances() * h_a.values()**2 +
+            h_b.variances() * h_b.values()**2
+        ) / values**2,
+        nan=0.0,
+    )
+
+    # save subtracted values back in h_a
+    view = h_a.view()
+    view.value = values
+    view.variance = variances
+
+    # return
+    return h_a
+
+
+def hist_add_in_quadrature(
+    hist_a: hist.Histogram,
+    hist_b: hist.Histogram,
+):
+    """
+    Given two identically-binned histograms, return
+    a histogram containing their sum in quadrature.
+    Variances are obtained via Gaussian error propagation.
+    """
+    return _hist_binop_in_quadrature("add", hist_a, hist_b)
+
+
+def hist_sub_in_quadrature(
+    hist_a: hist.Histogram,
+    hist_b: hist.Histogram,
+):
+    """
+    Given two identically-binned histograms, return
+    a histogram containing their difference in quadrature.
+    Variances are obtained via Gaussian error propagation.
+    """
+    return _hist_binop_in_quadrature("sub", hist_a, hist_b)
