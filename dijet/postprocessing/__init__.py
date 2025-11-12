@@ -107,6 +107,7 @@ class PostProcessor(Derivable):
         func: Callable | None = None,
         inputs: set[str] | None = None,
         outputs: set[str] | None = None,
+        **kwargs,
     ) -> None:
         """
         Decorator to wrap a function *func* that should be registered as a post-processing step. The
@@ -117,10 +118,14 @@ class PostProcessor(Derivable):
             if name in cls.steps:
                 raise ValueError(f"post-processing step '{name}' already registered")
 
+            expanded_inputs = {law.util.brace_expand(input_) for input_ in inputs}
+            expanded_outputs = {law.util.brace_expand(output) for output in outputs}
+
             cls.steps[name] = DotDict.wrap({
                 "func": func,
-                "inputs": inputs,
-                "outputs": outputs,
+                "inputs": expanded_inputs,
+                "outputs": expanded_outputs,
+                **kwargs,
             })
 
             return func
@@ -177,7 +182,7 @@ class PostProcessor(Derivable):
             self._set_configs(configs)
 
         # run setup hook
-        self.setup()
+        self.setup_func()
 
     #
     # required hooks
@@ -205,12 +210,22 @@ class PostProcessor(Derivable):
     # optional hooks
     #
 
-    def setup(self: PostProcessor) -> None:
+    @classmethod
+    def setup(cls, func: Callable | None = None) -> None:
         """
-        Hook that is called after the post-processor has been set up and its :py:attr:`config_insts` were
-        assigned.
+        Decorator to wrap a function *func* that should be registered as :py:meth:`setup_func`.
+        The function is called after the post-processor has been set up and its
+        :py:attr:`config_insts` were assigned.
+
+        The decorator does not return the wrapped function.
         """
-        return
+        cls.setup_func = func
+
+    def setup_func(self) -> None:
+        """
+        Default setup function.
+        """
+        return None
 
     def requires(self: PostProcessor, task: law.Task) -> Any:
         """
@@ -231,11 +246,26 @@ class PostProcessor(Derivable):
         if (step_dict := self.steps.get(step, None)) is None:
             raise ValueError(f"unknown post-processing step '{step}'")
 
+        def get_nested_entry(input_dict: dict, key: tuple[str] | str):
+            # split string key by "." to get consecutive fields to check
+            if isinstance(key, str):
+                key = key.split(".")
+
+            # check presence of nested fields
+            val = input_dict
+            for key in keys:
+                # return early if not found
+                if (val := val.get(key, None)) is None:
+                    return None
+
+            # return value
+            return val
+
         # check inputs
         missing_inputs = {
             input_
             for input_ in (step_dict["inputs"] or [])
-            if input_ not in inputs
+            if get_nested_entry(inputs, input_) is None
         }
         if missing_inputs:
             missing_inputs_str = ",".join(sorted(missing_inputs))
@@ -250,7 +280,7 @@ class PostProcessor(Derivable):
         missing_outputs = {
             output
             for output in (step_dict["outputs"] or [])
-            if output not in outputs
+            if get_nested_entry(outputs, output) is None
         }
         if missing_outputs:
             missing_outputs_str = ",".join(sorted(missing_outputs))
