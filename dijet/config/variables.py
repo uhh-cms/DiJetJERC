@@ -309,7 +309,7 @@ def add_variables(config: od.Config) -> None:
     add_dijet_variable(
         name="dijets_mpfx",
         expression="dijets.mpfx",
-        binning=(100, -1, 1),
+        binning=(200, -1, 1),
         x_title=r"MPFx",
         gen_name="dijets_mpfx_gen",
         gen_expression="dijets.mpfx_gen",

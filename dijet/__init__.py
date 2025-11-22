@@ -8,4 +8,4 @@ from dijet.columnflow_patches import patch_all
 patch_all()
 
 # import custom processing modules
-from dijet.postprocessing import dijet_balance  # noqa
+from dijet.postprocessing import dijet_balance, mpfx  # noqa
