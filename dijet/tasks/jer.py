@@ -156,10 +156,14 @@ class JER(
         response_key = self.postprocessor_inst.calc_jer_main_response
 
         # load extrapolation results
-        input_extp_reco = self.load_input(f"{response_key}.extrapolation", level="reco")
-        input_extp_gen = self.load_input(f"{response_key}.extrapolation", level="gen", sample=self.branch_data.mc_sample)
-        input_width_reco = self.load_input(f"{response_key}.width", level="reco")
-        input_width_gen = self.load_input(f"{response_key}.width", level="gen", sample=self.branch_data.mc_sample)
+        input_extp_reco = self.load_input(
+            f"{response_key}.extrapolation", level="reco")
+        input_extp_gen = self.load_input(
+            f"{response_key}.extrapolation", level="gen", sample=self.branch_data.mc_sample)
+        input_width_reco = self.load_input(
+            f"{response_key}.width", level="reco")
+        input_width_gen = self.load_input(
+            f"{response_key}.width", level="gen", sample=self.branch_data.mc_sample)
 
         # load intercept results into hists
         hists = {

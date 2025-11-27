@@ -15,7 +15,7 @@ from columnflow.util import maybe_import
 from dijet.tasks.alpha import AlphaExtrapolation
 from dijet.plotting.base import PlottingBaseTask
 from dijet.plotting.util import annotate_corner, plot_xy
-from dijet.util import product_dict, inflate_dict
+from dijet.util import product_dict, inflate_dict, iter_flat_dict
 
 logger = law.logger.get_logger(__name__)
 
@@ -133,21 +133,12 @@ class PlotAlphaExtrapolation(
         # expand dot-separated keys to multi-level
         inputs = inflate_dict(inputs)
 
-        # helper function for iterating through a nested
-        # dict in a flat way
-        def _iter_flat(d: dict):
-            if not isinstance(d, dict):
-                yield d
-                return
-            for k, v in d.items():
-                yield from _iter_flat(v)
-
         # go through all response variables and produce plots
         for response_key, response_cfg in self.postprocessor_inst.responses.items():
 
             # get binning information from first histogram object
             # (assume identical binning for all)
-            ref_object = next(_iter_flat(inputs[response_key]["width"]))
+            ref_object = next(iter_flat_dict(inputs[response_key]["width"]))
 
             # variable key corresponsing to response distribution
             response_var_key = response_cfg["response_var_key"]

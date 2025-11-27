@@ -121,6 +121,7 @@ def get_nested_entry(input_dict: dict, key: tuple[str] | str, on_missing: str = 
     # return value
     return val
 
+
 def deflate_dict(input_dict: dict, sep: str = ".", max_depth: int | None = None):
     """
     Deflate a nested dictionary to one containing a single level of keys.
@@ -150,6 +151,7 @@ def deflate_dict(input_dict: dict, sep: str = ".", max_depth: int | None = None)
     _flatten(input_dict)
 
     return flat_dict
+
 
 def inflate_dict(flat_dict: dict):
     """
@@ -181,3 +183,16 @@ def inflate_dict(flat_dict: dict):
         inner_dict[key_seq[-1]] = value
 
     return nested_dict
+
+
+# helper function for iterating through a nested
+# dict in a flat way
+def iter_flat_dict(d: dict):
+    """
+    Iterate through a nested dictionary in a flat way.
+    """
+    if not isinstance(d, dict):
+        yield d
+        return
+    for k, v in d.items():
+        yield from iter_flat_dict(v)

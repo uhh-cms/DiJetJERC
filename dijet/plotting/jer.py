@@ -15,7 +15,7 @@ from columnflow.tasks.external import BundleExternalFiles
 from dijet.tasks.jer import JER
 from dijet.plotting.base import PlottingBaseTask
 from dijet.plotting.util import annotate_corner, plot_xy
-from dijet.util import product_dict, inflate_dict
+from dijet.util import product_dict, inflate_dict, iter_flat_dict
 
 logger = law.logger.get_logger(__name__)
 
@@ -148,22 +148,13 @@ class PlotJER(
         correction_set = load_correction_set(self.requires()["external_files"].files["jet_jerc"])
         correction = correction_set[jer_sf_key]
 
-        # binning information from first histogram object
-        # (assume identical binning for all)
-        def _iter_flat(d: dict):
-            if not isinstance(d, dict):
-                yield d
-                return
-            for k, v in d.items():
-                yield from _iter_flat(v)
-
         # retrieve response configuration
         response_key = self.postprocessor_inst.calc_jer_main_response
         response_cfg = self.postprocessor_inst.responses[response_key]
 
         # get binning information from first histogram object
         # (assume identical binning for all)
-        ref_object = next(_iter_flat(inputs[response_key]["jer"]))
+        ref_object = next(iter_flat_dict(inputs[response_key]["jer"]))
 
         # variable key corresponsing to response distribution
         response_var_key = response_cfg["response_var_key"]
