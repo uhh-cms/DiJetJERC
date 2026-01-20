@@ -1,7 +1,7 @@
 # coding: utf-8
 
 """
-Configuration of the 2018 DiJet analysis.
+Configuration of the Run 3 DiJet analysis.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from scinum import Number
 import order as od
 
 from columnflow.util import DotDict
+from columnflow.cms_util import CATInfo, CATSnapshot
 from columnflow.config_util import get_root_processes_from_campaign
 from dijet.config.categories import add_categories
 from dijet.config.variables import add_variables, add_uhh2_synch_variables
@@ -36,17 +37,15 @@ def add_config(
     limit_dataset_files: int | None = None,
 ) -> od.Config:
     # validations
-    assert campaign.x.year in [2016, 2017, 2018]
-    if campaign.x.year == 2016:
-        assert campaign.x.vfp in ["pre", "post"]
+    assert campaign.x.year in [2022, 2023, 2024, 2025]
 
     # gather campaign data
     year = campaign.x.year
     year2 = year % 100
-    corr_postfix = f"{campaign.x.vfp}VFP" if year == 2016 else ""
+    corr_postfix = ""
 
-    if year != 2017:
-        raise NotImplementedError("[ERROR] Only 2017 campaign is fully implemented, since they are stored locally")
+    if year != 2024:
+        raise NotImplementedError("[ERROR] Only 2024 campaign is fully implemented.")
 
     # get all root processes
     procs = get_root_processes_from_campaign(campaign)
@@ -67,19 +66,22 @@ def add_config(
     # add datasets we need to study
     dataset_names = [
         # DATA
-        "data_jetht_b",
-        "data_jetht_c",
-        "data_jetht_d",
-        "data_jetht_e",
-        "data_jetht_f",
+        "data_jetmet_b",
+        "data_jetmet_c",
+        "data_jetmet_d",
+        "data_jetmet_e",
+        "data_jetmet_f",
+        "data_jetmet_g",
+        "data_jetmet_h",
+        "data_jetmet_i",
         # QCD
-        "qcd_ht50to100_madgraph",
         "qcd_ht100to200_madgraph",
-        "qcd_ht200to300_madgraph",
-        "qcd_ht300to500_madgraph",
-        "qcd_ht500to700_madgraph",
-        "qcd_ht700to1000_madgraph",
-        "qcd_ht1000to1500_madgraph",
+        "qcd_ht200to400_madgraph",
+        "qcd_ht400to600_madgraph",
+        "qcd_ht600to800_madgraph",
+        "qcd_ht800to1000_madgraph",
+        "qcd_ht1000to1200_madgraph",
+        "qcd_ht1200to1500_madgraph",
         "qcd_ht1500to2000_madgraph",
         "qcd_ht2000toinf_madgraph",
     ]
@@ -102,9 +104,9 @@ def add_config(
                 ht_max = math.inf if g[1] == "inf" else int(g[1])
                 dataset.x.ht_range = (ht_min, ht_max)
 
-        # mark datasets with missing dijet trigger info
-        if dataset.name in ("data_jetht_b", "data_jetht_c"):
-            dataset.add_tag("missing_dijet_triggers")
+        # # mark datasets with missing dijet trigger info
+        # if dataset.name in ("data_jetht_b", "data_jetht_c"):
+        #     dataset.add_tag("missing_dijet_triggers")
 
     # default calibrator, selector, producer, ml model and inference model
     cfg.x.default_calibrator = "skip_jecunc"
@@ -231,35 +233,39 @@ def add_config(
     }
 
     # lumi values in inverse pb
-    # https://twiki.cern.ch/twiki/bin/view/CMS/LumiRecommendationsRun2?rev=2#Combination_and_correlations
-    if year == 2016:
-        cfg.x.luminosity = Number(36310, {
-            "lumi_13TeV_2016": 0.01j,
-            "lumi_13TeV_correlated": 0.006j,
+    # https://twiki.cern.ch/twiki/bin/viewauth/CMS/PdmVRun3Analysis
+    if year == 2022 and campaign.x.EE == "pre":
+        cfg.x.luminosity = Number(7_980.4541, {
+            "lumi_13p6TeV_2022": 0.014j,
         })
-    elif year == 2017:
-        cfg.x.luminosity = Number(41480, {
-            "lumi_13TeV_2017": 0.02j,
-            "lumi_13TeV_1718": 0.006j,
-            "lumi_13TeV_correlated": 0.009j,
+    elif year == 2022 and campaign.x.EE == "post":
+        cfg.x.luminosity = Number(26_671.6097, {
+            "lumi_13p6TeV_2022": 0.014j,
         })
-    elif year == 2018:
-        cfg.x.luminosity = Number(59830, {
-            "lumi_13TeV_2017": 0.015j,
-            "lumi_13TeV_1718": 0.002j,
-            "lumi_13TeV_correlated": 0.02j,
+    elif year == 2023 and campaign.x.BPix == "pre":
+        cfg.x.luminosity = Number(18_062.6591, {
+            "lumi_13p6TeV_2023": 0.013j,
         })
+    elif year == 2023 and campaign.x.BPix == "post":
+        cfg.x.luminosity = Number(9_693.1301, {
+            "lumi_13p6TeV_2023": 0.013j,
+        })
+    elif year == 2024:
+        cfg.x.luminosity = Number(109_080.0, {  # TODO: update number
+            "lumi_13p6TeV_2024": 0.013j,
+        })
+        # cfg.x.luminosity = Number(995.223558512, {
+        #     "lumi_13p6TeV_2024": 0.013j,
+        # })
     else:
         raise NotImplementedError(f"Luminosity for year {year} is not defined.")
 
     # MET filters
-    # TODO: Different MET filters for different years
-    # https://twiki.cern.ch/twiki/bin/view/CMS/MissingETOptionalFiltersRun2?rev=158#2018_2017_data_and_MC_UL
+    # TODO: Different MET filters for different years?
+    # https://twiki.cern.ch/twiki/bin/viewauth/CMS/MissingETOptionalFiltersRun2#Run_3_recommendations
     cfg.x.met_filters = {
         "Flag.goodVertices",
         "Flag.globalSuperTightHalo2016Filter",
-        "Flag.HBHENoiseFilter",
-        "Flag.HBHENoiseIsoFilter",
         "Flag.EcalDeadCellTriggerPrimitiveFilter",
         "Flag.BadPFMuonFilter",
         "Flag.BadPFMuonDzFilter",
@@ -276,15 +282,15 @@ def add_config(
 
     # jec configuration
     # https://twiki.cern.ch/twiki/bin/view/CMS/JECDataMC?rev=201
-    jerc_postfix = "APV" if year == 2016 and campaign.x.vfp == "post" else ""
+    jerc_postfix = ""
     cfg.x.jec = DotDict.wrap({
         "Jet": {
-            "campaign": f"Summer19UL{year2}{jerc_postfix}",
-            "version": {2016: "V7", 2017: "V5", 2018: "V5"}[year],
-            "jet_type": "AK4PFchs",
+            "campaign": f"Summer24Prompt{year2}{jerc_postfix}",
+            "version": {2024: "V1"}[year],
+            "jet_type": "AK4PFPuppi",
             "levels": ["L1FastJet", "L2Relative", "L2L3Residual", "L3Absolute"],
             "levels_for_type1_met": ["L1FastJet"],
-            "data_per_era": True,
+            "data_per_era": False,
             "uncertainty_sources": [
                 "Total",
             ],
@@ -295,9 +301,9 @@ def add_config(
     # https://twiki.cern.ch/twiki/bin/view/CMS/JetResolution?rev=107
     cfg.x.jer = DotDict.wrap({
         "Jet": {
-            "campaign": f"Summer19UL{year2}{jerc_postfix}",
-            "version": "JR" + {2016: "V3", 2017: "V2", 2018: "V2"}[year],
-            "jet_type": "AK4PFchs",
+            "campaign": "Summer23BPixPrompt23_RunD",
+            "version": "JR" + {2024: "V1"}[year],
+            "jet_type": "AK4PFPuppi",
         },
     })
 
@@ -348,7 +354,7 @@ def add_config(
     # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL16postVFP?rev=8
     # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL17?rev=15
     # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL17?rev=17
-    btag_key = f"2016{campaign.x.vfp}" if year == 2016 else year
+    btag_key = "2016post"  # TODO: adapt to 2024
     cfg.x.btag_working_points = DotDict.wrap({
         "deepjet": {
             "loose": {"2016pre": 0.0508, "2016post": 0.0480, 2017: 0.0532, 2018: 0.0490}[btag_key],
@@ -479,53 +485,111 @@ def add_config(
     # external files
     #
 
-    json_mirror = "/afs/cern.ch/user/m/mrieger/public/mirrors/jsonpog-integration-c3be7e71"
-    cfg.x.external_files = DotDict.wrap({
-        # jet energy correction
-        "jet_jerc": (f"{json_mirror}/POG/JME/{year}{corr_postfix}_UL/jet_jerc.json.gz", "v1"),
+    cfg.x.external_files = DotDict()
 
-        # jet veto map
-        "jet_veto_map": (f"{json_mirror}/POG/JME/{year}{corr_postfix}_UL/jetvetomaps.json.gz", "v1"),
-
-        # pileup weights from correctionlib
-        "pu_sf": (f"{json_mirror}/POG/LUM/{year}{corr_postfix}_UL/puWeights.json.gz", "v1"),
-
-        # electron scale factors
-        "electron_sf": (f"{json_mirror}/POG/EGM/{year}{corr_postfix}_UL/electron.json.gz", "v1"),
-
-        # muon scale factors
-        "muon_sf": (f"{json_mirror}/POG/MUO/{year}{corr_postfix}_UL/muon_Z.json.gz", "v1"),
-
-        # btag scale factor
-        "btag_sf_corr": (f"{json_mirror}/POG/BTV/{year}{corr_postfix}_UL/btagging.json.gz", "v1"),
-
-        # met phi corrector
-        "met_phi_corr": (f"{json_mirror}/POG/JME/{year}{corr_postfix}_UL/met.json.gz", "v1"),
-    })
+    # helper
+    def add_external(name, value):
+        if isinstance(value, dict):
+            value = DotDict.wrap(value)
+        cfg.x.external_files[name] = value
 
     # external files with more complex year dependence
     # TODO: generalize to different years
-    if year != 2017:  # TODO wrong lumis
-        raise NotImplementedError("TODO: generalize external files to different years than 2017")
+    if year != 2024:  # TODO wrong lumis
+        raise NotImplementedError("TODO: generalize external files to different years than 2024")
 
-    cfg.x.external_files.update(DotDict.wrap({
-        # files from TODO
-        "lumi": {
-            "golden": ("/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/Legacy_2017/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON.txt", "v1"),  # noqa
-            "normtag": ("/afs/cern.ch/user/l/lumipro/public/Normtags/normtag_PHYSICS.json", "v1"),
-        },
+    # prepare run/era/nano meta data info to determine files in the CAT metadata structure
+    # see https://cms-analysis-corrections.docs.cern.ch
+    cat_info = {
+        (2022, "", 12): CATInfo(
+            run=3,
+            vnano=12,
+            era="22CDSep23-Summer22",
+            pog_directories={"dc": "Collisions22"},
+            snapshot=CATSnapshot(btv="2025-08-20", dc="2025-07-25", egm="2025-04-15", jme="2025-09-23", lum="2024-01-31", muo="2025-08-14", tau="2025-10-01"),  # noqa: E501
+        ),
+        (2022, "EE", 12): CATInfo(
+            run=3,
+            vnano=12,
+            era="22EFGSep23-Summer22EE",
+            pog_directories={"dc": "Collisions22"},
+            snapshot=CATSnapshot(btv="2025-08-20", dc="2025-07-25", egm="2025-04-15", jme="2025-10-07", lum="2024-01-31", muo="2025-08-14", tau="2025-10-01"),  # noqa: E501
+        ),
+        (2023, "", 12): CATInfo(
+            run=3,
+            vnano=12,
+            era="23CSep23-Summer23",
+            # pog_eras={"tau": "23CSep23-Summer22"},  # TODO: remove once typo in CAT repo is fixed
+            pog_directories={"dc": "Collisions23"},
+            snapshot=CATSnapshot(btv="2025-08-20", dc="2025-07-25", egm="2025-04-15", jme="2025-10-07", lum="2024-01-31", muo="2025-08-14", tau="2025-10-01"),  # noqa: E501
+        ),
+        (2023, "BPix", 12): CATInfo(
+            run=3,
+            vnano=12,
+            era="23DSep23-Summer23BPix",
+            pog_directories={"dc": "Collisions23"},
+            snapshot=CATSnapshot(btv="2025-08-20", dc="2025-07-25", egm="2025-04-15", jme="2025-10-07", lum="2024-01-31", muo="2025-08-14", tau="2025-10-01"),  # noqa: E501
+        ),
+        (2024, "", 15): CATInfo(
+            run=3,
+            vnano=15,
+            era="24CDEReprocessingFGHIPrompt-Summer24",
+            pog_directories={"dc": "Collisions24"},
+            # TODO: tau and lum not yet available (11.11.25)
+            snapshot=CATSnapshot(btv="2025-08-19", dc="2025-07-25", egm="2025-10-22", jme="2025-07-17", muo="2025-10-17"),  # noqa: E501
+        ),
+    }[(year, campaign.x.postfix, 15)]
+    cfg.x.cat_info = cat_info
 
-        # files from https://twiki.cern.ch/twiki/bin/viewauth/CMS/PileupJSONFileforData?rev=44#Pileup_JSON_Files_For_Run_II # noqa
-        "pu": {
-            "json": ("/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/PileUp/UltraLegacy/pileup_latest.txt", "v1"),  # noqa
-            "mc_profile": ("https://raw.githubusercontent.com/cms-sw/cmssw/435f0b04c0e318c1036a6b95eb169181bbbe8344/SimGeneral/MixingModule/python/mix_2017_25ns_UltraLegacy_PoissonOOTPU_cfi.py", "v1"),  # noqa
-            "data_profile": {
-                "nominal": ("/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/PileUp/UltraLegacy/PileupHistogram-goldenJSON-13tev-2017-69200ub-99bins.root", "v1"),  # noqa
-                "minbias_xs_up": ("/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/PileUp/UltraLegacy/PileupHistogram-goldenJSON-13tev-2017-72400ub-99bins.root", "v1"),  # noqa
-                "minbias_xs_down": ("/afs/cern.ch/cms/CAF/CMSCOMM/COMM_DQM/certification/Collisions17/13TeV/PileUp/UltraLegacy/PileupHistogram-goldenJSON-13tev-2017-66000ub-99bins.root", "v1"),  # noqa
-            },
-        },
-    }))
+    # common files
+    # (versions in the end are for hashing in cases where file contents changed but paths did not)
+    add_external("lumi", {
+        "golden": {
+            # https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun3Analysis?rev=161#Year_2022
+            2022: (cat_info.get_file("dc", "Cert_Collisions2022_355100_362760_Golden.json"), "v1"),
+            # https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun3Analysis?rev=161#Year_2023
+            2023: (cat_info.get_file("dc", "Cert_Collisions2023_366442_370790_Golden.json"), "v1"),
+            # https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun3Analysis?rev=180#Year_2024
+            # not yet available at CAT space
+            # 2024: (cat_info.get_file("dc", "Cert_Collisions2024_378981_386951_Golden.json"), "v1"),
+            2024: ("https://cms-service-dqmdc.web.cern.ch/CAF/certification/Collisions24/Cert_Collisions2024_378981_386951_Golden.json", "v1"),  # noqa: E501
+        }[year],
+        "normtag": {
+            # https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun3Analysis?rev=161#Year_2022
+            2022: ("/cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json", "v1"),
+            # https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun3Analysis?rev=161#Year_2023
+            2023: ("/cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json", "v1"),
+            # https://twiki.cern.ch/twiki/bin/view/CMS/PdmVRun3Analysis?rev=180#Year_2024
+            2024: ("/cvmfs/cms-bril.cern.ch/cms-lumi-pog/Normtags/normtag_BRIL.json", "v1"),
+        }[year],
+    })
+
+    # pileup weight corrections
+    if year != 2024:  # TODO: not yet available, see https://cms-analysis-corrections.docs.cern.ch
+        add_external("pu_sf", (cat_info.get_file("lum", "puWeights.json.gz"), "v1"))
+    elif year == 2024:
+        # private preliminary file for 2024 for now
+        # https://mattermost.web.cern.ch/cms-ppd/pl/c8j6m64dbinhuc3jxwo185pqac
+        # add_external("pu_sf", f"{local_path}config/run3/puWeights_2024_mm.json.gz")
+        add_external("pu_sf", ("https://ceballos.web.cern.ch/random/puWeights_2024.json.gz", "v1"))
+
+    # jet energy correction
+    add_external("jet_jerc", (cat_info.get_file("jme", "jet_jerc.json.gz"), "v1"))
+
+    # fat jet energy correction
+    # FIXME no FatJet corrections available in CAT for 2024 yet
+    if year != 2024:
+        add_external("fat_jet_jerc", (cat_info.get_file("jme", "fat_jet_jerc.json.gz"), "v1"))
+
+    # jet veto map
+    add_external("jet_veto_map", (cat_info.get_file("jme", "jetvetomaps.json.gz"), "v1"))
+
+    # updated jet id
+    add_external("jet_id", (cat_info.get_file("jme", "jetid.json.gz"), "v1"))
+
+    # met phi correction
+    if year != 2024:  # TODO: not yet available for 2024
+        add_external("met_phi_corr", (cat_info.get_file("jme", f"met_xyCorrections_{year}_{year}{campaign.x.postfix}.json.gz"), "v1"))  # noqa: E501
 
     # columns to keep after certain steps
     cfg.x.keep_columns = DotDict.wrap({
@@ -608,6 +672,7 @@ def add_config(
                 "DiPFJetAve100_HFJEC",
                 "DiPFJetAve160_HFJEC",
                 "DiPFJetAve220_HFJEC",
+                "DiPFJetAve260_HFJEC",
                 "DiPFJetAve300_HFJEC",
             ],
         },
@@ -618,12 +683,15 @@ def add_config(
                 "PFJet40",
                 "PFJet60",
                 "PFJet80",
+                "PFJet110",
                 "PFJet140",
                 "PFJet200",
                 "PFJet260",
                 "PFJet320",
                 "PFJet400",
+                "PFJet450",
                 "PFJet500",
+                "PFJet550",
             ],
         },
     })
@@ -631,36 +699,21 @@ def add_config(
     cfg.x.trigger_thresholds = DotDict.wrap({
         "dijet": {
             "central": (
-                [59, 85, 104, 170, 236, 302, 370, 460, 575]
-                if campaign.x.year == 2016
-                else
-                [70, 87, 111, 180, 247, 310, 373, 457, 562]
-                if campaign.x.year == 2017
-                else
+                # TODO: mostly taken from 2018, remeasure for 2024
                 # 40, 60,  80, 140, 200, 260, 320, 400, 500
-                [66,  93, 118, 189, 257, 325, 391, 478, 585]
-                if campaign.x.year == 2018
-                else None
+                [66, 93, 118, 189, 257, 325, 391, 478, 585]
             ),
             "forward": (
-                [86, 110, 132, 204, 279, 373]
-                if campaign.x.year == 2016
-                else
-                [73, 93, 113, 176, 239, 318]
-                if campaign.x.year == 2017
-                else
-                # 60,  80, 100, 160, 220, 300
-                [93, 116, 142, 210, 279, 379]
-                if campaign.x.year == 2018
-                else None
+                # TODO: mostly taken from 2018, remeasure for 2024
+                # 60,  80, 100, 160, 220, 260, 300
+                [93, 116, 142, 210, 279, 340, 379]
             ),
         },
         "singlejet": {
             "central": (
-                # 40, 60,  80, 140, 200, 260, 320, 400, 500
-                [70, 87, 111, 180, 247, 310, 373, 457, 562]
-                if campaign.x.year == 2017
-                else None
+                # TODO: mostly taken from 2017, remeasure for 2024
+                # 40, 60,  80, 110, 140, 200, 260, 320, 400, 450, 500, 550
+                [70, 87, 111, 150, 180, 247, 310, 373, 457, 520, 562, 630]
             ),
         },
     })
