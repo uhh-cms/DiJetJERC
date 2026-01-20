@@ -21,7 +21,7 @@ Creates column 'Dijet', which includes the most relevant properties of the JetME
 
 @producer(
     uses={
-        "Jet.pt", "MET.pt", "MET.phi",
+        "Jet.pt",
         jet_assignment.PRODUCES,
     },
     produces={
@@ -40,6 +40,7 @@ def dijet_balance(
 
     # retrieve jet collection
     jets = events.Jet
+    met = events[self.config_inst.x.met_name]
 
     # ensure at least three jets
     jets = ak.pad_none(jets, 3)
@@ -48,9 +49,9 @@ def dijet_balance(
     pt_avg = (events.probe_jet.pt + events.reference_jet.pt) / 2
     asym = (events.probe_jet.pt - events.reference_jet.pt) / (2 * pt_avg)
     alpha_raw = jets["pt"][:, 2] / pt_avg
-    delta_phi = events.probe_jet.phi - events.MET.phi
-    mpf = events.MET.pt * np.cos(delta_phi) / (2 * pt_avg)
-    mpfx = events.MET.pt * np.sin(delta_phi) / (2 * pt_avg)
+    delta_phi = events.probe_jet.phi - met.phi
+    mpf = met.pt * np.cos(delta_phi) / (2 * pt_avg)
+    mpfx = met.pt * np.sin(delta_phi) / (2 * pt_avg)
 
     # array to return (filling in missing values)
     dijets = {
@@ -149,6 +150,13 @@ def dijet_balance(
 
 @dijet_balance.init
 def dijet_balance_init(self: Producer) -> None:
+    # MET input columns
+    self.uses |= {
+        f"{self.config_inst.x.met_name}.pt",
+        f"{self.config_inst.x.met_name}.phi",
+    }
+
+    # gen-level columns
     if self.dataset_inst.is_mc:
         self.uses |= {
             "GenJet.pt",

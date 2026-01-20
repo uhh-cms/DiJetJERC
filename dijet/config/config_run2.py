@@ -362,6 +362,10 @@ def add_config(
         },
     })
 
+    # MET to use
+    cfg.x.met_name = "MET"
+    cfg.x.raw_met_name = "RawMET"
+
     # TODO: check e/mu/btag corrections and implement
     # btag weight configuration
     cfg.x.btag_sf = ("deepJet_shape", cfg.x.btag_sf_jec_sources)
