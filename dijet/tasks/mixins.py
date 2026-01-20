@@ -216,8 +216,9 @@ class PostProcessorMixin(ConfigTask):
     def get_config_lookup_keys(
         cls,
         inst_or_params: PostProcessorMixin | dict[str, Any],
+        significant: bool = False,
     ) -> law.util.InsertiableDict:
-        keys = super().get_config_lookup_keys(inst_or_params)
+        keys = super().get_config_lookup_keys(inst_or_params, significant=significant)
 
         # add the post-processor name
         postprocessor = (
