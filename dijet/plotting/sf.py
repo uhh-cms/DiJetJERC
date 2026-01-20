@@ -11,6 +11,7 @@ from functools import partial
 
 from columnflow.util import maybe_import, load_correction_set
 from columnflow.tasks.external import BundleExternalFiles
+from columnflow.types import Callable
 
 from dijet.tasks.sf import SF
 from dijet.plotting.base import PlottingBaseTask
@@ -23,6 +24,40 @@ hist = maybe_import("hist")
 np = maybe_import("numpy")
 plt = maybe_import("matplotlib.pyplot")
 mplhep = maybe_import("mplhep")
+
+
+def hist_average_axis(h, axis: str, mask_func: Callable | None = None):
+    """
+    Compute weighted average of histogram bin contents along a specified axis,
+    using the inverse variance as a weight.
+    """
+    h = h.copy()
+    v = h.view()
+
+    # mask inputs as needed
+    mask_func = mask_func or (lambda x: np.ones_like(x))
+    mask = mask_func(v.value)
+    v.value = np.where(mask, v.value, np.nan)
+    v.variance = np.where(mask, v.variance, np.nan)
+
+    h_result = h[{axis: sum}]
+    if isinstance(h_result, hist.Hist):
+        v_result = h_result.view()
+    else:
+        v_result = h_result
+
+    axis_names = [a.name for a in h.axes]
+    avg_axis_index = axis_names.index(axis)
+    # inverse-variance-weighted average over pt bins
+    num = np.nansum(v.value / v.variance, axis=avg_axis_index)
+    den = np.nansum(1 / v.variance, axis=avg_axis_index)
+
+    if isinstance(h_result, hist.Hist):
+        v_result.value[:] = num / den
+        v_result.variance[:] = 1 / den
+        return h_result
+    else:
+        return type(v_result)(value=num / den, variance=1 / den)
 
 
 class PlotSF(
@@ -263,6 +298,22 @@ class PlotSF(
                 linestyle="dashed",
                 linewidth=2,
                 label=f"{jer_cfg.campaign}_{jer_cfg.version}",
+                zorder=-11,
+            )
+
+            # plot weighted average scale factor
+            average_sf = hist_average_axis(
+                h_sliced,
+                axis=variable_map["pt"],
+                # mask invalid/unphysical values before taking average
+                mask_func=lambda x: (x > 0.1) & (x < 2.0),
+            )
+            ax.axhline(
+                average_sf.value,
+                color="red",
+                linestyle="dotted",
+                linewidth=2,
+                label=f"weighted average ({average_sf.value:1.2f})",
                 zorder=-10,
             )
 
