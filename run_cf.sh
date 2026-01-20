@@ -16,8 +16,8 @@ echo law run dijet.JER "${args[@]}" "$@"
 echo law run dijet.SF "${args[@]}" "$@"
 
 args+=(
-    "--bin-selectors" 'alpha,min=0.3,max=0.3:probejet_abseta,min=0.0,max=0.5:dijets_pt_avg,min=100,max=200'
-    #"--bin-selectors" 'alpha,min=0.3,max=0.3:probejet_abseta,min=1.9,max=2.7:dijets_pt_avg,min=100,max=200'
+    "--bin-selectors" 'alpha,min=0.3,max=0.3:abseta,min=0.0,max=0.5:pt,min=100,max=200'
+    #"--bin-selectors" 'alpha,min=0.3,max=0.3:abseta,min=1.9,max=2.7:pt,min=100,max=200'
 )
 echo law run dijet.PlotSF "${args[@]}" "$@"
 echo law run dijet.PlotJER "${args[@]}" "$@"
