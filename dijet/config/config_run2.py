@@ -368,10 +368,12 @@ def add_config(
 
     # names of electron correction sets and working points
     # (used in the electron_sf producer)
+    cfg.x.electron_id = "mvaFall17V2noIso_WPL"
     cfg.x.electron_sf_names = ("UL-Electron-ID-SF", f"{year}{corr_postfix}", "wp80iso")
 
     # names of muon correction sets and working points
     # (used in the muon producer)
+    cfg.x.muon_id = "tightId"
     cfg.x.muon_sf_names = ("NUM_TightRelIso_DEN_TightIDandIPCut", f"{year}{corr_postfix}_UL")
 
     # helper to add column aliases for both shifts of a source

@@ -8,10 +8,9 @@ ak = maybe_import("awkward")
 
 
 @selector(
-
     uses={
-        "Electron.pt", "Electron.eta", "Electron.mvaFall17V2noIso_WPL",
-        "Muon.pt", "Muon.eta", "Muon.tightId",
+        "Electron.pt", "Electron.eta",
+        "Muon.pt", "Muon.eta",
     },
     produces={"cutflow.n_ele", "cutflow.n_muo"},
     exposed=True,
@@ -28,13 +27,13 @@ def lepton_selection(
     muo_mask = (
         (events.Muon["pt"] > 15) &
         (abs(events.Muon["eta"]) < 2.4) &
-        (events.Muon.tightId)
+        (events.Muon[self.config_inst.x.muon_id])
     )
     # mask for electrons
     ele_mask = (
         (events.Electron["pt"] > 15) &
         (abs(events.Electron["eta"]) < 2.4) &
-        (events.Electron.mvaFall17V2noIso_WPL)
+        (events.Electron[self.config_inst.x.electron_id])
     )
 
     events = set_ak_column(events, "cutflow.n_ele", ak.sum(ele_mask, axis=1))
@@ -68,3 +67,12 @@ def lepton_selection(
             "n_central_muons": ak.num(muo_indices),
         },
     )
+
+
+@lepton_selection.init
+def lepton_selection_init(self: Selector) -> None:
+    # add lepton ID input columns
+    self.uses |= {
+        f"Electron.{self.config_inst.x.electron_id}",
+        f"Muon.{self.config_inst.x.muon_id}",
+    }
