@@ -18,6 +18,11 @@ import order as od
 from columnflow.util import DotDict
 from columnflow.cms_util import CATInfo, CATSnapshot
 from columnflow.config_util import get_root_processes_from_campaign
+from columnflow.production.cms.btag import BTagSFConfig
+from columnflow.production.cms.jet import JetIdConfig
+from columnflow.production.cms.electron import ElectronSFConfig
+from columnflow.production.cms.muon import MuonSFConfig
+
 from dijet.config.categories import add_categories
 from dijet.config.variables import add_variables, add_uhh2_synch_variables
 from dijet.config.cutflow_variables import add_cutflow_variables
@@ -53,6 +58,8 @@ def add_config(
     # create a config by passing the campaign, so id and name will be identical
     cfg = analysis_dijet.add_config(campaign, name=config_name, id=config_id)
 
+    cfg.x.run = cfg.campaign.x.run
+
     # use custom get_dataset_lfns function
     cfg.x.get_dataset_lfns = get_dataset_lfns
 
@@ -66,7 +73,7 @@ def add_config(
     # add datasets we need to study
     dataset_names = [
         # DATA
-        "data_jetmet_b",
+        # "data_jetmet_b",
         "data_jetmet_c",
         "data_jetmet_d",
         "data_jetmet_e",
@@ -354,19 +361,29 @@ def add_config(
     # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL16postVFP?rev=8
     # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL17?rev=15
     # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL17?rev=17
-    btag_key = "2016post"  # TODO: adapt to 2024
-    cfg.x.btag_working_points = DotDict.wrap({
-        "deepjet": {
-            "loose": {"2016pre": 0.0508, "2016post": 0.0480, 2017: 0.0532, 2018: 0.0490}[btag_key],
-            "medium": {"2016pre": 0.2598, "2016post": 0.2489, 2017: 0.3040, 2018: 0.2783}[btag_key],
-            "tight": {"2016pre": 0.6502, "2016post": 0.6377, 2017: 0.7476, 2018: 0.7100}[btag_key],
-        },
-        "deepcsv": {
-            "loose": {"2016pre": 0.2027, "2016post": 0.1918, 2017: 0.1355, 2018: 0.1208}[btag_key],
-            "medium": {"2016pre": 0.6001, "2016post": 0.5847, 2017: 0.4506, 2018: 0.4168}[btag_key],
-            "tight": {"2016pre": 0.8819, "2016post": 0.8767, 2017: 0.7738, 2018: 0.7665}[btag_key],
-        },
-    })
+    if year == 2024:
+        btag_key = "2024"
+        cfg.x.btag_working_points = DotDict.wrap({
+            "upart": {
+                "loose": {"2024": 0.0246}[btag_key],
+                "medium": {"2024": 0.1272}[btag_key],
+                "tight": {"2024": 0.4648}[btag_key],
+            },
+        })
+    elif year == 2017:
+        btag_key = "2016post"  # TODO: adapt to 2024
+        cfg.x.btag_working_points = DotDict.wrap({
+            "deepjet": {
+                "loose": {"2016pre": 0.0508, "2016post": 0.0480, 2017: 0.0532, 2018: 0.0490}[btag_key],
+                "medium": {"2016pre": 0.2598, "2016post": 0.2489, 2017: 0.3040, 2018: 0.2783}[btag_key],
+                "tight": {"2016pre": 0.6502, "2016post": 0.6377, 2017: 0.7476, 2018: 0.7100}[btag_key],
+            },
+            "deepcsv": {
+                "loose": {"2016pre": 0.2027, "2016post": 0.1918, 2017: 0.1355, 2018: 0.1208}[btag_key],
+                "medium": {"2016pre": 0.6001, "2016post": 0.5847, 2017: 0.4506, 2018: 0.4168}[btag_key],
+                "tight": {"2016pre": 0.8819, "2016post": 0.8767, 2017: 0.7738, 2018: 0.7665}[btag_key],
+            },
+        })
 
     # MET to use
     cfg.x.met_name = "PuppiMET"
@@ -374,17 +391,86 @@ def add_config(
 
     # TODO: check e/mu/btag corrections and implement
     # btag weight configuration
-    cfg.x.btag_sf = ("deepJet_shape", cfg.x.btag_sf_jec_sources)
+    if cfg.x.run == 2:
+        cfg.x.btag_sf = ("deepJet_shape", cfg.x.btag_sf_jec_sources)
+    else:
+        # this is taken from the hbw analysis, im not sure if this needs to be adapted for JER
+        if year == 2024:
+            cfg.x.b_tagger = "upart"
+            # TODO: not sure which and how the SF are read out and what keys should be used.
+            cfg.x.btag_sf = BTagSFConfig(
+                correction_set="UParTAK4_kinfit",
+                jec_sources=cfg.x.btag_sf_jec_sources,
+                discriminator="btagUParTAK4B",
+                systs={
+                    "fsrdef": "fsrdef",
+                    "hdamp": "hdamp",
+                    "isrdef": "isrdef",
+                    "jer": "jer",
+                    "jes": "jes",
+                    "mass": "mass",
+                    "statistic": "statistic",
+                    "tune": "tune",
+                },
+                corrector_kwargs={"working_point": "M", "flavor": 5},
+            )
+        else:
+            cfg.x.b_tagger = "particlenet"
+            cfg.x.btag_sf = BTagSFConfig(
+                correction_set="particleNet_shape",
+                jec_sources=cfg.x.btag_sf_jec_sources,
+                discriminator="btagPNetB",
+                systs={
+                    "hf": "hf",
+                    "lf": "lf",
+                    "hfstats1": "hfstats1",
+                    "hfstats2": "hfstats2",
+                    "lfstats1": "lfstats1",
+                    "lfstats2": "lfstats2",
+                    "cferr1": "cferr1",
+                    "cferr2": "cferr2",
+                },
+                # corrector_kwargs=...,
+            )
 
-    # names of electron correction sets and working points
-    # (used in the electron_sf producer)
     cfg.x.electron_id = "mvaNoIso_WP80"
-    cfg.x.electron_sf_names = ("UL-Electron-ID-SF", f"{year}{corr_postfix}", "wp80iso")
-
-    # names of muon correction sets and working points
-    # (used in the muon producer)
     cfg.x.muon_id = "tightId"
-    cfg.x.muon_sf_names = ("NUM_TightRelIso_DEN_TightIDandIPCut", f"{year}{corr_postfix}_UL")
+    # names of electron correction sets and working points
+    if cfg.x.run == 2:  # might also need an update for newer columnflow versions
+        # (used in the electron_sf producer)
+        cfg.x.electron_sf_names = ("UL-Electron-ID-SF", f"{year}{corr_postfix}", "wp80iso")
+
+        # names of muon correction sets and working points
+        # (used in the muon producer)
+        cfg.x.muon_sf_names = ("NUM_TightRelIso_DEN_TightIDandIPCut", f"{year}{corr_postfix}_UL")
+    else:
+        cfg.x.electron_sf_names = ElectronSFConfig(
+            correction="Electron-ID-SF",
+            campaign="2024Prompt",
+            # campaign="2024",
+            working_point="Tight",
+        )
+        cfg.x.electron_reco_sf_names = ElectronSFConfig(
+            correction="Electron-ID-SF",
+            campaign="2024Prompt",
+            # campaign="2024",
+            # working_point=ele_reco_wp_func,
+            working_point={
+                "RecoBelow20": lambda variable_map: variable_map["pt"] < 20.0,
+                "Reco20to75": lambda variable_map: (variable_map["pt"] >= 20.0) & (variable_map["pt"] < 75.0),
+                "RecoAbove75": lambda variable_map: variable_map["pt"] >= 75.0,
+            },
+        )
+
+        cfg.x.muon_id_sf_names = MuonSFConfig(
+            correction="NUM_TightID_DEN_TrackerMuons",
+            campaign="2024Prompt",
+        )
+        # cfg.x.muon_iso_sf_names = MuonSFConfig( THIS IS BAD!!!!
+        cfg.x.muon_sf_names = MuonSFConfig(
+            correction="NUM_TightPFIso_DEN_TightID",
+            campaign="2024Prompt",
+        )
 
     # helper to add column aliases for both shifts of a source
     def add_aliases(shift_source: str, aliases: Set[str], selection_dependent: bool):
@@ -592,10 +678,24 @@ def add_config(
 
     # updated jet id
     add_external("jet_id", (cat_info.get_file("jme", "jetid.json.gz"), "v1"))
+    cfg.x.jet_id = JetIdConfig(corrections={
+        "AK4PUPPI_Tight": 2,
+        "AK4PUPPI_TightLeptonVeto": 3,
+    })
 
     # met phi correction
     if year != 2024:  # TODO: not yet available for 2024
         add_external("met_phi_corr", (cat_info.get_file("jme", f"met_xyCorrections_{year}_{year}{campaign.x.postfix}.json.gz"), "v1"))  # noqa: E501
+
+    # add preliminary btag sfs for 2024
+    if year == 2024:
+        add_external("btag_sf_corr", (cat_info.get_file("btv", "btagging_preliminary.json.gz"), "v1"))
+
+        add_external("muon_sf", (cat_info.get_file("muo", "muon_Z.json.gz"), "v2"))
+        add_external("electron_sf", (cat_info.get_file("egm", "electron.json.gz"), "v2"))
+        add_external("electron_reco_sf", (cat_info.get_file("egm", "electron.json.gz"), "v1"))
+        # is this needed?
+        # add_external("electron_ss", (cat_info.get_file("egm", "electronSS_EtDependent.json.gz"), "v2"))
 
     # columns to keep after certain steps
     cfg.x.keep_columns = DotDict.wrap({
