@@ -43,10 +43,13 @@ def default(
     **kwargs,
 ) -> ak.Array:
 
+    print("default 1")
+
     # mc-only weights
     if self.dataset_inst.is_mc:
         # normalization weights
         # events = self[normalization_weights](events, **kwargs)
+        print(f"default: calling 'event_weights' for {self.dataset_inst}")
         events = self[event_weights](events, **kwargs)
 
     # dijet properties: alpha_raw, asymmetry, pt_avg

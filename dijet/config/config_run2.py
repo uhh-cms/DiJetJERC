@@ -267,7 +267,8 @@ def add_config(
 
     # minimum bias cross section in mb (milli) for creating PU weights, values from
     # https://twiki.cern.ch/twiki/bin/view/CMS/PileupJSONFileforData?rev=45#Recommended_cross_section
-    cfg.x.minbias_xs = Number(69.2, 0.046j)
+    # not used after moving to correctionlib based PU weights
+    # cfg.x.minbias_xs = Number(69.2, 0.046j)
 
     # whether to validate the number of obtained LFNs in GetDatasetLFNs
     cfg.x.validate_dataset_lfns = limit_dataset_files is None
@@ -403,7 +404,6 @@ def add_config(
     cfg.add_shift(name="e_trig_sf_up", id=42, type="shape")
     cfg.add_shift(name="e_trig_sf_down", id=43, type="shape")
     add_aliases("e_sf", {"electron_weight": "electron_weight_{direction}"}, selection_dependent=False)
-
     cfg.add_shift(name="mu_sf_up", id=50, type="shape")
     cfg.add_shift(name="mu_sf_down", id=51, type="shape")
     cfg.add_shift(name="mu_trig_sf_up", id=52, type="shape")
@@ -534,6 +534,8 @@ def add_config(
         {
             # general event information
             "run", "luminosityBlock", "event",
+            # average number of pileup interactions
+            "Pileup.nTrueInt",
             # columns added during selection, required in general
             "mc_weight", "PV.npvs", "process_id", "category_ids", "deterministic_seed",
             # weight-related columns
@@ -565,8 +567,8 @@ def add_config(
     # event weight columns as keys in an ordered dict, mapped to shift instances they depend on
     get_shifts = lambda *keys: sum(([cfg.get_shift(f"{k}_up"), cfg.get_shift(f"{k}_down")] for k in keys), [])
     cfg.x.event_weights = DotDict()
-
     cfg.x.event_weights["normalization_weight"] = []
+    cfg.x.event_weights["pu_weight"] = get_shifts("minbias_xs")
 
     # for dataset in cfg.datasets:
     #     if dataset.x("is_ttbar", False):

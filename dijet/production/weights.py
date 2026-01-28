@@ -117,6 +117,7 @@ normalized_pdf_weights = normalized_weight_factory(
     # },
     uses={
         normalization_weights, electron_weights, muon_weights, event_weight,
+        pu_weight,
     },
     # produces={
     #     "mc_weight",  # might be needed for ML
@@ -127,6 +128,7 @@ normalized_pdf_weights = normalized_weight_factory(
         "mc_weight",  # might be needed for ML
         normalization_weights, electron_weights, muon_weights,
         event_weight,
+        pu_weight
     },
     mc_only=True,
 )
@@ -135,8 +137,13 @@ def event_weights(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
     Wrapper of several event weight producers that are typically called in ProduceColumns.
     """
 
+    print("event_weights 1")
     # compute normalization weights
     events = self[normalization_weights](events, **kwargs)
+
+    print("event_weights 2")
+    events = self[pu_weight](events, **kwargs)
+    print("event_weights 3")
 
     # compute btag SF weights
     # events = self[btag_weights](events, **kwargs)
@@ -156,7 +163,7 @@ def event_weights(self: Producer, events: ak.Array, **kwargs) -> ak.Array:
 
     # calculate the full event weight for plotting purposes
     events = self[event_weight](events, **kwargs)
-
+    
     return events
 
 
