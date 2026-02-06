@@ -150,8 +150,8 @@ def trim_tails_impl(
         # store event yield as histogram in output
         h_nevt = h_in.copy()
         h_nevt = h_nevt[{variable_map[response_var_key]: sum}]
-        h_nevt.view().value = np.squeeze(integral)
-        h_nevt.view().variance = np.squeeze(integral_var)
+        h_nevt.view().value = integral.squeeze(axis=axis_indices[response_var_key])
+        h_nevt.view().variance = integral_var.squeeze(axis=axis_indices[response_var_key])
         r_outputs["nevt"] = h_nevt.copy(deep=False)
 
         # normalize histogram to integral over asymmetry
@@ -201,9 +201,9 @@ def trim_tails_impl(
         # store bin edges in histogram format
         h_asym_edges_lo = h_in.copy()[{variable_map[response_var_key]: sum}]
         h_asym_edges_up = h_asym_edges_lo.copy()
-        h_asym_edges_lo.view().value = np.squeeze(asym_edges_lo)
+        h_asym_edges_lo.view().value = asym_edges_lo.squeeze(axis=axis_indices[response_var_key])
         h_asym_edges_lo.view().variance[:] = 0.0
-        h_asym_edges_up.view().value = np.squeeze(asym_edges_up)
+        h_asym_edges_up.view().value = asym_edges_up.squeeze(axis=axis_indices[response_var_key])
         h_asym_edges_up.view().variance[:] = 0.0
         r_outputs["cut_edges"] = {
             "low": h_asym_edges_lo.copy(),
@@ -443,15 +443,16 @@ def extrapolate_width_impl(
         ]
         n_methods = len(h_stds.axes["category"].centers)  # only length
         inter = h_stds.copy().values()
-        inter = inter[:, :2, ...]  # keep first two entries
+        inter = inter[:, :, :2, ...]  # keep first two entries in alpha dimension
         slope = h_stds.copy().values()
-        slope = slope[:, :2, ...]  # keep first two entries
+        slope = slope[:, :, :2, ...]  # keep first two entries in alpha dimension
         for m, *bv_indices in it.product(
             range(n_methods),
             *[range(n) for n in n_bins],
         ):
             h_slice = {
                 "category": m,
+                "shift": 0,
             }
             h_slice.update({
                 bv: bv_index
@@ -467,24 +468,24 @@ def extrapolate_width_impl(
                 std=tmp.values(),
                 nevts=tmp_evts.values(),
             )
-            inter[(m, slice(None), *bv_indices)] = [coeff[1], err[1]]
-            slope[(m, slice(None), *bv_indices)] = [coeff[0], err[0]]
+            inter[(m, 0, slice(None), *bv_indices)] = [coeff[1], err[1]]
+            slope[(m, 0, slice(None), *bv_indices)] = [coeff[0], err[0]]
 
         # NOTE: store fits into hist.
         h_intercepts = h_stds.copy()
         # Remove axis for alpha for histogram
         h_intercepts = h_intercepts[{variable_map[self.extrapolation_var_key]: sum}]
         # y intercept of fit (x=0)
-        h_intercepts.view().value = inter[:, 0, ...]
+        h_intercepts.view().value = inter[:, :, 0, ...]
         # Errors temporarly used; Later get:
         # Error on fit from fit function (how?) or new method with three fits
-        h_intercepts.view().variance = inter[:, 1, ...]
+        h_intercepts.view().variance = inter[:, :, 1, ...]
 
         h_slopes = h_intercepts.copy()
-        # Slope of fit stored in index 1
-        h_slopes.view().value = slope[:, 0, ...]
+        # Slope of fit stored in index 1 <-- Matthias: I don't understand this comment: isn't it in index 0??
+        h_slopes.view().value = slope[:, :, 0, ...]
         # Only stored for plotting, no defined error
-        h_slopes.view().variance = slope[:, 1, ...]
+        h_slopes.view().variance = slope[:, :, 1, ...]
 
         # store y-intercepts and slopes from linear fit
         # in identically-structured histograms
@@ -608,10 +609,10 @@ def calc_jer_impl(
         m: categories.index(self.config_inst.get_category(m))
         for m in self.config_inst.x.method_categories
     }
-
+    
     # calcuate JER for standard method
-    jer_sm_val = h_widths[index_methods["sm"], :, :].values() * np.sqrt(2)
-    jer_sm_err = np.sqrt(h_widths[index_methods["sm"], :, :].variances()) * np.sqrt(2)
+    jer_sm_val = h_widths[index_methods["sm"], :, :, :].values() * np.sqrt(2)
+    jer_sm_err = np.sqrt(h_widths[index_methods["sm"], :, :, :].variances()) * np.sqrt(2)
 
     # get number of |eta| bins over which to average
     # when computing the reference JER using the SM
@@ -619,12 +620,12 @@ def calc_jer_impl(
 
     # average over first few |eta| bins to get
     # reference JER for FE method
-    jer_ref_val = np.mean(jer_sm_val[:n_bins_abseta, :], axis=0, keepdims=True)
-    jer_ref_err = np.mean(jer_sm_err[:n_bins_abseta, :], axis=0, keepdims=True)
+    jer_ref_val = np.mean(jer_sm_val[:, :n_bins_abseta, :], axis=1, keepdims=True)
+    jer_ref_err = np.mean(jer_sm_err[:, :n_bins_abseta, :], axis=1, keepdims=True)
 
     # calculate JER for forward extension method
-    jer_fe_val = np.sqrt(4 * h_widths[index_methods["fe"], :, :].values()**2 - jer_ref_val**2)
-    term_probe = 4 * h_widths[index_methods["fe"], :, :].values() * h_widths[index_methods["fe"], :, :].variances()
+    jer_fe_val = np.sqrt(4 * h_widths[index_methods["fe"], :, :, :].values()**2 - jer_ref_val**2)
+    term_probe = 4 * h_widths[index_methods["fe"], :, :, :].values() * h_widths[index_methods["fe"], :, :, :].variances()
     term_ref = jer_ref_val * jer_ref_err
     jer_fe_err = np.sqrt(term_probe**2 + term_ref**2) / jer_fe_val
 
@@ -633,10 +634,10 @@ def calc_jer_impl(
     v_jer = h_jer.view()
 
     # write JER values to output histogram
-    v_jer[index_methods["sm"], :, :].value = np.nan_to_num(jer_sm_val, nan=0.0)
-    v_jer[index_methods["sm"], :, :].variance = np.nan_to_num(jer_sm_err**2, nan=0.0)
-    v_jer[index_methods["fe"], :, :].value = np.nan_to_num(jer_fe_val, nan=0.0)
-    v_jer[index_methods["fe"], :, :].variance = np.nan_to_num(jer_fe_err**2, nan=0.0)
+    v_jer[index_methods["sm"], :, :, :].value = np.nan_to_num(jer_sm_val, nan=0.0)
+    v_jer[index_methods["sm"], :, :, :].variance = np.nan_to_num(jer_sm_err**2, nan=0.0)
+    v_jer[index_methods["fe"], :, :, :].value = np.nan_to_num(jer_fe_val, nan=0.0)
+    v_jer[index_methods["fe"], :, :, :].variance = np.nan_to_num(jer_fe_err**2, nan=0.0)
 
     # add JER to output
     r_outputs["jer"] = h_jer.copy()

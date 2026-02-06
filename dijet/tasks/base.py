@@ -204,20 +204,15 @@ class HistogramsBaseTask(
 
         return parts
 
-    def reduce_histogram(self, histogram, shift, level):
+    def reduce_histogram(self, histogram, level):
         """
-        Reduce away the `shift` and `process` axes of a multidimensional
-        histogram by selecting a single shift and summing over all processes.
+        Reduce away the `process` axis of a multidimensional
+        histogram by summing over all processes.
         """
         import hist
 
         def flatten_nested_list(nested_list):
             return [item for sublist in nested_list for item in sublist]
-
-        # get shift instance
-        shift_inst = self.config_inst.get_shift(shift)
-        if shift_inst.name not in histogram.axes["shift"]:
-            raise ValueError(f"histogram does not contain shift `{shift}`")
 
         # work on a copy
         h = histogram.copy()
@@ -225,7 +220,6 @@ class HistogramsBaseTask(
         # axis reductions
         h = h[{
             "process": sum,
-            "shift": hist.loc(shift_inst.name),
             # TODO: read rebinning factors from config
             # @dsavoiu: might be better to use config binning for now
             # vars_["alpha"]: hist.rebin(5),

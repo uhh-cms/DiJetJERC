@@ -191,7 +191,7 @@ class Asymmetry(
                 h_in = self.load_histogram(dataset, hist_var)
                 h_in_reduced = self.reduce_histogram(
                     h_in,
-                    self.shift,
+                    #self.shift,
                     level,
                 )
                 h_all.append(h_in_reduced)
