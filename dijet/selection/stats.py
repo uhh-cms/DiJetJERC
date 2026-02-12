@@ -6,7 +6,6 @@ Stat-related methods.
 
 from columnflow.selection import Selector, SelectionResult, selector
 from columnflow.selection.stats import increment_stats
-from columnflow.production.cms.btag import btag_weights
 from dijet.production.weights import event_weights_to_normalize
 from columnflow.util import maybe_import
 
@@ -15,7 +14,7 @@ ak = maybe_import("awkward")
 
 
 @selector(
-    uses={increment_stats, btag_weights, event_weights_to_normalize},
+    uses={increment_stats, event_weights_to_normalize},
 )
 def dijet_increment_stats(
     self: Selector,
