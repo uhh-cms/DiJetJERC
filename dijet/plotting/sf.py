@@ -291,6 +291,12 @@ class PlotSF(
             )
 
             if self.config_inst.x.run == 3:
+                label = f"{jer_cfg.campaign}_{jer_cfg.version}"
+                if len(label) > 20:
+                    self.plot_settings["legend_kwargs"] = {
+                        "fontsize": 16,
+                        "loc": "upper right",
+                    }
                 plot_xy(
                     h_sliced.axes[variable_map["pt"]].centers,
                     correction.evaluate(
