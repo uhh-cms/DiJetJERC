@@ -8,13 +8,21 @@ Custom jet energy calibration methods that disable data uncertainties (for searc
 from columnflow.calibration.cms.jets import jec
 
 # custom jec calibrator that only runs nominal correction
-jec_nominal = jec.derive(
-    "jec_nominal",
+jec_nominal_run3 = jec.derive(
+    "jec_nominal_run3",
     cls_dict={
         "uncertainty_sources": [],
-        # will be set dynamically by init function
         "met_name": "PuppiMET",
         "raw_met_name": "RawPuppiMET",
+    },
+)
+
+jec_nominal_run2 = jec.derive(
+    "jec_nominal_run2",
+    cls_dict={
+        "uncertainty_sources": [],
+        "met_name": "MET",
+        "raw_met_name": "RawMET",
     },
 )
 
