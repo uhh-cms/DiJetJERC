@@ -64,12 +64,12 @@ def jet_selection(
     jet_mask = ak.fill_none(jet_mask, False)
 
     # remove events with unphysical MET
-    met_mask = events.RawPuppiMET["pt"] == np.float32("inf")
+    met_mask = events.RawPuppiMET["pt"] != np.float32("inf")
     # build and return selection results plus new columns
     return events, SelectionResult(
         steps={
             "Jet": jet_sel,
-            "MET": ~met_mask,
+            "MET": met_mask,
         },
         objects={
             "Jet": {
