@@ -10,6 +10,8 @@ import order as od
 
 from columnflow.util import maybe_import
 
+from dijet.config.hist_hooks import add_hist_hooks
+
 ak = maybe_import("awkward")
 
 
@@ -45,6 +47,9 @@ if not law.util.flag_to_bool(os.getenv("DIJET_BUNDLE_CMSSW", "1")):
 # config groups for conveniently looping over certain configs
 # (used in wrapper_factory)
 analysis_dijet.set_aux("config_groups", {})
+
+# add hist hooks
+add_hist_hooks(analysis_dijet)
 
 #
 # setup configs
