@@ -258,6 +258,15 @@ class PlotJER(
                 # (only QCD HT sample)
                 # FIXME: avoid hard-coding sample name
                 if sample == "qcdht":
+
+                    # TODO: this is also neede in the SF plotting task, amybe move to/create a styl config
+                    label = rf"{jer_cfg.campaign}_{jer_cfg.version}"
+                    if len(label) > 20:
+                        self.plot_settings["legend_kwargs"] = {
+                            "fontsize": 16,
+                            "loc": "upper right",
+                        }
+
                     rho_val = 40  # placeholder for rho value (TODO: make configurable)
                     pt_edges = h_sliced.axes[variable_map["pt"]].edges
                     pt_vals = np.logspace(np.log10(pt_edges[0]), np.log10(pt_edges[-1]), 101)
@@ -268,7 +277,7 @@ class PlotJER(
                         color="red",
                         linestyle="dashed",
                         linewidth=2,
-                        label=rf"{jer_cfg.campaign}_{jer_cfg.version}",
+                        label=label,
                         zorder=-10,
                     )
 
