@@ -4,12 +4,17 @@
 Selection methods for HHtobbWW.
 """
 
+from __future__ import annotations
+
 from operator import and_
 from functools import reduce
 from collections import defaultdict
 from typing import Tuple
+import law
 
 from columnflow.util import maybe_import
+from columnflow.types import Any
+from columnflow.columnar_util import ArrayFunction, deferred_column
 
 from columnflow.selection import Selector, SelectionResult, selector
 from columnflow.selection.cms.met_filters import met_filters
@@ -19,6 +24,7 @@ from columnflow.production.util import attach_coffea_behavior
 from columnflow.production.categories import category_ids
 from columnflow.production.cms.mc_weight import mc_weight
 from columnflow.production.processes import process_ids
+from columnflow.production.cms.jet import jet_id
 
 from dijet.production.weights import large_weights_killer
 from dijet.production.jet_assignment import jet_assignment
@@ -32,6 +38,18 @@ from dijet.selection.stats import dijet_increment_stats
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
+logger = law.logger.get_logger(__name__)
+
+
+@deferred_column
+def IF_NANO_geV13(self: ArrayFunction.DeferredColumn, func: ArrayFunction) -> Any | set[Any]:
+    """
+    Helper to check if the campaign of this particular dataset is nano v13 or higher.
+    """
+    cpn_name = func.dataset_inst.x("campaign", func.config_inst.campaign.name)
+    version = int(cpn_name.split("v")[-1])
+    return self.get() if version >= 13 else None
+
 
 @selector(
     uses={
@@ -40,6 +58,7 @@ ak = maybe_import("awkward")
         mc_weight, large_weights_killer,
         jet_selection, lepton_selection, trigger_selection, dijet_selection,
         jet_assignment, cutflow_features, dijet_increment_stats,
+        IF_NANO_geV13(jet_id),
     },
     produces={
         met_filters, json_filter,
@@ -62,6 +81,15 @@ def default(
     if self.dataset_inst.is_mc:
         events = self[mc_weight](events, **kwargs)
         events = self[large_weights_killer](events, **kwargs)
+
+    # produce correct jet IDs, this should be revisited for nano v15
+    if self.has_dep(jet_id):
+        events = self[jet_id](events, **kwargs)
+    else:
+        logger.warning(
+            "No Producer for jet_id found, using default from Nano. "
+            "If you are using Nano v9 or v13 and up you can ignore this.",
+        )
 
     # ensure coffea behavior is attached to collections
     events = self[attach_coffea_behavior](events, **kwargs)

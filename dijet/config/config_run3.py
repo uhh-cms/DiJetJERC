@@ -17,7 +17,9 @@ import order as od
 
 from columnflow.util import DotDict
 from columnflow.cms_util import CATInfo, CATSnapshot
-from columnflow.config_util import get_root_processes_from_campaign
+from columnflow.config_util import get_root_processes_from_campaign, get_shifts_from_sources
+from columnflow.production.cms.jet import JetIdConfig
+
 from dijet.config.categories import add_categories
 from dijet.config.variables import add_variables, add_uhh2_synch_variables
 from dijet.config.cutflow_variables import add_cutflow_variables
@@ -42,7 +44,7 @@ def add_config(
     # gather campaign data
     year = campaign.x.year
     year2 = year % 100
-    corr_postfix = ""
+    # corr_postfix = ""
 
     if year != 2024:
         raise NotImplementedError("[ERROR] Only 2024 campaign is fully implemented.")
@@ -52,6 +54,8 @@ def add_config(
 
     # create a config by passing the campaign, so id and name will be identical
     cfg = analysis_dijet.add_config(campaign, name=config_name, id=config_id)
+
+    cfg.x.run = cfg.campaign.x.run
 
     # use custom get_dataset_lfns function
     cfg.x.get_dataset_lfns = get_dataset_lfns
@@ -66,7 +70,6 @@ def add_config(
     # add datasets we need to study
     dataset_names = [
         # DATA
-        "data_jetmet_b",
         "data_jetmet_c",
         "data_jetmet_d",
         "data_jetmet_e",
@@ -114,8 +117,6 @@ def add_config(
     cfg.x.default_producer = "default"
     cfg.x.default_reducer = "cf_default"
     cfg.x.default_hist_producer = "all_weights"
-    # cfg.x.default_ml_model = "default"
-    # cfg.x.default_ml_model = None
     cfg.x.default_postprocessor = "dijet_balance"
     cfg.x.default_inference_model = "default"
     cfg.x.default_categories = ["incl"]
@@ -128,8 +129,6 @@ def add_config(
         "data": ["data_*"],
         "mc": ["qcd_*"],
     }
-    # cfg.x.process_groups["dmuch"] = ["data_mu"] + cfg.x.process_groups["much"]
-    # cfg.x.process_groups["dech"] = ["data_e"] + cfg.x.process_groups["ech"]
 
     # dataset groups for conveniently looping over certain datasets
     # (used in wrapper_factory and during plotting)
@@ -251,7 +250,7 @@ def add_config(
             "lumi_13p6TeV_2023": 0.013j,
         })
     elif year == 2024:
-        cfg.x.luminosity = Number(109_080.0, {  # TODO: update number
+        cfg.x.luminosity = Number(108_950.0, {  # Status of twiki r190
             "lumi_13p6TeV_2024": 0.013j,
         })
         # cfg.x.luminosity = Number(995.223558512, {
@@ -272,10 +271,6 @@ def add_config(
         "Flag.eeBadScFilter",
         "Flag.ecalBadCalibFilter",
     }
-
-    # minimum bias cross section in mb (milli) for creating PU weights, values from
-    # https://twiki.cern.ch/twiki/bin/view/CMS/PileupJSONFileforData?rev=45#Recommended_cross_section
-    cfg.x.minbias_xs = Number(69.2, 0.046j)
 
     # whether to validate the number of obtained LFNs in GetDatasetLFNs
     cfg.x.validate_dataset_lfns = limit_dataset_files is None
@@ -307,84 +302,12 @@ def add_config(
         },
     })
 
-    # JEC uncertainty sources propagated to btag scale factors
-    # (names derived from contents in BTV correctionlib file)
-    cfg.x.btag_sf_jec_sources = [
-        "",  # total
-        "Absolute",
-        "AbsoluteMPFBias",
-        "AbsoluteScale",
-        "AbsoluteStat",
-        f"Absolute_{year}",
-        "BBEC1",
-        f"BBEC1_{year}",
-        "EC2",
-        f"EC2_{year}",
-        "FlavorQCD",
-        "Fragmentation",
-        "HF",
-        f"HF_{year}",
-        "PileUpDataMC",
-        "PileUpPtBB",
-        "PileUpPtEC1",
-        "PileUpPtEC2",
-        "PileUpPtHF",
-        "PileUpPtRef",
-        "RelativeBal",
-        "RelativeFSR",
-        "RelativeJEREC1",
-        "RelativeJEREC2",
-        "RelativeJERHF",
-        "RelativePtBB",
-        "RelativePtEC1",
-        "RelativePtEC2",
-        "RelativePtHF",
-        "RelativeSample",
-        f"RelativeSample_{year}",
-        "RelativeStatEC",
-        "RelativeStatFSR",
-        "RelativeStatHF",
-        "SinglePionECAL",
-        "SinglePionHCAL",
-        "TimePtEta",
-    ]
-
-    # b-tag working points
-    # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL16preVFP?rev=6
-    # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL16postVFP?rev=8
-    # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL17?rev=15
-    # https://twiki.cern.ch/twiki/bin/view/CMS/BtagRecommendation106XUL17?rev=17
-    btag_key = "2016post"  # TODO: adapt to 2024
-    cfg.x.btag_working_points = DotDict.wrap({
-        "deepjet": {
-            "loose": {"2016pre": 0.0508, "2016post": 0.0480, 2017: 0.0532, 2018: 0.0490}[btag_key],
-            "medium": {"2016pre": 0.2598, "2016post": 0.2489, 2017: 0.3040, 2018: 0.2783}[btag_key],
-            "tight": {"2016pre": 0.6502, "2016post": 0.6377, 2017: 0.7476, 2018: 0.7100}[btag_key],
-        },
-        "deepcsv": {
-            "loose": {"2016pre": 0.2027, "2016post": 0.1918, 2017: 0.1355, 2018: 0.1208}[btag_key],
-            "medium": {"2016pre": 0.6001, "2016post": 0.5847, 2017: 0.4506, 2018: 0.4168}[btag_key],
-            "tight": {"2016pre": 0.8819, "2016post": 0.8767, 2017: 0.7738, 2018: 0.7665}[btag_key],
-        },
-    })
-
     # MET to use
     cfg.x.met_name = "PuppiMET"
     cfg.x.raw_met_name = "RawPuppiMET"
 
-    # TODO: check e/mu/btag corrections and implement
-    # btag weight configuration
-    cfg.x.btag_sf = ("deepJet_shape", cfg.x.btag_sf_jec_sources)
-
-    # names of electron correction sets and working points
-    # (used in the electron_sf producer)
     cfg.x.electron_id = "mvaNoIso_WP80"
-    cfg.x.electron_sf_names = ("UL-Electron-ID-SF", f"{year}{corr_postfix}", "wp80iso")
-
-    # names of muon correction sets and working points
-    # (used in the muon producer)
     cfg.x.muon_id = "tightId"
-    cfg.x.muon_sf_names = ("NUM_TightRelIso_DEN_TightIDandIPCut", f"{year}{corr_postfix}_UL")
 
     # helper to add column aliases for both shifts of a source
     def add_aliases(shift_source: str, aliases: Set[str], selection_dependent: bool):
@@ -408,54 +331,6 @@ def add_config(
     cfg.add_shift(name="minbias_xs_up", id=7, type="shape")
     cfg.add_shift(name="minbias_xs_down", id=8, type="shape")
     add_aliases("minbias_xs", {"pu_weight": "pu_weight_{name}"}, selection_dependent=False)
-    cfg.add_shift(name="top_pt_up", id=9, type="shape")
-    cfg.add_shift(name="top_pt_down", id=10, type="shape")
-    add_aliases("top_pt", {"top_pt_weight": "top_pt_weight_{direction}"}, selection_dependent=False)
-
-    cfg.add_shift(name="e_sf_up", id=40, type="shape")
-    cfg.add_shift(name="e_sf_down", id=41, type="shape")
-    cfg.add_shift(name="e_trig_sf_up", id=42, type="shape")
-    cfg.add_shift(name="e_trig_sf_down", id=43, type="shape")
-    add_aliases("e_sf", {"electron_weight": "electron_weight_{direction}"}, selection_dependent=False)
-
-    cfg.add_shift(name="mu_sf_up", id=50, type="shape")
-    cfg.add_shift(name="mu_sf_down", id=51, type="shape")
-    cfg.add_shift(name="mu_trig_sf_up", id=52, type="shape")
-    cfg.add_shift(name="mu_trig_sf_down", id=53, type="shape")
-    add_aliases("mu_sf", {"muon_weight": "muon_weight_{direction}"}, selection_dependent=False)
-
-    btag_uncs = [
-        "hf", "lf", f"hfstats1_{year}", f"hfstats2_{year}",
-        f"lfstats1_{year}", f"lfstats2_{year}", "cferr1", "cferr2",
-    ]
-    for i, unc in enumerate(btag_uncs):
-        cfg.add_shift(name=f"btag_{unc}_up", id=100 + 2 * i, type="shape")
-        cfg.add_shift(name=f"btag_{unc}_down", id=101 + 2 * i, type="shape")
-        # add_aliases(
-        #     f"btag_{unc}",
-        #     {
-        #         "normalized_btag_weight": f"normalized_btag_weight_{unc}_" + "{direction}",
-        #         "normalized_njet_btag_weight": f"normalized_njet_btag_weight_{unc}_" + "{direction}",
-        #     },
-        #     selection_dependent=False,
-        # )
-
-    cfg.add_shift(name="mur_up", id=201, type="shape")
-    cfg.add_shift(name="mur_down", id=202, type="shape")
-    cfg.add_shift(name="muf_up", id=203, type="shape")
-    cfg.add_shift(name="muf_down", id=204, type="shape")
-    cfg.add_shift(name="murf_envelope_up", id=205, type="shape")
-    cfg.add_shift(name="murf_envelope_down", id=206, type="shape")
-    cfg.add_shift(name="pdf_up", id=207, type="shape")
-    cfg.add_shift(name="pdf_down", id=208, type="shape")
-
-    for unc in ["mur", "muf", "murf_envelope", "pdf"]:
-        # add_aliases(unc, {f"{unc}_weight": f"{unc}_weight_" + "{direction}"}, selection_dependent=False)
-        add_aliases(
-            unc,
-            {f"normalized_{unc}_weight": f"normalized_{unc}_weight_" + "{direction}"},
-            selection_dependent=False,
-        )
 
     with open(os.path.join(thisdir, "jec_sources.yaml"), "r") as f:
         all_jec_sources = yaml.load(f, yaml.Loader)["names"]
@@ -469,10 +344,6 @@ def add_config(
             {"Jet.pt": "Jet.pt_{name}", "Jet.mass": "Jet.mass_{name}"},
             selection_dependent=True,
         )
-
-    cfg.add_shift(name="jer_up", id=6000, type="shape", tags={"selection_dependent"})
-    cfg.add_shift(name="jer_down", id=6001, type="shape", tags={"selection_dependent"})
-    add_aliases("jer", {"Jet.pt": "Jet.pt_{name}", "Jet.mass": "Jet.mass_{name}"}, selection_dependent=True)
 
     def make_jme_filename(jme_aux, sample_type, name, era=None):
         """
@@ -582,16 +453,15 @@ def add_config(
     # jet energy correction
     add_external("jet_jerc", (cat_info.get_file("jme", "jet_jerc.json.gz"), "v1"))
 
-    # fat jet energy correction
-    # FIXME no FatJet corrections available in CAT for 2024 yet
-    if year != 2024:
-        add_external("fat_jet_jerc", (cat_info.get_file("jme", "fat_jet_jerc.json.gz"), "v1"))
-
     # jet veto map
     add_external("jet_veto_map", (cat_info.get_file("jme", "jetvetomaps.json.gz"), "v1"))
 
     # updated jet id
     add_external("jet_id", (cat_info.get_file("jme", "jetid.json.gz"), "v1"))
+    cfg.x.jet_id = JetIdConfig(corrections={
+        "AK4PUPPI_Tight": 2,
+        "AK4PUPPI_TightLeptonVeto": 3,
+    })
 
     # met phi correction
     if year != 2024:  # TODO: not yet available for 2024
@@ -609,12 +479,12 @@ def add_config(
         {
             # general event information
             "run", "luminosityBlock", "event",
+            # average number of pileup interactions
+            "Pileup.nTrueInt",
             # columns added during selection, required in general
             "mc_weight", "PV.npvs", "process_id", "category_ids", "deterministic_seed",
             # weight-related columns
-            "pu_weight*", "pdf_weight*",
-            "murf_envelope_weight*", "mur_weight*", "muf_weight*",
-            "btag_weight*",
+            "pu_weight*",
             # produced by 'jet_assignment' producer
             "use_fe", "use_sm",
             # produced by 'alpha' producer
@@ -638,30 +508,21 @@ def add_config(
         )
     )
 
-    # event weight columns as keys in an ordered dict, mapped to shift instances they depend on
-    get_shifts = lambda *keys: sum(([cfg.get_shift(f"{k}_up"), cfg.get_shift(f"{k}_down")] for k in keys), [])
+    # specify which weights to apply (including variations if applicable)
+    # The expected structure of the *event_weights* aux entry is a dictionary
+    # with the weight column name as key and a list of shift sources as values.
+    # The shift sources are used to declare the shifts that the produced event
+    # weight depends on.
     cfg.x.event_weights = DotDict()
 
     cfg.x.event_weights["normalization_weight"] = []
-
-    # NOTE: which to use, njet_btag_weight or btag_weight?
-    # cfg.x.event_weights["normalized_btag_weight"] = get_shifts(*(f"btag_{unc}" for unc in btag_uncs))
-    # TODO: fix pu_weight; takes way too large values (from 0 to 160)
-    # cfg.x.event_weights["normalized_pu_weight"] = get_shifts("minbias_xs")
-    for dataset in cfg.datasets:
-        dataset.x.event_weights = DotDict()
-        if not dataset.x("is_qcd", False):
-            # pdf/scale weights for all non-qcd datasets
-            dataset.x.event_weights["normalized_murf_envelope_weight"] = get_shifts("murf_envelope")
-            dataset.x.event_weights["normalized_mur_weight"] = get_shifts("mur")
-            dataset.x.event_weights["normalized_muf_weight"] = get_shifts("muf")
-            dataset.x.event_weights["normalized_pdf_weight"] = get_shifts("pdf")
+    cfg.x.event_weights["pu_weight"] = get_shifts_from_sources(cfg, "minbias_xs")
 
     # Trigger selection
     # TODO: SingleJet triggers for AK8 and some special cases in UL16 & UL17
     cfg.x.triggers = DotDict.wrap({
         "dijet": {
-            "central": [
+            "central": [  # all prescaled in 2024
                 "DiPFJetAve40",
                 "DiPFJetAve60",
                 "DiPFJetAve80",
@@ -678,8 +539,8 @@ def add_config(
                 "DiPFJetAve100_HFJEC",
                 "DiPFJetAve160_HFJEC",
                 "DiPFJetAve220_HFJEC",
-                "DiPFJetAve260_HFJEC",
-                "DiPFJetAve300_HFJEC",
+                "DiPFJetAve260_HFJEC",  # unprescaled in 2024
+                "DiPFJetAve300_HFJEC",  # unprescaled in 2024
             ],
         },
         # TODO: single jet only for AK4 so far
@@ -696,8 +557,8 @@ def add_config(
                 "PFJet320",
                 "PFJet400",
                 "PFJet450",
-                "PFJet500",
-                "PFJet550",
+                "PFJet500",  # unprescaled in 2024
+                "PFJet550",  # unprescaled in 2024
             ],
         },
     })
@@ -724,25 +585,9 @@ def add_config(
         },
     })
 
-    # dev_version = "v0"
-    # prod_version = "prod1"
-
-    # def reduce_version(cls, inst, params):
-    #     version = dev_version
-    #     if params.get("selector") == "default":
-    #         version = prod_version
-
-    #     return version
-
     # Version of required tasks
     cfg.x.versions = {
         "task_cf.CalibrateEvents": "v0",
-        # "task_cf.SelectEvents": reduce_version,
-        # "task_cf.MergeSelectionStats": reduce_version,
-        # "task_cf.MergeSelectionMasks": reduce_version,
-        # "task_cf.ReduceEvents": reduce_version,
-        # "task_cf.MergeReductionStats": reduce_version,
-        # "task_cf.MergeReducedEvents": reduce_version,
     }
 
     # add categories

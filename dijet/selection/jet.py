@@ -2,17 +2,18 @@
 
 from typing import Tuple
 from columnflow.util import maybe_import
-from columnflow.columnar_util import set_ak_column
+from columnflow.columnar_util import set_ak_column, optional_column
 from columnflow.selection import Selector, SelectionResult, selector
 # from columnflow.selection.cms.jets import jet_veto_map
 from dijet.util import masked_sorted_indices
 
 ak = maybe_import("awkward")
+np = maybe_import("numpy")
 
 
 @selector(
     uses={
-        "Jet.pt", "Jet.eta", "Jet.phi", "Jet.jetId", "Jet.puId",
+        "Jet.pt", "Jet.eta", "Jet.phi", "Jet.jetId", optional_column("Jet.puId"), "RawPuppiMET.pt",
         # jet_veto_map,
     },
     # produces={
@@ -46,19 +47,29 @@ def jet_selection(
         (events.Jet.pt > 10) &
         (abs(events.Jet.eta) < 5.2) &
         # IDs in NanoAOD https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD
-        (events.Jet.jetId == 6) &  # 2: fail tight LepVeto and 6: pass tightLepVeto
-        ((events.Jet.puId == 7) | (events.Jet.pt > 50))  # pass all IDs (l, m and t) only for jets with pt < 50 GeV
+        (events.Jet.jetId & 6 == 6)  # 2: fail tight LepVeto and 6: pass tightLepVeto
     )
+
+    # Jet puId not available in Run3
+    if self.config_inst.campaign.x.run == 2:
+        # pass all IDs (l, m and t) only for jets with pt < 50 GeV
+        jet_pu_mask = ((events.Jet.puId == 7) | (events.Jet.pt > 50))
+        jet_mask = jet_mask & jet_pu_mask
+
     # jet_mask = (jet_mask & veto_map_mask)
     jet_sel = ak.num(events.Jet[jet_mask]) >= 2
 
     jet_indices = masked_sorted_indices(jet_mask, events.Jet.pt)
     jet_sel = ak.fill_none(jet_sel, False)
     jet_mask = ak.fill_none(jet_mask, False)
+
+    # remove events with unphysical MET
+    met_mask = events.RawPuppiMET["pt"] != np.float32("inf")
     # build and return selection results plus new columns
     return events, SelectionResult(
         steps={
             "Jet": jet_sel,
+            "MET": met_mask,
         },
         objects={
             "Jet": {
@@ -68,5 +79,6 @@ def jet_selection(
         aux={
             "jet_mask": jet_mask,
             "n_central_jets": ak.num(jet_indices),
+            "met_mask": met_mask,
         },
     )

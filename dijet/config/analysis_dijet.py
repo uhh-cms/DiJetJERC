@@ -62,7 +62,7 @@ from dijet.config.config_run2 import add_config as add_config_run2
 from cmsdb.campaigns.run2_2017_JMEnano_v9 import campaign_run2_2017_JMEnano_v9
 
 from dijet.config.config_run3 import add_config as add_config_run3
-from cmsdb.campaigns.run3_2024_JMEnano_v14 import campaign_run3_2024_JMEnano_v14
+from cmsdb.campaigns.run3_2024_JMEnano_v15 import campaign_run3_2024_JMEnano_v15
 
 
 # default config
@@ -83,17 +83,17 @@ cfg_run2_2017_JMEnano_v9_limited = add_config_run2(
 )
 
 # default config
-cfg_run3_2024_JMEnano_v14 = add_config_run3(
+cfg_run3_2024_JMEnano_v15 = add_config_run3(
     analysis_dijet,
-    campaign_run3_2024_JMEnano_v14.copy(),
-    config_name="run3_2024_JMEnano_v14",
-    config_id=3_24_14_1,
+    campaign_run3_2024_JMEnano_v15.copy(),
+    config_name="run3_2024_JMEnano_v15",
+    config_id=3_24_15_1,
 )
 
-cfg_run3_2024_JMEnano_v14_limited = add_config_run3(
+cfg_run3_2024_JMEnano_v15_limited = add_config_run3(
     analysis_dijet,
-    campaign_run3_2024_JMEnano_v14.copy(),
-    config_name="run3_2024_JMEnano_v14_limited",
-    config_id=3_24_14_2,
+    campaign_run3_2024_JMEnano_v15.copy(),
+    config_name="run3_2024_JMEnano_v15_limited",
+    config_id=3_24_15_2,
     limit_dataset_files=1,
 )

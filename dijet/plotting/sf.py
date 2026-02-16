@@ -290,16 +290,38 @@ class PlotSF(
                 **plot_kwargs,
             )
 
-            # plot official JER SF values from correction object
-            # TODO: add support for pT-dependent JER SFs
-            ax.axhline(
-                correction.evaluate(self.branch_data.abseta.loc, "nom"),
-                color="gray",
-                linestyle="dashed",
-                linewidth=2,
-                label=f"{jer_cfg.campaign}_{jer_cfg.version}",
-                zorder=-11,
-            )
+            if self.config_inst.x.run == 3:
+                label = f"{jer_cfg.campaign}_{jer_cfg.version}"
+                if len(label) > 20:
+                    self.plot_settings["legend_kwargs"] = {
+                        "fontsize": 16,
+                        "loc": "upper right",
+                    }
+                plot_xy(
+                    h_sliced.axes[variable_map["pt"]].centers,
+                    correction.evaluate(
+                        self.branch_data.abseta.loc,
+                        h_sliced.axes[variable_map["pt"]].centers,
+                        "nom",
+                    ),
+                    ax=ax,
+                    color="gray",
+                    linestyle="dashed",
+                    linewidth=2,
+                    label=f"{jer_cfg.campaign}_{jer_cfg.version}",
+                    zorder=-11,
+                )
+            else:
+                # plot official JER SF values from correction object
+                # TODO: add support for pT-dependent JER SFs
+                ax.axhline(
+                    correction.evaluate(self.branch_data.abseta.loc, "nom"),
+                    color="gray",
+                    linestyle="dashed",
+                    linewidth=2,
+                    label=f"{jer_cfg.campaign}_{jer_cfg.version}",
+                    zorder=-11,
+                )
 
             # plot weighted average scale factor
             average_sf = hist_average_axis(

@@ -89,6 +89,8 @@ setup_dijet() {
 
             # start querying for variables
             query DIJET_BUNDLE_CMSSW "Install and bundle CMSSW sandboxes for job submission?" "True"
+
+            query LAW_CONFIG_FILE "Name of the file to be used as law config (must be located in $DIJET_BASE)" "law.personal.cfg"
         }
         cf_setup_interactive "${CF_SETUP_NAME}" "${DIJET_BASE}/.setups/${CF_SETUP_NAME}.sh" || return "$?"
     fi
@@ -125,9 +127,8 @@ setup_dijet() {
     #
     # law setup
     #
-
     export LAW_HOME="${DIJET_BASE}/.law"
-    export LAW_CONFIG_FILE="${DIJET_BASE}/law.cfg"
+    export LAW_CONFIG_FILE="${LAW_CONFIG_FILE:-law.personal.cfg}"
 
     if which law &> /dev/null; then
         # source law's bash completion scipt
