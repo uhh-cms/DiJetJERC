@@ -1,5 +1,5 @@
-# DiJet Analysis
-
+# JER measurements from di-jet events
+[Project planning board](https://github.com/orgs/uhh-cms/projects/16) (the underlying issues are hosted in the [DiJetJERC-Planning repository](https://github.com/uhh-cms/DiJetJERC-Planning))
 
 ### Resources
 
