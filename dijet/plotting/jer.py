@@ -6,6 +6,7 @@ of pt.
 from __future__ import annotations
 
 import law
+import luigi
 
 from functools import partial
 
@@ -23,6 +24,8 @@ hist = maybe_import("hist")
 np = maybe_import("numpy")
 plt = maybe_import("matplotlib.pyplot")
 mplhep = maybe_import("mplhep")
+clib = maybe_import("correctionlib")
+json = maybe_import("json")
 
 
 class PlotJER(
@@ -50,7 +53,7 @@ class PlotJER(
     plot_settings = {
         "legend_kwargs": dict(loc="upper right"),
         "xlabel": lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["pt"]).get_full_x_title(),  # noqa
-        "xlim": (49, 2100),
+        # "xlim": (49, 2100),
         "xscale": "log",
         "ylabel": "Jet energy resolution",
         "ylim": (0, 0.5),
@@ -60,6 +63,15 @@ class PlotJER(
     # which variable keys to use for constructing branch map
     branch_map_binning_variable_keys = ("abseta",)
 
+    # ask if official JER curves from correctionlib files should be plotted
+    plot_official = luigi.BoolParameter(
+        default=True,
+        description="Plot official JER curves",
+    )
+    plot_nsc_fits = luigi.BoolParameter(
+        default=False,
+        description="Plot NSC fits fro each sample",
+    )
     #
     # methods required by law
     #
@@ -124,7 +136,10 @@ class PlotJER(
 
         # dict storing either variables or their gen-level equivalents
         # for convenient access
-        variable_map = self.postprocessor_inst.variable_map["reco"]
+        if "reco" in self.levels:
+            variable_map = self.postprocessor_inst.variable_map["reco"]
+        else:
+            variable_map = self.postprocessor_inst.variable_map["gen"]
 
         # helper function for input preparation (clean nans)
         def _prepare_input(histogram):
@@ -143,10 +158,26 @@ class PlotJER(
 
         # load correction object for official JER SF
         # TODO: make optional
+        bundle_files = self.requires()["external_files"].files
         jer_cfg = self.config_inst.x.jer["Jet"]
         jer_sf_key = f"{jer_cfg.campaign}_{jer_cfg.version}_MC_PtResolution_{jer_cfg.jet_type}"
-        correction_set = load_correction_set(self.requires()["external_files"].files["jet_jerc"])
+        correction_set = load_correction_set(bundle_files["jet_jerc"])
         correction = correction_set[jer_sf_key]
+        mctruth_jer = clib.CorrectionSet.from_string(
+            json.loads(bundle_files["mctruth_gauss_jer"].load(formatter="gzip")),
+        )
+        if self.plot_nsc_fits:
+            data_jer = clib.CorrectionSet.from_string(
+                json.loads(bundle_files["data_mpfx_jer"].load(formatter="gzip")),
+            )
+            mc_jer = clib.CorrectionSet.from_string(
+                json.loads(bundle_files["mc_mpfx_jer"].load(formatter="gzip")),
+            )
+            jer_curve = {
+                "data": data_jer["NSC_fit_data"],
+                "qcdht": mc_jer["NSC_fit_qcdht"],
+                "mc_truth": mctruth_jer["NSC_fit_qcdht"],
+            }
 
         # retrieve response configuration
         response_key = self.postprocessor_inst.calc_jer_main_response
@@ -180,7 +211,7 @@ class PlotJER(
         # loop through bins and do plotting
         plt.style.use(mplhep.style.CMS)
         for bv_bins in product_dict({
-            "category": self.config_inst.x.method_categories,
+            "category": self.config_inst.x.method_categories if "reco" in self.levels else ["incl"],
             **bv_bin_lists,
         }):
             # pop category and retrieve config object
@@ -202,11 +233,13 @@ class PlotJER(
             # initialize figure and axes
             fig, ax = plt.subplots()
             mplhep.cms.label(
-                lumi=round(0.001 * self.config_inst.x.luminosity.get("nominal"), 2),  # /pb -> /fb
+                lumi=round(0.001 * self.config_inst.x.luminosity.get("nominal")),  # /pb -> /fb
                 com=f"{self.config_inst.campaign.ecm:g}",
                 ax=ax,
-                llabel="Private Work",
+                exp="",
+                llabel="Private Work (CMS Data/Simulation)" if "reco" in self.levels else "Private Work (CMS Simulation)",  # noqa:E501
                 data=True,
+                fontsize=22,
             )
 
             # construct selectors for slicing histogram to get current bin
@@ -240,10 +273,15 @@ class PlotJER(
                     .get(sample, {}).get("plot_kwargs", {}),
                 )
                 # resolve task-specific kwargs
-                plot_kwargs = plot_kwargs.get(
-                    self.__class__,
-                    plot_kwargs.get("__default__", {}),
-                )
+                if "reco" not in self.levels:
+                    plot_kwargs = plot_kwargs.get(
+                        "__gen_only__", {},
+                    )
+                else:
+                    plot_kwargs = plot_kwargs.get(
+                        self.__class__,
+                        plot_kwargs.get("__default__", {}),
+                    )
 
                 # plot JER
                 plot_xy(
@@ -253,11 +291,26 @@ class PlotJER(
                     ax=ax,
                     **plot_kwargs,
                 )
+                if self.plot_nsc_fits:
+                    pt_edges = h_sliced.axes[variable_map["pt"]].edges
+                    pt_vals = np.logspace(np.log10(pt_edges[0]), np.log10(pt_edges[-1]), 101)
+                    jer_vals = jer_curve[sample].evaluate(
+                        self.branch_data.abseta.loc, pt_vals,
+                    )
+                    plt.plot(
+                        pt_vals,
+                        jer_vals,
+                        color=plot_kwargs.get("color", "pink"),
+                        linestyle="dashed",
+                        linewidth=2,
+                        label=f"{plot_kwargs.get('label', sample)} (NSC fit)",
+                        zorder=-10,
+                    )
 
                 # plot official JER values from correction object
                 # (only QCD HT sample)
                 # FIXME: avoid hard-coding sample name
-                if sample == "qcdht":
+                if sample == "qcdht" and self.plot_official:
 
                     # TODO: this is also neede in the SF plotting task, amybe move to/create a styl config
                     label = rf"{jer_cfg.campaign}_{jer_cfg.version}"
@@ -278,6 +331,17 @@ class PlotJER(
                         linestyle="dashed",
                         linewidth=2,
                         label=label,
+                        zorder=-10,
+                    )
+
+                    jer_val2 = mctruth_jer["NSC_fit_qcdht"].evaluate(self.branch_data.abseta.loc, pt_vals)
+                    plt.plot(
+                        pt_vals,
+                        jer_val2,
+                        color="green",
+                        linestyle="dashed",
+                        linewidth=2,
+                        label="MC truth (NSC fit)",
                         zorder=-10,
                     )
 

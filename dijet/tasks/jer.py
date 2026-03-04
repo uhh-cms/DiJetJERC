@@ -6,6 +6,7 @@ Custom tasks to derive JER SF.
 from __future__ import annotations
 
 import law
+import luigi
 
 from columnflow.tasks.framework.base import Requirements
 from columnflow.util import maybe_import
@@ -44,6 +45,12 @@ class JER(
         AlphaExtrapolation=AlphaExtrapolation,
     )
 
+    # extract fitted JER
+    extract_nsc_fit = luigi.BoolParameter(
+        default=False,
+        description="Fit a NSC function to the JER and save the fit parameters as an correctionlib json.",
+    )
+
     #
     # methods required by law
     #
@@ -60,6 +67,8 @@ class JER(
                 output_key: self.target(f"{'__'.join(output_key.split('.'))}.pickle")
                 for output_key in self.output_keys
             },
+            "jer": self.target(f"{self.branch_data.sample}_jer.txt"),
+            "nsc_fit": self.target(f"{self.branch_data.sample}_nsc_fit.txt"),
         }
 
     def requires(self):
@@ -156,20 +165,23 @@ class JER(
         response_key = self.postprocessor_inst.calc_jer_main_response
 
         # load extrapolation results
-        input_extp_reco = self.load_input(
-            f"{response_key}.extrapolation", level="reco")
+        if "reco" in self.levels:
+            input_extp_reco = self.load_input(
+                f"{response_key}.extrapolation", level="reco")
+            input_width_reco = self.load_input(
+                f"{response_key}.width", level="reco")
         input_extp_gen = self.load_input(
             f"{response_key}.extrapolation", level="gen", sample=self.branch_data.mc_sample)
-        input_width_reco = self.load_input(
-            f"{response_key}.width", level="reco")
         input_width_gen = self.load_input(
             f"{response_key}.width", level="gen", sample=self.branch_data.mc_sample)
 
         # load intercept results into hists
         hists = {
-            f"{response_key}.width.reco": input_width_reco,
+            **({
+                f"{response_key}.width.reco": input_width_reco,
+                f"{response_key}.extrapolation.reco.intercepts": input_extp_reco["intercepts"],
+            } if "reco" in self.levels else {}),
             f"{response_key}.width.gen": input_width_gen,
-            f"{response_key}.extrapolation.reco.intercepts": input_extp_reco["intercepts"],
             f"{response_key}.extrapolation.gen.intercepts": input_extp_gen["intercepts"],
         }
 
@@ -179,7 +191,44 @@ class JER(
                 task=self,
                 step=step,
                 inputs=hists,
+                gen_only="reco" not in self.levels,
             ))
+
+            if self.extract_nsc_fit:
+                from dijet.fit_util import fit_nsc
+                from dijet.correction_util import (
+                    create_NSC_correctionlib,
+                    create_correctionlib_from_hist,
+                    fill_NSC_correctionlib,
+                    build_correctionset,
+                )
+
+                h_in = hists[f"{response_key}.jer"][0, :, :]
+
+                hist_corr = create_correctionlib_from_hist(
+                    h_in=h_in,
+                    name=f"jer_{sample}",
+                    label=f"JER for sample {sample}",
+                    description=f"JER for sample {sample}",
+                )
+                # TODO: maybe put all corrections in one set
+                cset_hist = build_correctionset(
+                    corrs=[hist_corr],
+                    description=f"JER values for sample {sample}",
+                )
+                self.output()["jer"].dump(cset_hist, formatter="text")
+
+                corr = create_NSC_correctionlib(sample, h_in[:, 0].axes.edges[0])
+                for i, eta in enumerate(h_in[:, 0].axes.centers[0]):
+                    h_fit = h_in[i, :]
+                    fit_val, fit_err = fit_nsc(h_fit)
+                    corr = fill_NSC_correctionlib(corr, i, fit_val)
+
+                cset = build_correctionset(
+                    corrs=[corr],
+                    description=f"NSC fit for sample {sample}",
+                )
+                self.output()["nsc_fit"].dump(cset, formatter="text")
 
             print("writing outputs")
             for output_key in self.output_keys:

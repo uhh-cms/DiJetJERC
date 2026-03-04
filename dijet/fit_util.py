@@ -1,10 +1,16 @@
 # coding: utf-8
 
+import law
+
 from columnflow.util import maybe_import
 
 sc = maybe_import("scipy.optimize")
 nd = maybe_import("numdifftools")
 np = maybe_import("numpy")
+hist = maybe_import("hist")
+iminuit = maybe_import("iminuit")
+
+logger = law.logger.get_logger(__name__)
 
 
 def linear_function(x, p):
@@ -111,3 +117,41 @@ class CorrelatedFit():
         popt, perr = CorrelatedFit.correlated_fit(wmax, std, y_cov_mc_inv)
 
         return popt, perr
+
+
+def fit_nsc(h_in: hist.Hist, **kwargs):
+    """
+    Fit a NSC function to the JER
+    """
+    from iminuit import Minuit
+    from iminuit.cost import LeastSquares
+
+    def nsc_func(pt, N, S, C, d):
+        return np.sqrt(((N * np.abs(N)) / pt**2) + (S**2 / pt**d) + C**2)
+
+    centers = h_in.axes.centers[0]
+    values = h_in.values()
+    uncertainties = np.sqrt(h_in.variances())
+
+    # define cost function
+    cost = LeastSquares(centers, values, uncertainties, nsc_func)
+    # set initial parameter values and limits, then minimize
+    m = Minuit(cost, N=2.6, S=0.9, C=0.05, d=1.9)
+    m.limits = (0, None)
+    # m.limits["C"] = (0.02, None)
+    m.migrad()
+
+    # TODO: find correct metric to check if the fit converged
+    retries = 0
+    while not m.valid and retries < 2:
+        m.migrad()
+        retries += 1
+
+    if not m.valid:
+        logger.error(
+            "NSC fit failed to converge, paremeters set to default values.",
+        )
+
+    logger.info(f"NSC fit results: {m.values}, errors: {m.errors}")
+
+    return m.values, m.errors
