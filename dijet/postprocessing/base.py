@@ -519,6 +519,7 @@ def calc_jer_impl(
     task: law.Task,
     inputs: dict[hist.Hist],
     # user-defined parameters
+    gen_only: bool = False,
     **kwargs,
 ) -> dict[hist.Hist]:
     """
@@ -543,9 +544,11 @@ def calc_jer_impl(
 
     # initialize storage for outputs
     outputs = {}
-
     # use reco level for main variable lookup
-    variable_map = self.variable_map["reco"]
+    if gen_only:
+        variable_map = self.variable_map["gen"]
+    else:
+        variable_map = self.variable_map["reco"]
 
     # compute JER for main response
     response_key = self.calc_jer_main_response
@@ -559,13 +562,15 @@ def calc_jer_impl(
     check_hist_axes(
         hists=r_inputs,
         checks={
-            "*.reco*": set(
-                set(response_cfg["all_vars"]["reco"]) -
-                {
-                    response_cfg["response_vars"]["reco"],
-                    variable_map[self.extrapolation_var_key],
-                },
-            ),
+            **({
+                "*.reco*": set(
+                    set(response_cfg["all_vars"]["reco"]) -
+                    {
+                        response_cfg["response_vars"]["reco"],
+                        variable_map[self.extrapolation_var_key],
+                    },
+                ),
+            } if not gen_only else {}),
             "*.gen*": set(
                 set(response_cfg["all_vars"]["gen"]) -
                 {
@@ -591,7 +596,10 @@ def calc_jer_impl(
             }]
 
     # get input histograms
-    h_widths = _get_width("reco")
+    if gen_only:
+        h_widths = _get_width("gen")
+    else:
+        h_widths = _get_width("reco")
 
     # if requested, subtract the gen-level results from the extrapolated widths
     if self.calc_jer_subtract_pli:

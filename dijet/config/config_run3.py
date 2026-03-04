@@ -182,6 +182,35 @@ def add_config(
                     "edgecolor": "none",
                     "label": "MC",
                 },
+                "__gen_only__": {
+                    "method": "errorbar",
+                    "fmt": "o",
+                    "marker": "o",
+                    "fillstyle": "none",
+                    "color": "green",
+                    "label": "MC truth",
+                },
+            },
+        },
+        "test": {
+            "datasets": "qcd_ht100to200_madgraph",
+            "label": "MC",
+            "plot_kwargs": {
+                "__default__": {
+                    "method": "errorbar",
+                    "fmt": "o",
+                    "marker": "o",
+                    "fillstyle": "none",
+                    "color": "indianred",
+                    "label": "MC (HT 100 to 200)",
+                },
+                PlotAsymmetry: {
+                    "method": "bar",
+                    "alpha": 0.6,
+                    "color": "indianred",
+                    "edgecolor": "none",
+                    "label": "MC (HT 100 to 200)",
+                },
             },
         },
     }
@@ -463,6 +492,17 @@ def add_config(
         "AK4PUPPI_TightLeptonVeto": 3,
     })
 
+    # jsons and histograms for MC truth JER and NSC fits
+    custom_file_path = "/data/dust/user/letzerba/public/dijetjer"
+    add_external("mctruth_jer", f"{custom_file_path}/nsc_fit.json.gz")
+    add_external("mctruth_gauss_jer", f"{custom_file_path}/nsc_fit_gauss.json.gz")
+    add_external("data_jer", f"{custom_file_path}/data_nsc_fit.json.gz")
+    add_external("data_gauss_jer", f"{custom_file_path}/data_nsc_fit_gauss.json.gz")
+    add_external("mc_jer", f"{custom_file_path}/qcdht_nsc_fit.json.gz")
+    add_external("mc_gauss_jer", f"{custom_file_path}/qcdht_nsc_fit_gauss.json.gz")
+    add_external("mc_mpfx_jer", f"{custom_file_path}/qcdht_nsc_fit_mpfx.json.gz")
+    add_external("data_mpfx_jer", f"{custom_file_path}/data_nsc_fit_mpfx.json.gz")
+
     # met phi correction
     if year != 2024:  # TODO: not yet available for 2024
         add_external("met_phi_corr", (cat_info.get_file("jme", f"met_xyCorrections_{year}_{year}{campaign.x.postfix}.json.gz"), "v1"))  # noqa: E501
@@ -483,6 +523,7 @@ def add_config(
             "Pileup.nTrueInt",
             # columns added during selection, required in general
             "mc_weight", "PV.npvs", "process_id", "category_ids", "deterministic_seed",
+            "mc_truth_response",
             # weight-related columns
             "pu_weight*",
             # produced by 'jet_assignment' producer

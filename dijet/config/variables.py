@@ -15,7 +15,7 @@ np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
 
-from dijet.constants import pt, eta, alpha
+from dijet.constants import pt, eta, alpha, gen_pt
 
 
 def add_feature_variables(config: od.Config) -> None:
@@ -93,39 +93,116 @@ def add_variables(config: od.Config) -> None:
         unit="GeV",
         x_title="$p_{T}$ of all jets",
     )
+    config.add_variable(
+        name="genjets_pt",
+        expression="GenJet.pt[:,:2]",
+        binning=pt,  # (100, 0, 1000),
+        unit="GeV",
+        x_title="$p_{T}$ of the two leading gen jets",
+    )
+    config.add_variable(
+        name="genjets_eta",
+        expression="GenJet.eta[:,:2]",
+        binning=eta,
+        x_title=r"$\eta$ of the two leading gen jets",
+    )
 
     # Jets (3 pt-leading jets)
     for i in range(3):
-        config.add_variable(
-            name=f"jet{i+1}_pt",
-            expression=f"Jet.pt[:,{i}]",
-            null_value=EMPTY_FLOAT,
-            binning=(100, 0., 1000.),
-            unit="GeV",
-            x_title=r"Jet %i $p_{T}$" % (i + 1),
-        )
-        config.add_variable(
-            name=f"jet{i+1}_eta",
-            expression=f"Jet.eta[:,{i}]",
-            null_value=EMPTY_FLOAT,
-            binning=(100, -5.0, 5.0),
-            x_title=r"Jet %i $\eta$" % (i + 1),
-        )
-        config.add_variable(
-            name=f"jet{i+1}_phi",
-            expression=f"Jet.phi[:,{i}]",
-            null_value=EMPTY_FLOAT,
-            binning=(40, -3.2, 3.2),
-            x_title=r"Jet %i $\phi$" % (i + 1),
-        )
-        config.add_variable(
-            name=f"jet{i+1}_mass",
-            expression=f"Jet.mass[:,{i}]",
-            null_value=EMPTY_FLOAT,
-            binning=(40, 0, 200),
-            unit="GeV",
-            x_title=r"Jet %i mass" % (i + 1),
-        )
+        for obj in ["Jet"]:
+            config.add_variable(
+                name=f"{obj}{i+1}_pt".lower(),
+                expression=f"{obj}.pt[:,{i}]",
+                null_value=EMPTY_FLOAT,
+                binning=(100, 0., 1000.),
+                unit="GeV",
+                x_title=obj + r" %i $p_{T}$" % (i + 1),
+            )
+            config.add_variable(
+                name=f"{obj}{i+1}_eta".lower(),
+                expression=f"{obj}.eta[:,{i}]",
+                null_value=EMPTY_FLOAT,
+                binning=(100, -5.0, 5.0),
+                x_title=obj + r" %i $\eta$" % (i + 1),
+            )
+            config.add_variable(
+                name=f"{obj}{i+1}_phi".lower(),
+                expression=f"{obj}.phi[:,{i}]",
+                null_value=EMPTY_FLOAT,
+                binning=(40, -3.2, 3.2),
+                x_title=obj + r" %i $\phi$" % (i + 1),
+            )
+            config.add_variable(
+                name=f"{obj}{i+1}_mass".lower(),
+                expression=f"{obj}.mass[:,{i}]",
+                null_value=EMPTY_FLOAT,
+                binning=(40, 0, 200),
+                unit="GeV",
+                x_title=obj + r" %i mass" % (i + 1),
+            )
+
+    for i in range(1):
+        for obj in ["GenJet"]:
+            config.add_variable(
+                name=f"{obj}{i+1}_pt".lower(),
+                expression=f"{obj}.pt[:,{i}]",
+                null_value=EMPTY_FLOAT,
+                binning=gen_pt,  # (100, 0., 1000.),
+                unit="GeV",
+                x_title=r"$p_\text{T}^\text{gen}$",
+            )
+            config.add_variable(
+                name=f"{obj}{i+1}_eta".lower(),
+                expression=f"{obj}.eta[:,{i}]",
+                null_value=EMPTY_FLOAT,
+                binning=eta,
+                x_title=obj + r" %i $\eta$" % (i + 1),
+            )
+            config.add_variable(
+                name=f"{obj}{i+1}_phi".lower(),
+                expression=f"{obj}.phi[:,{i}]",
+                null_value=EMPTY_FLOAT,
+                binning=(40, -3.2, 3.2),
+                x_title=obj + r" %i $\phi$" % (i + 1),
+            )
+            config.add_variable(
+                name=f"{obj}{i+1}_mass".lower(),
+                expression=f"{obj}.mass[:,{i}]",
+                null_value=EMPTY_FLOAT,
+                binning=(40, 0, 200),
+                unit="GeV",
+                x_title=obj + r" %i mass" % (i + 1),
+            )
+
+    config.add_variable(
+        name="genjet1_abseta",
+        expression=lambda events: abs(events.GenJet.eta[:, 0]),
+        null_value=EMPTY_FLOAT,
+        binning=eta,
+        x_title=r"$|\eta^\text{gen}|$",
+        aux={
+            "inputs": {"GenJet.eta"},
+        },
+    )
+
+    config.add_variable(
+        name="mc_truth_response",
+        expression="mc_truth_response",
+        binning=(100, 0, 2),
+        x_title=r"MC truth response",
+    )
+    config.add_variable(
+        name="mc_truth_response1",
+        expression="mc_truth_response1",
+        binning=(100, 0, 2),
+        x_title=r"MC truth response (2nd leading gen jet)",
+    )
+    config.add_variable(
+        name="mc_truth_responses",
+        expression="mc_truth_responses",
+        binning=(100, 0, 2),
+        x_title=r"MC truth response (2 leading gen jets)",
+    )
 
     #
     # dijet-related variables

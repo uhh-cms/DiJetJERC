@@ -128,7 +128,7 @@ class HistogramsBaseTask(
             # return branch map directly
             return branches
 
-        elif self.branching_type == "with_mc":
+        elif self.branching_type == "with_mc" or self.levels == ("gen",):
             # like 'separate', but check that there is exactly one
             # MC dataset and add it to the branch data
             mc_branches = [b for b in branches if b.is_mc]
@@ -182,7 +182,7 @@ class HistogramsBaseTask(
         parts = super().store_parts()
 
         # insert 'sample' part after 'dataset'
-        if self.branching_type in ("separate", "with_mc"):
+        if self.branching_type in ("separate", "with_mc") or self.levels == ("gen",):
             parts.insert_after(
                 "dataset",
                 "sample",

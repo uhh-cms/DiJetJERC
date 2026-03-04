@@ -24,20 +24,20 @@ plt = maybe_import("matplotlib.pyplot")
 mplhep = maybe_import("mplhep")
 
 
-class PlotAsymmetry(
+class PlotMCTruthResponse(
     PlottingBaseTask,
 ):
     """
-    Task to plot asymmetry distributions.
+    Task to plot MC truth response distributions.
 
-    Shows the asymmetry distribution for all given `--samples`
+    Shows the MC truth response distribution for all given `--samples`
     and `--levels`. One plot is produced for each |eta|, pt and alpha bin
     and for each method (fe, sm).
     The methods to take into account are given as `--categories`.
     """
 
     # how to create the branch map
-    branching_type = "merged"
+    branching_type = "with_mc"
 
     # upstream workflow
     input_task_cls = Asymmetry
@@ -48,8 +48,8 @@ class PlotAsymmetry(
     # plot configuration (e.g. axes limits/labels/scales)
     plot_settings = {
         "legend_kwargs": dict(loc="upper right"),
-        "xlabel": lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["reco"][ctx["response_var_key"]]).x_title,
-        "xlim": (-0.5, 0.5),
+        "xlabel": lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["gen"][ctx["response_var_key"]]).x_title,
+        "xlim": (0.0, 2.0),
         "xscale": "linear",
         "ylabel": r"$\Delta$N/N",
         "ylim": (5e-5, 10),
@@ -154,7 +154,7 @@ class PlotAsymmetry(
                 {response_var_key}
             )
             bv_bin_lists: dict[list[dict]] = self._get_filtered_variable_bins(
-                variable_map["reco"],
+                variable_map["gen"],
                 bv_var_keys,
                 from_hist=ref_object,
                 remove_skipped=False,
@@ -163,7 +163,7 @@ class PlotAsymmetry(
             # loop through bins and do plotting
             plt.style.use(mplhep.style.CMS)
             for bv_bins in product_dict({
-                "category": self.config_inst.x.method_categories,
+                "category": ["incl"],
                 **bv_bin_lists,
             }):
                 # pop category and retrieve config object
@@ -189,9 +189,9 @@ class PlotAsymmetry(
                     com=f"{self.config_inst.campaign.ecm:g}",
                     ax=ax,
                     exp="",
-                    llabel="Private Work (CMS Data/Simulation)",
-                    data=True,
+                    llabel="Private Work (CMS Simulation)",
                     fontsize=22,
+                    data=False,
                 )
 
                 # construct selectors for slicing histogram to get current bin
@@ -242,6 +242,7 @@ class PlotAsymmetry(
                             "method": "step",
                             "where": "mid",
                         })
+                        plot_kwargs.pop("fmt", None)
 
                     # plot asymmetry distribution
                     plot_xy(
@@ -283,14 +284,14 @@ class PlotAsymmetry(
                 for i, text in enumerate(annotation_texts):
                     annotate(
                         text=text,
-                        xy_offset=(20, -20 - 30 * i),
+                        xy_offset=(20, -20 - 32 * i),
                     )
 
                 # figure adjustments
                 self.apply_plot_settings(ax=ax, context={"vars": variable_map, "response_var_key": response_var_key})
 
                 # legend
-                ax.legend(**self.plot_settings.get("legend_kwargs", {}))
+                # ax.legend(**self.plot_settings.get("legend_kwargs", {}))
 
                 # compute plot filename
                 fname_parts = [

@@ -102,7 +102,7 @@ def add_categories(config: od.Config) -> None:
         name="incl",
         id=0,
         selection="catid_incl",
-        label="inclusive",
+        label="Inclusive",
     )
 
     #

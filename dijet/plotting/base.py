@@ -134,7 +134,10 @@ class PlottingBaseTask(
             )
 
         # get all variable keys
-        all_variable_keys = set(params["postprocessor_inst"].variable_map["reco"])
+        if "reco" in postprocessor_inst.variable_map:
+            all_variable_keys = set(params["postprocessor_inst"].variable_map["reco"])
+        else:
+            all_variable_keys = set(params["postprocessor_inst"].variable_map["gen"])
 
         # warn about unknown/disallowed variables
         unknown_keys = set(params["bin_selectors"]) - all_variable_keys
@@ -258,7 +261,10 @@ class PlottingBaseTask(
 
         # limit variable range for plotting if configured
         # FIXME: avoid hard-coding 'reco'?
-        variable_map = self.postprocessor_inst.variable_map["reco"]
+        if "reco" in self.postprocessor_inst.variable_map:
+            variable_map = self.postprocessor_inst.variable_map["reco"]
+        else:
+            variable_map = self.postprocessor_inst.variable_map["gen"]
 
         if self.branch_map_binning_variable_keys is None:
             raise ValueError(

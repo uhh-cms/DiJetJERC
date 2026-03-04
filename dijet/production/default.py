@@ -14,6 +14,7 @@ from dijet.production.dijet_balance import dijet_balance
 from dijet.production.alpha import alpha
 from dijet.production.jet_assignment import jet_assignment
 from dijet.production.weights import event_weights
+from dijet.production.mc_truth_response import mc_truth_response
 
 np = maybe_import("numpy")
 ak = maybe_import("awkward")
@@ -27,6 +28,7 @@ ak = maybe_import("awkward")
         jet_assignment.PRODUCES,
         dijet_balance,
         alpha,
+        mc_truth_response,
     },
     produces={
         category_ids,
@@ -35,6 +37,7 @@ ak = maybe_import("awkward")
         jet_assignment.PRODUCES,
         dijet_balance,
         alpha,
+        mc_truth_response,
     },
 )
 def default(
@@ -48,6 +51,9 @@ def default(
         # normalization weights
         # events = self[normalization_weights](events, **kwargs)
         events = self[event_weights](events, **kwargs)
+
+        # mc truth response
+        events = self[mc_truth_response](events, **kwargs)
 
     # dijet properties: alpha_raw, asymmetry, pt_avg
     events = self[dijet_balance](events, **kwargs)

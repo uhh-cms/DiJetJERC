@@ -188,8 +188,10 @@ class PlotAlphaExtrapolation(
                     lumi=round(0.001 * self.config_inst.x.luminosity.get("nominal"), 2),  # /pb -> /fb
                     com=f"{self.config_inst.campaign.ecm:g}",
                     ax=ax,
-                    llabel="Private Work",
+                    exp="",
+                    llabel="Private Work (CMS Data/Simulation)",
                     data=True,
+                    fontsize=22,
                 )
 
                 # construct selectors for slicing histogram to get current bin
