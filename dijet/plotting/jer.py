@@ -208,6 +208,8 @@ class PlotJER(
                 llabel="Private Work",
                 data=True,
             )
+            print("step 1")
+            from IPython import embed; embed()
 
             # construct selectors for slicing histogram to get current bin
             bin_selector = {
@@ -244,7 +246,8 @@ class PlotJER(
                     self.__class__,
                     plot_kwargs.get("__default__", {}),
                 )
-
+                print("step 2")
+                from IPython import embed; embed()
                 # plot JER
                 plot_xy(
                     h_sliced.axes[variable_map["pt"]].centers,

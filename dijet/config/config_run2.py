@@ -219,7 +219,9 @@ def add_config(
     # shift groups for conveniently looping over certain shifts
     # (used during plotting)
     cfg.x.shift_groups = {
-        "jer": ["nominal", "jer_up", "jer_down"],
+        "all": ["nominal", "minbias_xs_up", "minbias_xs_down"],
+        "all_up": ["minbias_xs_up"],
+        "all_down": ["minbias_xs_down"],
     }
 
     # selector step groups for conveniently looping over certain steps

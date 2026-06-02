@@ -227,3 +227,4 @@ class HistogramsBaseTask(
         }]
 
         return h
+        

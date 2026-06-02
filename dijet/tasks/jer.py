@@ -185,3 +185,68 @@ class JER(
             for output_key in self.output_keys:
                 result = hists[output_key]
                 self.dump_output(output_key, result)
+
+
+from columnflow.tasks.framework.mixins import DatasetShiftSourcesMixin
+from columnflow.tasks.framework.remote import RemoteWorkflow
+class MergeShiftedHistogramsJER(
+    HistogramsBaseTask,
+    DatasetShiftSourcesMixin,
+    RemoteWorkflow,
+    ):
+
+    # QUESTION: what is the resolution_task_cls?
+    # resolution_task_cls = MergeHistograms
+
+    # QUESTION: how to read the Requirements class?
+    #upstream requirements
+    reqs = Requirements(
+        RemoteWorkflow.reqs,
+        #JER=JER
+    )
+
+    branching_type = JER.branching_type # should correspond to what is given in Requirements "merged"
+
+    @law.decorator.notify
+    @law.decorator.log
+    def run(self):
+        from IPython import embed; embed()
+        # preare inputs and outputs
+        inputs = self.input()
+        outputs = self.output()["hists"].targets
+        
+        for variable_name, outp in self.iter_progress(outputs.items(), len(outputs)):
+            with self.publish_step(f"merging histograms for '{variable_name}' ..."):
+                # load hists
+                variable_hists = [
+                    coll["hists"].targets[variable_name].load(formatter="pickle")
+                    for coll in inputs.values()
+                ]
+
+                # merge and write the output
+                merged = sum(variable_hists[1:], variable_hists[0].copy())
+                outp.dump(merged, formatter="pickle")
+
+    # @property
+    # def output_keys(self):
+    #     """
+    #     Collect output keys from all postprocessor steps.
+    #     """
+    #     output_keys = set()
+    #     for step in self.postprocessor_steps:
+    #         output_keys |= set(self.postprocessor_inst.steps[step]["outputs"])
+    #     return output_keys
+
+    # def output(self):
+    #     """
+    #     Organize output as a (nested) dictionary. Output files will be in a single
+    #     directory, which is determined by `store_parts`.
+    #     """
+    #     return {
+    #         # add top-level sample key (for easier output lookup by plotting task)
+    #         self.branch_data.sample: {
+    #             # key indicating result produced by processing step
+    #             output_key: self.target(f"{'__'.join(output_key.split('.'))}.pickle")
+    #             for output_key in self.output_keys
+    #         },
+    #     }
