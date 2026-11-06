@@ -19,6 +19,7 @@ from columnflow.columnar_util import ArrayFunction, deferred_column
 from columnflow.selection import Selector, SelectionResult, selector
 from columnflow.selection.cms.met_filters import met_filters
 from columnflow.selection.cms.json_filter import json_filter
+from columnflow.selection.cms.jets import jet_veto_map
 
 from columnflow.production.util import attach_coffea_behavior
 from columnflow.production.categories import category_ids
@@ -51,9 +52,17 @@ def IF_NANO_geV13(self: ArrayFunction.DeferredColumn, func: ArrayFunction) -> An
     return self.get() if version >= 13 else None
 
 
+@deferred_column
+def IF_MC(self: ArrayFunction.DeferredColumn, func: ArrayFunction) -> Any | set[Any]:
+    if getattr(func, "dataset_inst", None) is None:
+        return self.get()
+
+    return self.get() if func.dataset_inst.is_mc else None
+
+
 @selector(
     uses={
-        met_filters, json_filter,
+        met_filters, json_filter, jet_veto_map, IF_MC("PV.z"), IF_MC("GenVtx.z"),
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,
         jet_selection, lepton_selection, trigger_selection, dijet_selection,
@@ -61,7 +70,7 @@ def IF_NANO_geV13(self: ArrayFunction.DeferredColumn, func: ArrayFunction) -> An
         IF_NANO_geV13(jet_id),
     },
     produces={
-        met_filters, json_filter,
+        met_filters, json_filter, jet_veto_map,
         category_ids, process_ids, attach_coffea_behavior,
         mc_weight, large_weights_killer,
         jet_selection, lepton_selection, trigger_selection, dijet_selection,
@@ -106,6 +115,15 @@ def default(
         events, json_filter_results = self[json_filter](events, **kwargs)
         results += json_filter_results
 
+    # jet veto map
+    events, jet_veto_results = self[jet_veto_map](events, **kwargs)
+    results += jet_veto_results
+
+    if self.dataset_inst.is_mc:
+        # delta Z selection
+        dz_mask = abs(events.PV.z - events.GenVtx.z) < 0.2
+        results.steps["delta_z"] = dz_mask
+
     # lepton selection
     events, results_lepton = self[lepton_selection](events, **kwargs)
     results += results_lepton
@@ -142,6 +160,17 @@ def default(
 
     # produce relevant columns
     events = self[cutflow_features](events, results.objects, **kwargs)
+
+    results.steps["all_but_dijet"] = (
+        results.steps.met_filter &
+        results.steps.jet_veto_map &
+        results.steps.delta_z &
+        results.steps.no_ele &
+        results.steps.no_muo &
+        results.steps.Jet &
+        results.steps.MET &
+        results.steps.ad_hoc_ptavg_ht_cut
+    )
 
     # results.event contains full selection mask. Sum over all steps.
     # Make sure all nans are present, otherwise next tasks fail

@@ -127,11 +127,12 @@ def fit_nsc(h_in: hist.Hist, **kwargs):
     from iminuit.cost import LeastSquares
 
     def nsc_func(pt, N, S, C, d):
+        # return np.minimum(np.sqrt(((N * np.abs(N)) / pt**2) + (S**2 / pt) + C**2 + (d / pt)**4), 1.)
         return np.sqrt(((N * np.abs(N)) / pt**2) + (S**2 / pt**d) + C**2)
 
     centers = h_in.axes.centers[0]
     values = h_in.values()
-    uncertainties = np.sqrt(h_in.variances())
+    uncertainties = 0.01  # np.sqrt(h_in.variances())
 
     # define cost function
     cost = LeastSquares(centers, values, uncertainties, nsc_func)

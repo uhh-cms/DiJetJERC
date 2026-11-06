@@ -279,8 +279,8 @@ def add_config(
             "lumi_13p6TeV_2023": 0.013j,
         })
     elif year == 2024:
-        cfg.x.luminosity = Number(108_950.0, {  # Status of twiki r190
-            "lumi_13p6TeV_2024": 0.013j,
+        cfg.x.luminosity = Number(109_820.0, {  # Status of twiki r195 minus era B
+            "lumi_13p6TeV_2024": 0.016j,
         })
         # cfg.x.luminosity = Number(995.223558512, {
         #     "lumi_13p6TeV_2024": 0.013j,
@@ -494,14 +494,11 @@ def add_config(
 
     # jsons and histograms for MC truth JER and NSC fits
     custom_file_path = "/data/dust/user/letzerba/public/dijetjer"
-    add_external("mctruth_jer", f"{custom_file_path}/nsc_fit.json.gz")
-    add_external("mctruth_gauss_jer", f"{custom_file_path}/nsc_fit_gauss.json.gz")
-    add_external("data_jer", f"{custom_file_path}/data_nsc_fit.json.gz")
-    add_external("data_gauss_jer", f"{custom_file_path}/data_nsc_fit_gauss.json.gz")
-    add_external("mc_jer", f"{custom_file_path}/qcdht_nsc_fit.json.gz")
-    add_external("mc_gauss_jer", f"{custom_file_path}/qcdht_nsc_fit_gauss.json.gz")
-    add_external("mc_mpfx_jer", f"{custom_file_path}/qcdht_nsc_fit_mpfx.json.gz")
-    add_external("data_mpfx_jer", f"{custom_file_path}/data_nsc_fit_mpfx.json.gz")
+    add_external("mctruth_closure", (f"{custom_file_path}/qcdht_nsc_fit_closure.json.gz", "v0"))
+    add_external("mctruth_v5", (f"{custom_file_path}/qcdht_nsc_fit_mctruthv5.json.gz", "v0"))
+    add_external("mctruth_87ci", (f"{custom_file_path}/qcdht_nsc_fit_87CI.json.gz", "v0"))
+    add_external("helsinki_jer", (f"{custom_file_path}/Summer24MG_JRV3M_MC_PtResolution_AK4PFPuppi.json.gz", "v2"))
+    add_external("gen_reco_map", (f"{custom_file_path}/gen_reco_map.json.gz", "v2"))
 
     # met phi correction
     if year != 2024:  # TODO: not yet available for 2024

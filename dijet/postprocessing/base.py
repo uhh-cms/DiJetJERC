@@ -241,6 +241,199 @@ def trim_tails_impl(
     return outputs
 
 
+def trim_tails_CI_impl(
+    self: PostProcessor,
+    task: law.Task,
+    inputs: dict[hist.Hist],
+    # user-defined parameters
+    level: str,
+    **kwargs,
+) -> dict[hist.Hist]:
+    """
+    Trim the (possibly non-Gaussian) tails of the response distributions, calculating the confidence level
+    from the mean outward until the requested threshold is reached.
+    TODO: ATM this has a lot of duplicate code with the default implementation,
+    the methods could probably merged in one function.
+
+    Inputs
+    ------
+    * ``dist``: a multi-dimensional histogram containing the raw response distribution
+
+    Outputs
+    -------
+    * ``norm``: a multi-dimensional histogram containing the normalized response distributions
+               before trimming non-Gaussian tails
+    * ``cut``: a multi-dimensional histogram containing the normalized response distributions
+               after trimming non-Gaussian tails
+    * ``nevt``: a multi-dimensional histogram containing the event yields (integral over response)
+    * ``cut_edges``: a dict of histograms ``low`` and ``up`` containing the lower and upper bound
+                     of the response interval after trimming non-Gaussian tails (for plotting)
+    """
+    # inflate inputs
+    inputs = inflate_dict(inputs)
+
+    # initialize storage for outputs
+    outputs = {}
+
+    # use correct level for variable lookup
+    variable_map = self.variable_map[level]
+
+    # loop through responses
+    for response_key, response_cfg in self.responses.items():
+        # skip derived responses
+        if response_cfg.get("derived", False):
+            continue
+
+        # get name of response variable for this histogram
+        response_var_key = response_cfg["response_var_key"]
+
+        # retrieve inputs for response
+        r_inputs = inputs[response_key]
+        r_outputs = outputs[response_key] = {}
+
+        # check inputs for response
+        all_vars = set(response_cfg["all_vars"][level])
+        check_hist_axes(
+            hists=r_inputs,
+            checks={
+                "*": all_vars,
+            },
+        )
+
+        # copy input histogram
+        h_in = r_inputs["dist"].copy(deep=False)
+
+        # rebin response
+        h_in = h_in[{
+            variable_map[response_var_key]: hist.rebin(
+                self.trim_tails_asymmetry_rebin_factor,
+            ),
+        }]
+
+        # resolve axis names and indices
+        axis_names = [a.name for a in h_in.axes]
+        axis_indices = {
+            var_key: axis_names.index(variable_map[var_key])
+            for var_key in (self.extrapolation_var_key, response_var_key)
+        }
+
+        # work on view of histogram data
+        v_in = h_in.view()
+
+        # replace histogram contents with cumulative sum over
+        # bins in the extrapolation variable (typically 'alpha')
+        v_in.value = np.apply_along_axis(np.cumsum, axis=axis_indices[self.extrapolation_var_key], arr=v_in.value)
+        v_in.variance = np.apply_along_axis(np.cumsum, axis=axis_indices[self.extrapolation_var_key], arr=v_in.variance)
+
+        # get total event yield from integral over asymmetry distrivution
+        # (note: we don't include over-/underflow bins here)
+        integral = h_in.values().sum(axis=axis_indices[response_var_key], keepdims=True)
+        integral_var = h_in.variances().sum(axis=axis_indices[response_var_key], keepdims=True)
+
+        # store event yield as histogram in output
+        h_nevt = h_in.copy()
+        h_nevt = h_nevt[{variable_map[response_var_key]: sum}]
+        h_nevt.view().value = np.squeeze(integral)
+        h_nevt.view().variance = np.squeeze(integral_var)
+        r_outputs["nevt"] = h_nevt.copy(deep=False)
+
+        # normalize histogram to integral over asymmetry
+        v_in.value = v_in.value / integral
+        v_in.variance = v_in.variance / integral**2
+
+        # store full asymmetry distribution (including non-Gaussian tails)
+        r_outputs["norm"] = h_in.copy(deep=False)
+
+        #
+        # next, trim non-Gaussian tails, TODO: lot of copilot in this; theres probably a smarter implementation
+        #
+        asym_edges = h_in.axes[variable_map[response_var_key]].edges
+        use_max_bin = False
+        if kwargs.get("use_max_bin", False):
+            use_max_bin = True
+
+        def find_CI(values, bin_edges=asym_edges, trim_fraction=self.trim_tails_fraction, use_max_bin=use_max_bin):
+            total = np.sum(values)
+            if total <= 0 or np.isnan(total):
+                return bin_edges[0], bin_edges[-1]
+            # Bin centers
+            centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+            if use_max_bin:
+                center_bin = np.argmax(values)
+            else:
+                mean = np.sum(values * centers) / total
+                center_bin = np.searchsorted(bin_edges, mean) - 1
+            left = right = center_bin
+            nsum = values[center_bin]
+            nbins = len(values)
+            # Expand interval
+            while nsum < (1 - trim_fraction):  # * total: == 1, as v_in is already normalized
+                nleft = values[left - 1] if left > 0 else 0
+                nright = values[right + 1] if right < nbins - 1 else 0
+                if nleft >= nright and left > 0:
+                    left -= 1
+                    nsum += nleft
+                elif right < nbins - 1:
+                    right += 1
+                    nsum += nright
+                else:
+                    break
+            # Optionally interpolate last bin if nsum > conf_level * total
+            return bin_edges[left], bin_edges[right + 1]
+
+        # find edges corresponding to confidence interval
+        intervals = np.apply_along_axis(find_CI, axis=axis_indices[response_var_key], arr=v_in.value)
+
+        edges_lo = np.take(intervals, 0, axis=axis_indices[response_var_key])
+        edges_up = np.take(intervals, 1, axis=axis_indices[response_var_key])
+
+        # add_back reduced dimension
+        asym_edges_lo = np.expand_dims(edges_lo, axis=axis_indices[response_var_key])
+        asym_edges_up = np.expand_dims(edges_up, axis=axis_indices[response_var_key])
+
+        # store bin edges in histogram format
+        h_asym_edges_lo = h_in.copy()[{variable_map[response_var_key]: sum}]
+        h_asym_edges_up = h_asym_edges_lo.copy()
+        h_asym_edges_lo.view().value = np.squeeze(asym_edges_lo)
+        h_asym_edges_lo.view().variance[:] = 0.0
+        h_asym_edges_up.view().value = np.squeeze(asym_edges_up)
+        h_asym_edges_up.view().variance[:] = 0.0
+        r_outputs["cut_edges"] = {
+            "low": h_asym_edges_lo.copy(),
+            "up": h_asym_edges_up.copy(),
+        }
+
+        # compute mask to select tail bins
+        asym_centers = h_in.axes[variable_map[response_var_key]].centers
+        asym_centers_shape = (1,) * (asym_edges_lo.ndim - 1) + (-1,)
+        asym_centers = asym_centers.reshape(*asym_centers_shape)
+        mask = (asym_centers > asym_edges_lo) & (asym_centers < asym_edges_up)
+
+        # set tail bins to zero for trimming
+        v_in.value = np.where(mask, v_in.value, 0)
+        v_in.variance = np.where(mask, v_in.variance, 0)
+
+        # store asymmetry with trimmed non-Gaussian tails
+        r_outputs["cut"] = h_in.copy(deep=False)
+
+        # check outputs
+        check_hist_axes(
+            hists=r_outputs,
+            checks={
+                "norm": all_vars,
+                "cut": all_vars,
+                "nevt": all_vars - {response_cfg["response_vars"][level]},
+                "cut_edges": all_vars - {response_cfg["response_vars"][level]},
+            },
+        )
+
+    # deflate outputs
+    outputs = deflate_dict(outputs, max_depth=2)
+
+    # return outputs
+    return outputs
+
+
 def extract_width_impl(
     self: PostProcessor,
     task: law.Task,
@@ -428,7 +621,7 @@ def extrapolate_width_impl(
         h_nevt = r_inputs["nevt"].copy(deep=False)
 
         # Get max alpha for fit; usually 0.3
-        amax = 0.3  # TODO: define in config
+        amax = 1  # 0.3  # TODO: define in config
         h_stds = h_stds[{variable_map[self.extrapolation_var_key]: slice(0, hist.loc(amax))}]
         h_nevt = h_nevt[{variable_map[self.extrapolation_var_key]: slice(0, hist.loc(amax))}]
         # exclude 0, the first bin, from alpha edges

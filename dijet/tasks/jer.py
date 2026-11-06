@@ -67,8 +67,8 @@ class JER(
                 output_key: self.target(f"{'__'.join(output_key.split('.'))}.pickle")
                 for output_key in self.output_keys
             },
-            "jer": self.target(f"{self.branch_data.sample}_jer.txt"),
-            "nsc_fit": self.target(f"{self.branch_data.sample}_nsc_fit.txt"),
+            "jer": self.target(f"{self.branch_data.sample}_jer.json"),
+            "nsc_fit": self.target(f"{self.branch_data.sample}_nsc_fit.json"),
         }
 
     def requires(self):
@@ -216,7 +216,7 @@ class JER(
                     corrs=[hist_corr],
                     description=f"JER values for sample {sample}",
                 )
-                self.output()["jer"].dump(cset_hist, formatter="text")
+                self.output()["jer"].dump(cset_hist.json(exclude_unset=True), formatter="json")
 
                 corr = create_NSC_correctionlib(sample, h_in[:, 0].axes.edges[0])
                 for i, eta in enumerate(h_in[:, 0].axes.centers[0]):
@@ -228,7 +228,7 @@ class JER(
                     corrs=[corr],
                     description=f"NSC fit for sample {sample}",
                 )
-                self.output()["nsc_fit"].dump(cset, formatter="text")
+                self.output()["nsc_fit"].dump(cset.json(exclude_unset=True), formatter="json")
 
             print("writing outputs")
             for output_key in self.output_keys:

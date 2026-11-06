@@ -2,24 +2,27 @@
 
 config="run3_2024_JMEnano_v15"
 #config="run3_2024_JMEnano_v15_limited"
-version="v3"
+version="v7"
 
 args=(
     "--config" "${config}"
     "--version" "${version}"
-    "--samples" "qcdht,data"
-    "--postprocessor mctruth"
-    "--levels" "gen"
+    "--samples" "qcdht" #,data"
+    #"--postprocessor mctruth_corsebin"
+    "--postprocessor mctruth_97CI_mixed3_a1"
+    "--levels" "gen" #,reco"
     #"--workflow" "htcondor"
-    #"--workers" "4"
+    "--selector-steps" "all_but_dijet"
+    #"--workers" "12"
 )
-echo law run dijet.Asymmetry "${args[@]}" "$@"
+echo claw run dijet.Asymmetry "${args[@]}" "$@"
 echo law run dijet.AlphaExtrapolation "${args[@]}" "$@"
 echo law run dijet.JER "${args[@]}" "$@"
 echo law run dijet.SF "${args[@]}" "$@"
 
 args+=(
-    #--bin-selectors" 'alpha,min=0.3,max=0.3:abseta,min=0.0,max=0.5:pt,min=100,max=200'
+    --bin-selectors 'alpha,min=1.0,max=1.0:abseta,min=0.0,max=0.5'
+    #--bin-selectors 'alpha,min=0.3,max=0.3:abseta,min=0.0,max=0.5:pt,min=100,max=200'
     "--file-types png,pdf"
     #"--bin-selectors" 'alpha,min=0.3,max=0.3:abseta,min=1.9,max=2.7:pt,min=100,max=200'
 )

@@ -44,11 +44,16 @@ def jet_selection(
     # IDs in NanoAOD https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD
     #  & JME NanoAOD https://cms-nanoaod-integration.web.cern.ch/integration/master-106X/mc102X_doc.html
     jet_mask = (
-        (events.Jet.pt > 10) &
+        (events.Jet.pt > 5) &
         (abs(events.Jet.eta) < 5.2) &
         # IDs in NanoAOD https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookNanoAOD
         (events.Jet.jetId & 6 == 6)  # 2: fail tight LepVeto and 6: pass tightLepVeto
     )
+
+    # neutral multiplicity cut for forward jets
+    nm_mask = (events.Jet.neMultiplicity > 1) & (abs(events.Jet.eta) > 3.0)
+    nm_sel = nm_mask | (abs(events.Jet.eta) < 3.0)
+    jet_mask = jet_mask & nm_sel
 
     # Jet puId not available in Run3
     if self.config_inst.campaign.x.run == 2:

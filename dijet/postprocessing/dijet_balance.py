@@ -10,9 +10,12 @@ import law
 
 from columnflow.util import maybe_import
 
+from dijet.hist_util import apply_rebinning_edges
+
 from dijet.postprocessing import PostProcessor, postprocessor
 from dijet.postprocessing.base import (
     trim_tails_impl,
+    trim_tails_CI_impl,
     extract_width_impl,
     extrapolate_width_impl,
     calc_jer_impl,
@@ -69,6 +72,10 @@ dijet_balance = postprocessor(
     # total fraction of response distribution to remove symetrically from both
     # ends in order to cut off non-Gaussian tails
     trim_tails_fraction=0.03,
+    # method to find the thresholds where to trim the non-Gaussian tails
+    trim_tails_implementation="quantiles",
+    # wether to start from mean or the bin with largest value
+    trim_tails_use_max_bin=False,
     # method to use for extracting width
     extract_width_method="empirical",
     # name of response used for JER computation
@@ -82,6 +89,8 @@ dijet_balance = postprocessor(
     # upper |eta| value until which to average
     # SM JER to use as a reference for the FE method
     calc_jer_max_abseta_sm_ref=1.131,
+    # variables to rebin corser than the default binning
+    rebin_cfg={},
 )
 
 
@@ -199,7 +208,20 @@ def trim_tails(
     * ``cut_edges``: a dict of histograms ``low`` and ``up`` containing the lower and upper bound
                      of the response interval after trimming non-Gaussian tails (for plotting)
     """
-    return trim_tails_impl(self, task, inputs, level, **kwargs)
+    for axis in self.rebin_cfg.keys():
+        for response, h in inputs.items():
+            inputs[response] = apply_rebinning_edges(h, axis, self.rebin_cfg[axis])
+
+    if self.trim_tails_implementation == "quantiles":
+        return trim_tails_impl(self, task, inputs, level, **kwargs)
+    elif self.trim_tails_implementation == "quantiles_CI":
+        if self.trim_tails_use_max_bin:
+            kwargs["use_max_bin"] = True
+        return trim_tails_CI_impl(self, task, inputs, level, **kwargs)
+    else:
+        raise NotImplementedError(
+            f"Requested trim_tails_implementation '{self.trim_tails_implementation}' is not implemented.",
+        )
 
 
 @dijet_balance.step(
@@ -340,6 +362,24 @@ dijet_balance_gaussian_fit = dijet_balance.derive(
     "dijet_balance_gaussian_fit",
     cls_dict={
         "extract_width_method": "gaussian_fit",
+    },
+)
+
+
+dijet_balance_87CI = dijet_balance.derive(
+    "dijet_balance_87CI",
+    cls_dict={
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+
+dijet_balance_97CI = dijet_balance.derive(
+    "dijet_balance_97CI",
+    cls_dict={
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
     },
 )
 

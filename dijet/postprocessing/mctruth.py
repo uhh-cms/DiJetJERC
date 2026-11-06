@@ -10,9 +10,12 @@ import law
 
 from columnflow.util import maybe_import
 
+from dijet.hist_util import apply_rebinning_edges
+
 from dijet.postprocessing import PostProcessor, postprocessor
 from dijet.postprocessing.base import (
     trim_tails_impl,
+    trim_tails_CI_impl,
     extract_width_impl,
     extrapolate_width_impl,
     calc_jer_impl,
@@ -54,10 +57,14 @@ mctruth = postprocessor(
     # keys of variables used for binning (not extrapolation or response itself)
     binning_var_keys=("abseta", "pt"),
     # rebinning factor to apply to asymmetry axis
-    trim_tails_asymmetry_rebin_factor=2,
+    trim_tails_asymmetry_rebin_factor=1,
     # total fraction of response distribution to remove symetrically from both
     # ends in order to cut off non-Gaussian tails
     trim_tails_fraction=0.03,
+    # method to find the thresholds where to trim the non-Gaussian tails
+    trim_tails_implementation="quantiles",
+    # wether to start from mean or the bin with largest value
+    trim_tails_use_max_bin=False,
     # method to use for extracting width
     extract_width_method="empirical",
     # name of response used for JER computation
@@ -71,6 +78,8 @@ mctruth = postprocessor(
     # upper |eta| value until which to average
     # SM JER to use as a reference for the FE method
     calc_jer_max_abseta_sm_ref=1.131,
+    # variables to rebin corser than the default binning
+    rebin_cfg={},
 )
 
 
@@ -188,7 +197,20 @@ def trim_tails(
     * ``cut_edges``: a dict of histograms ``low`` and ``up`` containing the lower and upper bound
                      of the response interval after trimming non-Gaussian tails (for plotting)
     """
-    return trim_tails_impl(self, task, inputs, level, **kwargs)
+    for axis in self.rebin_cfg.keys():
+        for response, h in inputs.items():
+            inputs[response] = apply_rebinning_edges(h, axis, self.rebin_cfg[axis])
+
+    if self.trim_tails_implementation == "quantiles":
+        return trim_tails_impl(self, task, inputs, level, **kwargs)
+    elif self.trim_tails_implementation == "quantiles_CI":
+        if self.trim_tails_use_max_bin:
+            kwargs["use_max_bin"] = True
+        return trim_tails_CI_impl(self, task, inputs, level, **kwargs)
+    else:
+        raise NotImplementedError(
+            f"Requested trim_tails_implementation '{self.trim_tails_implementation}' is not implemented.",
+        )
 
 
 @mctruth.step(
@@ -324,6 +346,446 @@ def calc_sf(
     * ``jer_sf``: the JER scale factor, calculated as the ratio of JERs in data and MC
     """
     return calc_sf_impl(self, task, inputs, **kwargs)
+
+
+mctruth_87CI = mctruth.derive(
+    "mctruth_87CI",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+mctruth_87CI_a1 = mctruth.derive(
+    "mctruth_87CI_a1",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+mctruth_97CI_a1 = mctruth.derive(
+    "mctruth_97CI_a1",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+mctruth3j_97CI_a1 = mctruth.derive(
+    "mctruth3j_97CI_a1",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets3_abseta",
+                "pt": "genjets3_pt",
+                "asymmetry": "mc_truth_responses3",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+mctruth1j_97CI_a1 = mctruth.derive(
+    "mctruth1j_97CI_a1",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjet1_abseta",
+                "pt": "genjet1_pt",
+                "asymmetry": "mc_truth_response",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+mctruth_87CI_a1_merged = mctruth.derive(
+    "mctruth_87CI_a1_merged",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+        "rebin_cfg": {
+            "genjets_abseta": [0, 1.305, 2.500, 5.191],
+        },
+    },
+)
+
+mctruth_97CI_a1_merged = mctruth.derive(
+    "mctruth_97CI_a1_merged",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+        "rebin_cfg": {
+            "genjets_abseta": [0, 1.305, 2.500, 5.191],
+        },
+    },
+)
+
+mctruth_87CI_merged = mctruth.derive(
+    "mctruth_87CI_merged",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+        "rebin_cfg": {
+            "genjets_abseta": [0, 1.305, 2.500, 5.191],
+        },
+    },
+)
+
+
+mctruth_97CI = mctruth.derive(
+    "mctruth_97CI",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+
+mctruth_97CI_merged = mctruth.derive(
+    "mctruth_97CI_merged",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+        "rebin_cfg": {
+            "genjets_abseta": [0, 1.305, 2.500, 5.191],
+        },
+    },
+)
+
+
+mctruth_87CI_reco_a1 = mctruth.derive(
+    "mctruth_87CI_reco_a1",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "matchedjets_abseta",
+                "pt": "matchedjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+mctruth_97CI_reco_a1 = mctruth.derive(
+    "mctruth_97CI_reco_a1",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "matchedjets_abseta",
+                "pt": "matchedjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+mctruth_97CI_reco3_a1 = mctruth.derive(
+    "mctruth_97CI_reco3_a1",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "matchedjets3_abseta",
+                "pt": "matchedjets3_pt",
+                "asymmetry": "mc_truth_responses3",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+mctruth_97CI_mixed3_a1 = mctruth.derive(
+    "mctruth_97CI_mixed3_a1",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "matchedjets3_abseta",
+                "pt": "genjets3_pt",
+                "asymmetry": "mc_truth_responses3",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+mctruth_97CI_reco3_a1_merged = mctruth.derive(
+    "mctruth_97CI_reco3_a1_merged",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "matchedjets3_abseta",
+                "pt": "matchedjets3_pt",
+                "asymmetry": "mc_truth_responses3",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+        "rebin_cfg": {
+            "matchedjets3_abseta": [0, 1.305, 2.500, 5.191],
+        },
+    },
+)
+
+mctruth_87CI_reco_merged = mctruth.derive(
+    "mctruth_87CI_reco_merged",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "matchedjets_abseta",
+                "pt": "matchedjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+        "rebin_cfg": {
+            "matchedjets_abseta": [0, 1.305, 2.500, 5.191],
+        },
+    },
+)
+
+
+#
+# TODO: clean up (delete)
+#
+
+mctruth_closure = mctruth.derive(
+    "mctruth_closure",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+
+mctruth_recobins = mctruth.derive(
+    "mctruth_recobins",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "matchedjet_abseta",
+                "pt": "matchedjet_pt",
+                "asymmetry": "mc_truth_response",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+    },
+)
+
+
+mctruth_recobins2 = mctruth.derive(
+    "mctruth_recobins2",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "matchedjets_abseta",
+                "pt": "matchedjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.03,
+    },
+)
+
+
+mctruth_corsebin = mctruth.derive(
+    "mctruth_corsebin",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "matchedjets_abseta",
+                "pt": "matchedjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "rebin_cfg": {
+            "matchedjets_abseta": [0, 1.305, 2.500, 5.191],
+        },
+    },
+)
+
+
+mctruth_2GJ_merged_87 = mctruth.derive(
+    "mctruth_2GJ_merged_87",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "rebin_cfg": {
+            "genjets_abseta": [0, 1.305, 2.500, 5.191],
+        },
+    },
+)
+
+
+mctruth_closure_gauss = mctruth.derive(
+    "mctruth_closure_gauss",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+        "extract_width_method": "gaussian_fit",
+    },
+)
+
+
+mctruth_twojets = mctruth.derive(
+    "mctruth_twojets",
+    cls_dict={
+        "variable_map": {
+            "gen": {
+                "alpha": "dijets_alpha",
+                "abseta": "genjets_abseta",
+                "pt": "genjets_pt",
+                "asymmetry": "mc_truth_responses",
+            },
+        },
+        "trim_tails_fraction": 0.13,
+    },
+)
+
+
+mctruth_87 = mctruth.derive(
+    "mctruth_87",
+    cls_dict={
+        "trim_tails_fraction": 0.13,
+    },
+)
+
+
+mctruth_87CI = mctruth.derive(
+    "mctruth_87CI",
+    cls_dict={
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+
+mctruth_97CI = mctruth.derive(
+    "mctruth_97CI",
+    cls_dict={
+        "trim_tails_fraction": 0.03,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+
+mctruth_trimCI = mctruth.derive(
+    "mctruth_trimCI",
+    cls_dict={
+        "trim_tails_fraction": 0.13,
+        "trim_tails_implementation": "quantiles_CI",
+    },
+)
+
+mctruth_test = mctruth.derive(
+    "mctruth_test",
+    cls_dict={
+        "trim_tails_fraction": 0.13,
+    },
+)
 
 
 mctruth_gaussian_fit = mctruth.derive(

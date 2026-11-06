@@ -20,7 +20,7 @@ def create_NSC_correctionlib(
     """
     corr = cs.Correction(
         name=f"NSC_fit_{name}",
-        description="NSC fit to JER for Sample {name}",
+        description=f"NSC fit to JER for Sample {name}",
         version=1,
         inputs=[
             cs.Variable(
@@ -48,7 +48,9 @@ def create_NSC_correctionlib(
                     nodetype="formula",
                     variables=["pt"],
                     parser="TFormula",
-                    expression="",
+                    # expression="min(sqrt([0]*[0]/(x*x)+[1]*[1]/x+[2]*[2]+pow([3]/x,4)),1.)",
+                    expression="sqrt([0]*[0]/(x*x)+[1]*[1]/pow(x, [3])+[2]*[2])",
+                    parameters=[0, 0, 0, 0],
                 )
                 for _ in range(len(eta_edges) - 1)
             ],
@@ -72,12 +74,12 @@ def fill_NSC_correctionlib(
     C = fit_params["C"]
     d = fit_params["d"]
 
-    if N > 0:
-        formula_str = f"sqrt(({N}*{N})/pow(x, 2) + ({S}*{S})/pow(x, {d}) + {C}*{C})"
-    else:
-        formula_str = f"sqrt(-({N}*{N})/pow(x, 2) + ({S}*{S})/pow(x, {d}) + {C}*{C})"
+    # if N > 0:
+    #     formula_str = f"sqrt(({N}*{N})/pow(x, 2) + ({S}*{S})/pow(x, {d}) + {C}*{C})"
+    # else:
+    #     formula_str = f"sqrt(-({N}*{N})/pow(x, 2) + ({S}*{S})/pow(x, {d}) + {C}*{C})"
 
-    corr.data.content[eta_bin_idx].expression = formula_str
+    corr.data.content[eta_bin_idx].parameters = [N, S, C, d]
 
     return corr
 
@@ -115,3 +117,52 @@ def build_correctionset(
     )
 
     return cset
+
+
+def build_gen_reco_map(
+    pt_edges: np.ndarray,
+    eta_edges: np.ndarray,
+) -> cs.Correction():
+    """
+    Creates an empty correctionset that can be filled in eta bins with the results of the NSC fits.
+    """
+    corr = cs.Correction(
+        name="gen_reco_map",
+        description="cset to map gen pt to reco pt",
+        version=1,
+        inputs=[
+            cs.Variable(
+                name="eta",
+                type="real",
+                description="preusorapdity of the jet",
+            ),
+            cs.Variable(
+                name="pt",
+                type="real",
+                description="transverse momentum of the jet",
+            ),
+        ],
+        output=cs.Variable(
+            name="mean reco pt",
+            type="real",
+            description="mean reconstructed pt for given gen pt and eta",
+        ),
+        data=cs.Binning(
+            nodetype="binning",
+            input="eta",
+            edges=eta_edges,
+            content=[
+                cs.Binning(
+                    nodetype="binning",
+                    input="pt",
+                    edges=pt_edges,
+                    content=[i for i in range(len(pt_edges) - 1)],
+                    flow="clamp",
+                )
+                for _ in range(len(eta_edges) - 1)
+            ],
+            flow="clamp",
+        ),
+    )
+
+    return corr

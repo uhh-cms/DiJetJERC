@@ -15,6 +15,7 @@ from dijet.tasks.asymmetry import Asymmetry
 from dijet.plotting.base import PlottingBaseTask
 from dijet.plotting.util import annotate_corner, plot_xy
 from dijet.util import product_dict, inflate_dict, iter_flat_dict
+from dijet.hist_util import hist_mean_variance, hist_median
 
 logger = law.logger.get_logger(__name__)
 
@@ -47,9 +48,9 @@ class PlotMCTruthResponse(
 
     # plot configuration (e.g. axes limits/labels/scales)
     plot_settings = {
-        "legend_kwargs": dict(loc="upper right"),
+        "legend_kwargs": dict(loc="upper right", fontsize=23),
         "xlabel": lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["gen"][ctx["response_var_key"]]).x_title,
-        "xlim": (0.0, 2.0),
+        "xlim": (0.0, 4.0),
         "xscale": "linear",
         "ylabel": r"$\Delta$N/N",
         "ylim": (5e-5, 10),
@@ -261,6 +262,17 @@ class PlotMCTruthResponse(
                     ax.axvline(q_lo, 0, 0.67, color=plot_kwargs.get("color"), linestyle="--")
                     ax.axvline(q_up, 0, 0.67, color=plot_kwargs.get("color"), linestyle="--")
 
+                    ax.axvline(
+                        hist_mean_variance(h_sliced)["mean"].value,
+                        0, 0.67, color=plot_kwargs.get("color"), linestyle=":",
+                        label=f"mean: {hist_mean_variance(h_sliced)['mean'].value:.3f}",
+                    )
+                    ax.axvline(
+                        hist_median(h_sliced)["median"].value,
+                        0, 0.67, color=plot_kwargs.get("color"), linestyle="-.",
+                        label=f"median: {hist_median(h_sliced)['median'].value:.3f}",
+                    )
+
                 #
                 # annotations
                 #
@@ -291,7 +303,7 @@ class PlotMCTruthResponse(
                 self.apply_plot_settings(ax=ax, context={"vars": variable_map, "response_var_key": response_var_key})
 
                 # legend
-                # ax.legend(**self.plot_settings.get("legend_kwargs", {}))
+                ax.legend(**self.plot_settings.get("legend_kwargs", {}))
 
                 # compute plot filename
                 fname_parts = [

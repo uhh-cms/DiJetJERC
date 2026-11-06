@@ -15,7 +15,7 @@ np = maybe_import("numpy")
 ak = maybe_import("awkward")
 
 
-from dijet.constants import pt, eta, alpha, gen_pt
+from dijet.constants import pt, eta, alpha, pt_low, pt_fine
 
 
 def add_feature_variables(config: od.Config) -> None:
@@ -94,17 +94,124 @@ def add_variables(config: od.Config) -> None:
         x_title="$p_{T}$ of all jets",
     )
     config.add_variable(
-        name="genjets_pt",
-        expression="GenJet.pt[:,:2]",
-        binning=pt,  # (100, 0, 1000),
+        name="genjets_pt_all",
+        expression="GenJet.pt",
+        binning=(100, 0, 1000),
         unit="GeV",
-        x_title="$p_{T}$ of the two leading gen jets",
+        x_title=r"$p_\text{T}^\text{gen}$",
     )
     config.add_variable(
-        name="genjets_eta",
-        expression="GenJet.eta[:,:2]",
+        name="genjets_pt",
+        expression="GenJet.pt[:, :2]",
+        binning=pt_low,  # (100, 0, 1000),
+        unit="GeV",
+        x_title=r"$p_\text{T}^\text{gen}$",
+    )
+    config.add_variable(
+        name="genjets3_pt",
+        expression="GenJet.pt[:, :3]",
+        binning=pt_low,  # (100, 0, 1000),
+        unit="GeV",
+        x_title=r"$p_\text{T}^\text{gen}$",
+    )
+    config.add_variable(
+        name="genjets_abseta",
+        expression=lambda events: abs(events.GenJet.eta[:, :2]),
         binning=eta,
-        x_title=r"$\eta$ of the two leading gen jets",
+        x_title=r"$|\eta^\text{gen}|$",
+        aux={
+            "inputs": {"GenJet.eta"},
+        },
+    )
+    config.add_variable(
+        name="genjets3_abseta",
+        expression=lambda events: abs(events.GenJet.eta[:, :3]),
+        binning=eta,
+        x_title=r"$|\eta^\text{gen}|$",
+        aux={
+            "inputs": {"GenJet.eta"},
+        },
+    )
+    config.add_variable(
+        name="matchedjets_pt",
+        expression="MatchedJet.pt[:, :2]",
+        null_value=EMPTY_FLOAT,
+        binning=pt_low,
+        unit="GeV",
+        x_title=r"$p_{T}^\text{reco}$",
+    )
+
+    config.add_variable(
+        name="matchedjets3_pt",
+        expression="MatchedJet.pt[:, :3]",
+        null_value=EMPTY_FLOAT,
+        binning=pt_low,
+        unit="GeV",
+        x_title=r"$p_{T}^\text{reco}$",
+    )
+    config.add_variable(
+        name="matchedjets3_pt_fine",
+        expression="MatchedJet.pt[:, :3]",
+        null_value=EMPTY_FLOAT,
+        binning=pt_fine,
+        unit="GeV",
+        x_title=r"$p_{T}^\text{reco}$",
+    )
+    config.add_variable(
+        name="matchedjets_abseta",
+        expression=lambda events: abs(events.MatchedJet.eta[:, :2]),
+        null_value=EMPTY_FLOAT,
+        binning=eta,
+        x_title=r"$|\eta^\text{reco}|$",
+        aux={
+            "inputs": {"MatchedJet.eta"},
+        },
+    )
+    config.add_variable(
+        name="matchedjets3_abseta",
+        expression=lambda events: abs(events.MatchedJet.eta[:, :3]),
+        null_value=EMPTY_FLOAT,
+        binning=eta,
+        x_title=r"$|\eta^\text{reco}|$",
+        aux={
+            "inputs": {"MatchedJet.eta"},
+        },
+    )
+    config.add_variable(
+        name="matchedjet_pt",
+        expression="MatchedJet.pt[:, 0]",
+        null_value=EMPTY_FLOAT,
+        binning=pt_low,
+        unit="GeV",
+        x_title=r"$p_{T}^\text{reco}$",
+    )
+    config.add_variable(
+        name="matchedjet_abseta",
+        expression=lambda events: abs(events.MatchedJet.eta[:, 0]),
+        null_value=EMPTY_FLOAT,
+        binning=eta,
+        x_title=r"$|\eta^\text{reco}|$",
+        aux={
+            "inputs": {"MatchedJet.eta"},
+        },
+    )
+    config.add_variable(
+        name="test_var1",
+        expression="test_var1",
+        binning=(10, -5, 5),
+        x_title="Test variable 1",
+        aux={
+            "associated_with": "test_vars",
+        },
+    )
+    config.add_variable(
+        name="test_var2",
+        expression="test_var2",
+        binning=(10, -5, 5),
+        x_title="Test variable 2",
+        aux={
+            "associated_with": "test_vars",
+        },
     )
 
     # Jets (3 pt-leading jets)
@@ -114,7 +221,7 @@ def add_variables(config: od.Config) -> None:
                 name=f"{obj}{i+1}_pt".lower(),
                 expression=f"{obj}.pt[:,{i}]",
                 null_value=EMPTY_FLOAT,
-                binning=(100, 0., 1000.),
+                binning=(800, 0., 8000.),
                 unit="GeV",
                 x_title=obj + r" %i $p_{T}$" % (i + 1),
             )
@@ -147,7 +254,7 @@ def add_variables(config: od.Config) -> None:
                 name=f"{obj}{i+1}_pt".lower(),
                 expression=f"{obj}.pt[:,{i}]",
                 null_value=EMPTY_FLOAT,
-                binning=gen_pt,  # (100, 0., 1000.),
+                binning=pt_low,  # (100, 0., 1000.),
                 unit="GeV",
                 x_title=r"$p_\text{T}^\text{gen}$",
             )
@@ -188,20 +295,26 @@ def add_variables(config: od.Config) -> None:
     config.add_variable(
         name="mc_truth_response",
         expression="mc_truth_response",
-        binning=(100, 0, 2),
+        binning=(200, 0, 4),
         x_title=r"MC truth response",
     )
     config.add_variable(
         name="mc_truth_response1",
         expression="mc_truth_response1",
-        binning=(100, 0, 2),
+        binning=(200, 0, 4),
         x_title=r"MC truth response (2nd leading gen jet)",
     )
     config.add_variable(
         name="mc_truth_responses",
-        expression="mc_truth_responses",
-        binning=(100, 0, 2),
-        x_title=r"MC truth response (2 leading gen jets)",
+        expression="mc_truth_responses[:, :2]",
+        binning=(200, 0, 4),
+        x_title=r"MC truth response",
+    )
+    config.add_variable(
+        name="mc_truth_responses3",
+        expression="mc_truth_responses[:, :3]",
+        binning=(200, 0, 4),
+        x_title=r"MC truth response",
     )
 
     #

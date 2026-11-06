@@ -225,7 +225,10 @@ class PlottingBaseTask(
 
             # get bin edges from config or input histogram
             if from_hist is None:
-                bv_edges = bv_inst.bin_edges
+                if self.postprocessor_inst.rebin_cfg is not None and bv_name in self.postprocessor_inst.rebin_cfg:
+                    bv_edges = self.postprocessor_inst.rebin_cfg[bv_name]
+                else:
+                    bv_edges = bv_inst.bin_edges
             else:
                 bv_edges = from_hist.axes[bv_name].edges
 

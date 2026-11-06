@@ -52,7 +52,7 @@ class PlotJER(
     # plot configuration (e.g. axes limits/labels/scales)
     plot_settings = {
         "legend_kwargs": dict(loc="upper right"),
-        "xlabel": lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["pt"]).get_full_x_title(),  # noqa
+        "xlabel": r"$p_\text{T}^\text{reco}$ / GeV",  # lambda self, ctx: self.config_inst.get_variable(ctx["vars"]["pt"]).get_full_x_title(),  # noqa
         # "xlim": (49, 2100),
         "xscale": "log",
         "ylabel": "Jet energy resolution",
@@ -164,8 +164,10 @@ class PlotJER(
         correction_set = load_correction_set(bundle_files["jet_jerc"])
         correction = correction_set[jer_sf_key]
         mctruth_jer = clib.CorrectionSet.from_string(
-            json.loads(bundle_files["mctruth_gauss_jer"].load(formatter="gzip")),
+            json.loads(bundle_files["mctruth_v5"].load(formatter="gzip")),
         )
+        gen_reco_map = load_correction_set(bundle_files["gen_reco_map"])
+        helsinki_jer = load_correction_set(bundle_files["helsinki_jer"])
         if self.plot_nsc_fits:
             data_jer = clib.CorrectionSet.from_string(
                 json.loads(bundle_files["data_mpfx_jer"].load(formatter="gzip")),
@@ -178,7 +180,6 @@ class PlotJER(
                 "qcdht": mc_jer["NSC_fit_qcdht"],
                 "mc_truth": mctruth_jer["NSC_fit_qcdht"],
             }
-
         # retrieve response configuration
         response_key = self.postprocessor_inst.calc_jer_main_response
         response_cfg = self.postprocessor_inst.responses[response_key]
@@ -282,10 +283,11 @@ class PlotJER(
                         self.__class__,
                         plot_kwargs.get("__default__", {}),
                     )
-
+                gen_reco_map_corr = gen_reco_map["gen_reco_map"]
                 # plot JER
+                eta = bin_selector["matchedjets3_abseta"].value
                 plot_xy(
-                    h_sliced.axes[variable_map["pt"]].centers,
+                    gen_reco_map_corr.evaluate(eta, h_sliced.axes[variable_map["pt"]].centers),
                     h_sliced.values(),
                     yerr=np.sqrt(h_sliced.variances()),
                     ax=ax,
@@ -324,24 +326,34 @@ class PlotJER(
                     pt_edges = h_sliced.axes[variable_map["pt"]].edges
                     pt_vals = np.logspace(np.log10(pt_edges[0]), np.log10(pt_edges[-1]), 101)
                     jer_vals = correction.evaluate(self.branch_data.abseta.loc, pt_vals, float(rho_val))
-                    plt.plot(
-                        pt_vals,
-                        jer_vals,
-                        color="red",
-                        linestyle="dashed",
-                        linewidth=2,
-                        label=label,
-                        zorder=-10,
-                    )
+                    # plt.plot(
+                    #     pt_vals,
+                    #     jer_vals,
+                    #     color="red",
+                    #     linestyle="dashed",
+                    #     linewidth=2,
+                    #     label=label,
+                    #     zorder=-10,
+                    # )
 
-                    jer_val2 = mctruth_jer["NSC_fit_qcdht"].evaluate(self.branch_data.abseta.loc, pt_vals)
+                    # jer_val2 = mctruth_jer["NSC_fit_qcdht"].evaluate(self.branch_data.abseta.loc, pt_vals)
+                    # plt.plot(
+                    #     pt_vals,
+                    #     jer_val2,
+                    #     color="green",
+                    #     linestyle="dashed",
+                    #     linewidth=2,
+                    #     label="MC truth (NSC fit)",
+                    #     zorder=-10,
+                    # )
+                    jer_val3 = helsinki_jer["NSC_fit_from_txt"].evaluate(self.branch_data.abseta.loc, pt_vals)
                     plt.plot(
                         pt_vals,
-                        jer_val2,
-                        color="green",
+                        jer_val3,
+                        color="pink",
                         linestyle="dashed",
                         linewidth=2,
-                        label="MC truth (NSC fit)",
+                        label="Helsinki (NSC fit)",
                         zorder=-10,
                     )
 
